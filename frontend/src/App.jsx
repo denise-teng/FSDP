@@ -14,6 +14,22 @@ import PurchaseSuccessPage from "./pages/PurchaseSuccessPage";
 import PurchaseCancelPage from "./pages/PurchaseCancelPage";
 import { useCartStore } from "./stores/useCartStore";
 import CategoryPage from "./pages/CategoryPage";
+import CalendarView from "./components/CalendarView";
+import NearEvents from "./components/NearEvents";
+import CalendarPage from "./pages/CalendarPage";
+import VerifyEmail from "./components/VerifyEmail";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import AdminHomePage from "./pages/AdminHomepage";
+
+
+function HomeRouter() {
+  const { user } = useUserStore();
+
+  if (!user) return <HomePage />; // Non-logged-in users
+  if (user.role === 'admin') return <Navigate to="/admin-home" />;
+  return <HomePage />; // Logged-in normal users
+}
 
 
 function App() {
@@ -43,7 +59,10 @@ useEffect (()=> {
       <div className='relative z-50 pt-20' >
       <Navbar />
       <Routes>
-        <Route path ='/' element={<HomePage/>} />
+      
+        <Route path="/admin-home" element={<AdminHomePage />} />
+        <Route path="/" element={<HomeRouter />} />
+        <Route path="/user-home" element={<HomePage  />} />
         <Route path ='/signup' element={!user ? <SignUpPage/> : <Navigate to ='/'/>} />
         <Route path ='/login' element={!user ? <LoginPage/> : <Navigate to ='/'/>} />
         <Route path ='/secret-dashboard' element={user?.role === "admin" ? <AdminPage/> : <Navigate to ='/login'/>} />
@@ -51,6 +70,11 @@ useEffect (()=> {
         <Route path = '/cart' element = {user ? <CartPage /> : <Navigate to ='/login '/>} />
         <Route path = '/purchase-success' element = {user ? <PurchaseSuccessPage /> : <Navigate to ='/login '/>} />
         <Route path = '/purchase-cancel' element = {user ? <PurchaseCancelPage /> : <Navigate to ='/login '/>} />
+        <Route path = '/secret-calendar' element={user?.role === "admin" ? <CalendarPage /> : <Navigate to ='/login'/>} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path='/reset-password' element={<ResetPasswordPage />} />
+        <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+
       </Routes>
       </div>
       <Toaster/>

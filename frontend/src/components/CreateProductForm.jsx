@@ -15,7 +15,7 @@ const CreateProductForm = () => {
     image: "",
  });
 
-const {createProduct, loading} = userProductStore();
+const {createProduct, loading} = useProductStore();
 const handleImageChange= (e) => {
     const file = e.target.files[0];
     if(file) {

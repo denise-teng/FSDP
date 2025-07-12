@@ -14,7 +14,7 @@ const LoginPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log(email, password);
-    login({email, password});
+    login(email, password);
   };
  
     return (  <div className='flex flex-col justify-center py-12 sm:px-6 lg:px-8 '>
@@ -23,7 +23,7 @@ const LoginPage = () => {
       animate={{ opacity: 1, y:20}}
       transition={{ duration: 0.8, delay: 0.2}}
       >
-        <h2 className='mt-6 text-center text-3xl font-extrabold text-emerald-400'>Create your account</h2>
+        <h2 className='mt-6 text-center text-3xl font-extrabold text-emerald-400'>Login to your account</h2>
   
       </motion.div>
   
@@ -74,7 +74,12 @@ const LoginPage = () => {
                   </div>
           </div>
   
-          
+          <div className='text-right'>
+            <Link to='/forgot-password' className='text-sm text-emerald-400 hover:underline'>
+              Forgot your password?
+            </Link>
+          </div>
+
           <button
           type='submit'
           className='w-full flex justify-center py-2 px-4 border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition duration-150 ease-in-out disabled:opacity-50' disabled={loading}>
