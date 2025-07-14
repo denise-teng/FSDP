@@ -1,8 +1,10 @@
-import { UserPlus, LogIn, LogOut, Bell, Calendar } from 'lucide-react';
+
+import { UserPlus, LogIn, LogOut, Bell, Calendar, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import Notifications from './Notifications';
 import { useState } from 'react';
+
 
 const Navbar = () => {
   const { user, logout } = useUserStore();
@@ -57,6 +59,47 @@ const Navbar = () => {
               </div>
             )}
 
+
+          {/* ✅ Brand name: YCF */}
+          <Link to='/' className='text-2xl font-bold text-emerald-400 items-center space-x-2 flex'>
+            YCF
+          </Link>
+
+          <nav className='flex flex-wrap items-center gap-4'>
+            {/* ✅ Dynamic Home link based on role */}
+            <Link
+              to={isAdmin ? '/admin-home' : '/'}
+              className='text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out'
+            >
+              Home
+            </Link>
+
+            {isAdmin ? (
+              <Link
+                to='/secret-dashboard'
+                className='text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center'
+              >
+                <Lock className='inline-block mr-1' size={18} />
+                <span className='hidden sm:inline'>Dashboard</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to='/contact'
+                  className='text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out'
+                >
+                  Contact
+                </Link>
+                <Link
+                  to='/download'
+                  className='text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out'
+                >
+                  Download
+                </Link>
+              </>
+            )}
+
+            {/* ✅ Auth buttons */}
             {user ? (
               <button
                 className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'
@@ -67,12 +110,26 @@ const Navbar = () => {
               </button>
             ) : (
               <>
+<<<<<<< HEAD
                 <Link to={'/signup'} className='bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'>
                   <UserPlus className='mr-2' size={18} />
                   Sign Up
                 </Link>
 
                 <Link to={'/login'} className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'>
+=======
+                <Link
+                  to='/signup'
+                  className='bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'
+                >
+                  <UserPlus className='mr-2' size={18} />
+                  Sign Up
+                </Link>
+                <Link
+                  to='/login'
+                  className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'
+                >
+>>>>>>> 7cc0631 (Brandon commit)
                   <LogIn className='mr-2' size={18} />
                   Login
                 </Link>
