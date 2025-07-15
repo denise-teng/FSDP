@@ -1,84 +1,45 @@
-import User from "../models/user.model.js";
-import Product from "../models/product.model.js";
-import User from '../models/user.model.js';
+// At the top of the file
+import Engagement from '../models/engagement.model.js';
 
-export const getAnalyticsData = async() => {
-    const totalUsers = await User.countDocuments();
-    const totalProducts = await Product.countDocuments();
-
-    const salesData = await OverconstrainedError.aggregate([
-        {
-            $group: {
-                _id: null,
-                totalSales: { $sum: 1 },
-                totalRevenue: { $sum: "$totalAmount" }
-            }
-        }
-    ])
-
-    const {totalSales, totalRevenue} = salesData[0] || {totalSales: 0, totalRevenue: 0};
-    return {
-        users: totalUsers,
-        products: totalProducts,
-        totalSales,
-        totalRevenue
-    }
-
-};
-
-export const getDailySalesData = async(startDate, endDate) => {
+export const getClientEngagementStats = async (req, res) => {
     try {
-        const dailySalesData = await Order.aggregate([
+        const data = await Engagement.aggregate([
             {
-                $match: {
-                    createdAt: {
-                        $gte: startDate,
-                        $lte: endDate
-                    }
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            { $unwind: '$user' },
+            { $match: { 'user.role': { $in: ['customer', 'admin'] } } },
+            {
+                $group: {
+                    _id: '$user._id',
+                    name: { $first: '$user.name' },
+                    userType: { $first: '$user.role' }, // << add this line
+                    clicks: { $sum: '$clicks' },
+                    engagingTime: { $sum: '$engagingTime' },
+                    replies: { $sum: '$replies' },
                 }
             },
             {
-                $group: {
-                    _id: {
-                        $dateToString: {
-                            format: "%Y-%m-%d",
-                            date: "$createdAt"
-                        }
-                    },
-                    revenue: { $sum: "$totalAmount" },
-                },
-            },
-            { $sort: { _id: 1 } },
-            
-            
-        ]);
-        
-        const dateArray = getDatesInRange(startDate, endDate);
-        
-        return dateArray.map(date => {
-            const foundData = dailySalesData.find(item => item._id === date);
-        
-            return {
-                data, 
-                sales: foundData?.sales || 0,
-                revenue: foundData?.revenue || 0
+                $project: {
+                    _id: 0,
+                    name: 1,
+                    userType: 1,
+                    clicks: 1,
+                    engagingTime: 1,
+                    replies: 1
+                }
             }
-        })
-        
-    } catch (error) {
-        console.log('Error in getDailySalesData controller', error.message);
-        res.status(500).json({message: 'Server Error', error: error.message});
+        ]);
+
+
+        res.status(200).json(data);
+    } catch (err) {
+        console.error('Error fetching client engagement stats:', err);
+        res.status(500).json({ error: 'Failed to fetch data' });
     }
 };
-
-function getDatesInRange(startDate, endDate) {
-    const dates = [];
-    let currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-        dates.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return dates;
-}
