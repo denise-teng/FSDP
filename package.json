@@ -12,19 +12,31 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "emailjs-com": "^3.2.0",
     "express": "^4.21.2",
     "file-saver": "^2.0.5",
+    "git": "^0.1.5",
     "ioredis": "^5.5.0",
     "jsonwebtoken": "^9.0.2",
+    "leaflet": "^1.9.4",
+    "leaflet-geosearch": "^4.2.0",
     "mongoose": "^8.11.0",
-    "stripe": "^17.7.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "nodemailer": "^7.0.3",
+    "react-leaflet": "^2.7.0",
+    "react-push-notification": "^1.5.4",
+    "lucide-react": "^0.525.0",
+    "openai": "^5.8.2",
+    "react-hot-toast": "^2.5.2",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

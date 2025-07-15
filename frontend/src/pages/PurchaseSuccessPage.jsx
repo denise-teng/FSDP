@@ -7,7 +7,7 @@ import Confetti from "react-confetti";
 const PurchaseSuccessPage = () => {
   const [isProcessing, setIsProcessing] = useState(true);
   const {clearCart} = useCartStore();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null);z
 
   useEffect(() => {
   const handleCheckoutSuccess = async(sessionId) =>{

@@ -118,9 +118,14 @@ const HomePage = () => {
 
       {/* Email Signup Section */}
       <section className="max-w-7xl mx-auto px-4 mt-20 mb-16 flex flex-col lg:flex-row items-center justify-between gap-10">
+        <img
+          src="/your-photo.jpg"
+        
+          className="w-48 h-48 rounded-full object-cover shadow-lg"
+        />
         <div className="max-w-xl text-center lg:text-left">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            <span className="text-gray-900">Take your</span>{' '}
+            <span className="text-indigo-700">Take your</span>{' '}
             <span className="text-indigo-700">financial future</span>
           </h2>
           <p className="text-gray-600 mb-4">
@@ -140,15 +145,11 @@ const HomePage = () => {
             Join 600+ families who’ve secured their future
           </p>
         </div>
-        <img
-          src="/your-photo.jpg"
-          alt="advisor"
-          className="w-48 h-48 rounded-full object-cover shadow-lg"
-        />
+        
       </section>
 
       {/* FAQ Section */}
-      <section className="max-w-4xl mx-auto px-4 mb-24">
+      <section className="max-w-4xl mx-auto px-4 mb-16">
         <h2 className="text-5xl font-extrabold mb-10 text-center leading-tight">
           COMMON<br />QUESTIONS
         </h2>
@@ -163,12 +164,12 @@ const HomePage = () => {
             "What makes your approach different from other advisors?",
           ].map((q, i) => (
             <details key={i} className="border-b py-2 group cursor-pointer">
-              <summary className="flex justify-between items-center font-medium text-gray-800">
+              <summary className="flex justify-between items-center font-medium text-white">
                 <span>{q}</span>
                 <span className="transition-transform group-open:rotate-45 text-xl">+</span>
               </summary>
-              <p className="mt-2 text-gray-600 text-sm">
-                This is a placeholder answer. You can update it based on your actual service details.
+              <p className="mt-2 text-gray-200 text-sm">
+                This is a placeholder answer.
               </p>
             </details>
           ))}
