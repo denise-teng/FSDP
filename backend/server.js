@@ -17,8 +17,9 @@ import quickMessageRoutes from './routes/QuickMessage.route.js';
 import potentialClientRoutes from './routes/PotentialClient.route.js';
 import replySuggestionAiRoutes from './routes/replySuggestionAi.route.js';
 import publicContactRoutes from './routes/publicContact.route.js';
-
-
+import broadcastRoutes from './routes/broadcast.route.js'; // Broadcast Groups/Lists
+import scheduledBroadcastRoutes from './routes/scheduledBroadcast.route.js'; // Scheduled Broadcasts
+import recentBroadcastRoutes from './routes/recentBroadcast.route.js'; // New route for recent broadcasts
 
 dotenv.config();
 const app = express();
@@ -30,7 +31,8 @@ app.use(cors({
 }));
 app.options('*', cors()); // handle preflight
 
-app.use(express.json({limit:"10mb"})); //allows parse body of request
+// Middleware
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
@@ -46,12 +48,16 @@ app.use('/api/quick-messages', quickMessageRoutes); // ✅ added
 app.use('/api/potential-clients', potentialClientRoutes);
 app.use('/api', replySuggestionAiRoutes);
 app.use('/api/contacts/public', publicContactRoutes);
-
-
+app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
+app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
+app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 
 
 // Start serverQ
-app.listen(PORT, () => {
-  console.log('Server is running on http://localhost:' + PORT);
-  connectDB();
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}).catch((err) => {
+  console.error('MongoDB connection failed:', err);
 });

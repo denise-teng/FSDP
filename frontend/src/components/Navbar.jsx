@@ -1,10 +1,8 @@
-
 import { UserPlus, LogIn, LogOut, Bell, Calendar, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import Notifications from './Notifications';
 import { useState } from 'react';
-
 
 const Navbar = () => {
   const { user, logout } = useUserStore();
@@ -58,8 +56,8 @@ const Navbar = () => {
                 )}
               </div>
             )}
-
-
+          </nav> {/* <-- This closing tag was missing */}
+          
           {/* ✅ Brand name: YCF */}
           <Link to='/' className='text-2xl font-bold text-emerald-400 items-center space-x-2 flex'>
             YCF
@@ -110,26 +108,12 @@ const Navbar = () => {
               </button>
             ) : (
               <>
-<<<<<<< HEAD
                 <Link to={'/signup'} className='bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'>
                   <UserPlus className='mr-2' size={18} />
                   Sign Up
                 </Link>
 
                 <Link to={'/login'} className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'>
-=======
-                <Link
-                  to='/signup'
-                  className='bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'
-                >
-                  <UserPlus className='mr-2' size={18} />
-                  Sign Up
-                </Link>
-                <Link
-                  to='/login'
-                  className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out'
-                >
->>>>>>> 7cc0631 (Brandon commit)
                   <LogIn className='mr-2' size={18} />
                   Login
                 </Link>

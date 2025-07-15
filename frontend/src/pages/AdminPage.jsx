@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquareHeart } from 'lucide-react';
+import { Mail, MessageSquareHeart, RadioTower} from 'lucide-react';
 import { motion } from 'framer-motion';
 import AdminContactPage from './AdminContactPage';
 import QuickMessagesPage from './QuickMessagesPage'; // ✅ still needed
+import BroadcastPage from './BroadcastPage'; // Adjust path if it's a page
 
 const tabs = [
   { id: 'contacts', label: 'Contacts', icon: Mail },
   { id: 'quickMessages', label: 'Quick Messages', icon: MessageSquareHeart },
+  { id: "broadcast", label: "Broadcast", icon: RadioTower },
 ];
 
 const AdminPage = () => {
@@ -43,6 +45,7 @@ const AdminPage = () => {
 
         {activeTab === 'contacts' && <AdminContactPage />}
         {activeTab === 'quickMessages' && <QuickMessagesPage />}
+        {activeTab === "broadcast" && <BroadcastPage />}
       </div>
     </div>
   );

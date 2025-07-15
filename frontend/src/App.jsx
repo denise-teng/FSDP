@@ -22,6 +22,7 @@ import AdminHomePage from "./pages/AdminHomepage";
 import AddContactForm from './components/AddContactModal';
 import ContactPage from "./pages/ContactPage";
 import PublicContactPage from './pages/PublicContactPage';
+import BroadcastPage from "./pages/BroadcastPage";
 
 function HomeRouter() {
   const { user } = useUserStore();
@@ -79,6 +80,9 @@ function App() {
           <Route path='/contact' element={
             user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
           } />
+
+          <Route path="/broadcasts" element={<BroadcastPage />} />
+          
         </Routes>
       </div>
       <Toaster position="top-right" />
