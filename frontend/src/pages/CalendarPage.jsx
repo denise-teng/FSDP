@@ -5,6 +5,7 @@ import NearEvents from '../components/NearEvents'
 import PotentialOpportunities from '../components/PotentialOpportunities'
 import MeetingsToSchedule from '../components/MeetingsToSchedule'
 import SendReminderForm from '../components/SendReminderForm'
+import MessageForm from '../components/MessageForm'
 
 const CalendarPage = () => {
   const { fetchAllEvents } = useEventStore()
@@ -81,8 +82,16 @@ const CalendarPage = () => {
             <SendReminderForm />
           </div>
         </div>
-      )}
+
+        
+      )}<div>
+      <h1>Send WhatsApp Message</h1>
+      <MessageForm /> {/* Use the MessageForm component */}
     </div>
+    </div>
+
+
+      
   )
 }
 
