@@ -35,4 +35,8 @@ const newsletterSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Newsletter = mongoose.model('Newsletter', newsletterSchema);
+<<<<<<< Updated upstream
 export default Newsletter;
+=======
+export default Newsletter;
+>>>>>>> Stashed changes

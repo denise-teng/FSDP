@@ -22,6 +22,8 @@ import scheduledBroadcastRoutes from './routes/scheduledBroadcast.route.js'; // 
 import recentBroadcastRoutes from './routes/recentBroadcast.route.js'; // New route for recent broadcasts
 import engagementRoutes from './routes/engagement.route.js';
 
+import newsletterRoutes from './routes/newsletter.routes.js';
+
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,7 +42,7 @@ app.use('/api/products', productRoutes)
 app.use('/api/cart', cartRoutes)
 app.use('/api/coupons', couponRoutes)
 app.use('/api/payments', paymentRoutes)
-app.use('/api/analytics', analyticsRoutes)
+app.use('/api/analytics', analyticsRoutes) // Correct route for analytics
 app.use('/api/events', eventRoutes)
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/contacts', contactRoutes);
@@ -52,12 +54,12 @@ app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
+app.use('/api/newsletters', newsletterRoutes); // Fix the newsletter route
 
 // Analytics and Engagement Routes
-app.use('/api/analytics', analyticsRoutes);
 app.use('/api/engagements', engagementRoutes);
 
-// Start serverQ
+// Start server
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
