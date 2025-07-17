@@ -1,42 +1,47 @@
 import mongoose from 'mongoose';
-
 const newsletterSchema = new mongoose.Schema({
   title: {
     type: String,
     required: [true, 'Title is required'],
     trim: true,
+    maxlength: 100
   },
-  content: {
+  newsletterFilePath: {
     type: String,
-    required: [true, 'Content is required'],
+    required: [true, 'Newsletter file path is required']
   },
+  thumbnailPath: {
+    type: String,
+    required: false
+  },
+  tags: {
+    type: [String],
+    required: [true, 'Tags are required']
+  },
+  sendTo: {
+    type: [String],
+    required: [true, 'Send To is required']
+  },
+  audience: {
+    type: [String],
+    required: [true, 'Audience is required']
+  },
+  content: { type: [String], required: true },
   category: {
     type: String,
-    enum: ['Financial Planning', 'Insurance', 'Estate Planning', 'Personal Finance', 'Legal'],
-    required: true,
+    enum: ['Financial Planning', 'Insurance', 'Estate Planning', 'Tax Relief'], // Example allowed categories
+    required: [true, 'Category is required']
   },
-  thumbnail: {
-    type: String, // URL from Cloudinary
-    required: false,
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  isDraft: {
-    type: Boolean,
-    default: true,
-  },
-  scheduledDate: {
-    type: Date, // For broadcasting later
-    required: false,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-}, { timestamps: true });
 
-const Newsletter = mongoose.model('Newsletter', newsletterSchema);
-<<<<<<< Updated upstream
-export default Newsletter;
-=======
-export default Newsletter;
->>>>>>> Stashed changes
+    status: {
+  type: String,
+  enum: ["draft", "published"],
+  default: "published"
+    }
+});
+
+export default mongoose.models.Newsletter || mongoose.model('Newsletter', newsletterSchema);

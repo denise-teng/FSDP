@@ -1,20 +1,114 @@
-// backend/routes/newsletter.routes.js
 import express from 'express';
-import {
-  createNewsletter,
-  getNewsletters,
-  updateNewsletter,
-  deleteNewsletter,
-  publishNewsletter,
-} from '../controllers/newsletter.controller.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { createNewsletter, getNewsletters, deleteNewsletter, updateNewsletter } from '../controllers/newsletter.controller.js';
+import mongoose from 'mongoose'; 
+import Newsletter from '../models/newsletter.model.js';
 
 const router = express.Router();
 
-// CRUD Routes for Newsletters/Drafts
-router.post('/', createNewsletter);          // Create a new draft
-router.get('/', getNewsletters);             // Get all newsletters (filter by isDraft)
-router.put('/:id', updateNewsletter);       // Update a newsletter/draft
-router.delete('/:id', deleteNewsletter);    // Delete a newsletter/draft
-router.patch('/:id/publish', publishNewsletter); // Publish a draft
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// ✅ Define storage and fileFilter FIRST
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '-');
+    cb(null, `${Date.now()}-${cleanName}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.fieldname === 'thumbnail') {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed for thumbnails'), false);
+    }
+  } else {
+    cb(null, true);
+  }
+};
+
+// ✅ Now it's safe to define upload
+const upload = multer({ 
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+
+// Routes
+router.put(
+  '/:id',
+  upload.fields([
+    { name: 'newsletterFile', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]),
+  updateNewsletter
+);
+router.post(
+  '/',
+  upload.fields([
+    { name: 'newsletterFile', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]),
+  createNewsletter
+);
+
+
+router.get('/', getNewsletters);
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ID format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Invalid newsletter ID format'
+    });
+  }
+
+  try {
+    const newsletter = await Newsletter.findById(id)
+      .select('-__v')  // Exclude version key
+      .lean();  // Return plain JS object
+    
+    if (!newsletter) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Newsletter not found' 
+      });
+    }
+
+    // Convert file paths to URLs if needed
+    if (newsletter.newsletterFilePath) {
+      newsletter.downloadUrl = `/api/download/${path.basename(newsletter.newsletterFilePath)}`;
+    }
+
+    res.json({
+      success: true,
+      data: newsletter
+    });
+
+  } catch (error) {
+    console.error('GET newsletter error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+router.delete('/:id', deleteNewsletter);
 
 export default router;
