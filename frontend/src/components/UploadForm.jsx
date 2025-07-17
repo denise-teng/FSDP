@@ -623,13 +623,6 @@ useEffect(() => {
             <UploadCard upload={newNewsletter} />
           </div>
         )}
-
-        <UpdateHomepageModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          newNewsletter={newNewsletter || previewNewsletter}
-          isLoading={loading}
-        />
       </motion.div>
     );
   };

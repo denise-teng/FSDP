@@ -82,7 +82,6 @@ app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

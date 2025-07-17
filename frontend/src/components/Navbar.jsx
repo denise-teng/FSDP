@@ -1,4 +1,4 @@
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock } from 'lucide-react';
+import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell } from 'lucide-react'; // Added Bell import
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import { useCartStore } from '../stores/useCartStore'; 
@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 const Navbar = () => {
   const { user, logout } = useUserStore();
-  const { cart } = useCartStore(); // Use cart store for the cart functionality
+  const { cart } = useCartStore(); // Cart is now used if needed
   const isAdmin = user?.role === 'admin';
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -27,22 +27,13 @@ const Navbar = () => {
             {isAdmin && (
               <div className="relative group">
                 <Link
-                  to="/content-generation"
-                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out"
+                  to="/secret-dashboard"
+                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
                 >
-                  Content Generation
+                  <Lock className="inline-block mr-1" size={18} />
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Link>
               </div>
-            )}
-
-            {isAdmin && (
-              <Link
-                to="/secret-dashboard"
-                className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-              >
-                <Lock className="inline-block mr-1" size={18} />
-                <span className="hidden sm:inline">Dashboard</span>
-              </Link>
             )}
 
             {user && (
