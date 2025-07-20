@@ -1,9 +1,10 @@
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock } from 'lucide-react';
+import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import { useCartStore } from '../stores/useCartStore'; 
 import Notifications from './Notifications';
 import { useState } from 'react';
+
 
 const Navbar = () => {
   const { user, logout } = useUserStore();

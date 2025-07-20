@@ -67,6 +67,10 @@ app.use('/api/newsletters', newsletterRoutes);
 app.use('/api/generate', generateRoute);
 app.use('/api/drafts', draftRoutes);
 
+
+//newsletters and drafts
+
+
 // Engagement Routes
 app.use('/api/engagements', engagementRoutes);
 
