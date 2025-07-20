@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {motion} from 'framer-motion';
-import {Link} from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {LogIn, Mail, Lock, ArrowRight, Loader} from 'lucide-react';
 import { useUserStore } from '../stores/useUserStore';
 
@@ -9,11 +9,14 @@ const LoginPage = () => {
   const [email, setEmail] =useState('');
   const [password, setPassword] = useState('');
    const {login, loading} =useUserStore()
+   const navigate = useNavigate();
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log(email, password);
-    login(email, password);
+    login(email, password, navigate);
+
   };
  
     return (  <div className='flex flex-col justify-center py-12 sm:px-6 lg:px-8 '>
@@ -69,7 +72,7 @@ const LoginPage = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className = 'block w-full px-3 py-2 pl-10 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text' placeholder='' />      
+              className = 'block w-full px-3 py-2 pl-10 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text' placeholder='Enter Password' />      
                   </div>
           </div>
   

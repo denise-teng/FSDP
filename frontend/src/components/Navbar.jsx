@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell } from 'lucide-react';
-=======
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell } from 'lucide-react'; // Added Bell import
->>>>>>> baa1f26c87da6f5a9dbfb0cade2d18601bb8bc4c
+import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell, Calendar } from 'lucide-react'; // Added Bell import
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import { useCartStore } from '../stores/useCartStore'; 
@@ -29,17 +25,27 @@ const Navbar = () => {
               Home
             </Link>
 
-            {isAdmin && (
-              <div className="relative group">
-                <Link
-                  to="/secret-dashboard"
-                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-                >
-                  <Lock className="inline-block mr-1" size={18} />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </Link>
-              </div>
-            )}
+           {isAdmin && (
+  <>
+    <div className="relative group">
+      <Link
+        to="/secret-dashboard"
+        className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+      >
+        <Lock className="inline-block mr-1" size={18} />
+        <span className="hidden sm:inline">Dashboard</span>
+      </Link>
+    </div>
+
+    <Link
+      to="/secret-calendar"
+      className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+    >
+      <Calendar className="mr-1" size={20} />
+      <span className="hidden sm:inline">Calendar</span>
+    </Link>
+  </>
+)}
 
             {user && (
               <div className="relative flex items-center">

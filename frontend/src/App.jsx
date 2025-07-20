@@ -158,7 +158,32 @@ return (
 
       </Routes>
     </div>
-    <Toaster position="top-right" />
+<Toaster
+  position="top-center"
+  toastOptions={{
+    duration: 4000,
+    style: {
+      background: '#ffffff',
+      color: '#000000',
+      border: '1px solid #e5e7eb', // optional light gray border
+      borderRadius: '8px',
+      padding: '12px 16px',
+    },
+    success: {
+      iconTheme: {
+        primary: '#10b981', // green icon
+        secondary: '#d1fae5',
+      },
+    },
+    error: {
+      iconTheme: {
+        primary: '#ef4444', // red icon
+        secondary: '#fee2e2',
+      },
+    },
+  }}
+/>
+
   </div >
 );
 
