@@ -155,6 +155,7 @@ return (
         <Route path="/edit-newsletter/:id" element={user?.role === "admin" ? <EditNewsletterPage isDraft={false} /> : <Navigate to="/login" />} />
         <Route path="/content-generation" element={<ContentGenerationPage />} />
 
+
       </Routes>
     </div>
     <Toaster position="top-right" />

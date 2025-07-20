@@ -6,6 +6,8 @@ import { createNewsletter, getNewsletters, deleteNewsletter, updateNewsletter } 
 import mongoose from 'mongoose'; 
 import Newsletter from '../models/newsletter.model.js';
 
+
+
 const router = express.Router();
 
 // Ensure uploads directory exists
@@ -111,4 +113,70 @@ router.get('/:id', async (req, res) => {
 
 router.delete('/:id', deleteNewsletter);
 
+router.post('/slots', async (req, res) => {
+  try {
+    // Debugging - log incoming request
+    console.log('[BACKEND] Received slots request:', {
+      body: req.body,
+      headers: req.headers,
+      method: req.method,
+      url: req.originalUrl
+    });
+
+
+    const { slotIndex, newsletter } = req.body;
+
+    // Input validation
+    if (slotIndex === undefined || slotIndex < 0 || slotIndex > 2) {
+      console.warn('[BACKEND] Invalid slot index:', slotIndex);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid slot index (must be 0, 1, or 2)' 
+      });
+    }
+
+    if (!newsletter || !newsletter._id) {
+      console.warn('[BACKEND] Invalid newsletter data:', newsletter);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid newsletter data' 
+      });
+    }
+
+    // Debugging - before database operation
+    console.log('[BACKEND] Looking for newsletter:', newsletter._id);
+
+
+    const existingNewsletter = await Newsletter.findById(newsletter._id);
+    if (!existingNewsletter) {
+      console.warn('[BACKEND] Newsletter not found:', newsletter._id);
+      return res.status(404).json({ 
+        success: false,
+        message: 'Newsletter not found' 
+      });
+    }
+
+    // Debugging - before response
+    console.log('[BACKEND] Returning successful response');
+
+
+    res.json({ 
+      success: true,
+      slotIndex,
+      newsletter: existingNewsletter
+    });
+
+  } catch (error) {
+    console.error('[BACKEND] Error in slots endpoint:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body
+    });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error updating slots',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 export default router;

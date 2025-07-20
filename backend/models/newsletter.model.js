@@ -41,7 +41,15 @@ const newsletterSchema = new mongoose.Schema({
   type: String,
   enum: ["draft", "published"],
   default: "published"
-    }
+    },
+
+    homepageSlot: {
+    type: Number,
+    enum: [0, 1, 2], // Only allow 3 slots
+    default: null
+    },
+
+    
 });
 
 export default mongoose.models.Newsletter || mongoose.model('Newsletter', newsletterSchema);

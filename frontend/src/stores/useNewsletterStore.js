@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 const getBaseUrl = () => {
   return 'http://localhost:5000';  // Change to your actual backend URL
 };
+
  
 export const useNewsletterStore = create((set) => ({
   newsletters: [],
@@ -21,7 +22,7 @@ export const useNewsletterStore = create((set) => ({
 
 initializeSlots: async () => {
   try {
-    const res = await axios.get('/homepage/slots');
+    const res = await axios.get('/newsletters/slots');
     // Filter out any drafts from slots
     const filteredSlots = (res.data || Array(3).fill(null)).map(slot => {
       return slot && slot.status === 'published' ? slot : null;
@@ -33,16 +34,40 @@ initializeSlots: async () => {
   }
 },
 
-updateHomepageSlot: async (slotIndex, slotData) => {
+updateHomepageSlot: async (slotIndex, newsletter) => {
   try {
-    const baseUrl = getBaseUrl();  // Get the correct backend URL
-    const response = await axios.post(`${baseUrl}/api/homepage/slots`, { slots: slotData });  // Use the backend URL
-    console.log(response.data);  // Handle the response if necessary
+        console.log('[FRONTEND] Making request to /newsletters/slots', {
+      slotIndex,
+      newsletterId: newsletter._id
+    });
+
+
+const response = await axios.post('/newsletters/slots', { 
+  slotIndex,
+  newsletter 
+});
+    
+    // Debugging - log successful response
+    console.log('[FRONTEND] Request successful:', response.data);
+
+    set(state => {
+      const updatedSlots = [...state.homepageSlots];
+      updatedSlots[slotIndex] = newsletter;
+      return { homepageSlots: updatedSlots };
+    });
+
+    return response.data;
   } catch (error) {
-    console.error('Error saving slots:', error);  // Log any errors
+    // Enhanced error logging
+    console.error('[FRONTEND] Error saving slots:', {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      config: error.config
+    });
+    throw error;
   }
 },
-
 
 // In useNewsletterStore.js
 createNewsletter: async (formData) => {
