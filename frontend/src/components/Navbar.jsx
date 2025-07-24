@@ -5,7 +5,6 @@ import { useCartStore } from '../stores/useCartStore';
 import Notifications from './Notifications';
 import { useState } from 'react';
 
-
 const Navbar = () => {
   const { user, logout } = useUserStore();
   const { cart } = useCartStore(); // Cart is now used if needed
@@ -25,27 +24,37 @@ const Navbar = () => {
               Home
             </Link>
 
-           {isAdmin && (
-  <>
-    <div className="relative group">
-      <Link
-        to="/secret-dashboard"
-        className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-      >
-        <Lock className="inline-block mr-1" size={18} />
-        <span className="hidden sm:inline">Dashboard</span>
-      </Link>
-    </div>
+            {/* Show "Contact Us" only for regular users */}
+            {!isAdmin && (
+              <Link
+                to="/contact"  // Link to the contact page
+                className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out"
+              >
+                Contact Us
+              </Link>
+            )}
 
-    <Link
-      to="/secret-calendar"
-      className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-    >
-      <Calendar className="mr-1" size={20} />
-      <span className="hidden sm:inline">Calendar</span>
-    </Link>
-  </>
-)}
+            {isAdmin && (
+              <>
+                <div className="relative group">
+                  <Link
+                    to="/secret-dashboard"
+                    className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+                  >
+                    <Lock className="inline-block mr-1" size={18} />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </Link>
+                </div>
+
+                <Link
+                  to="/secret-calendar"
+                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+                >
+                  <Calendar className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Calendar</span>
+                </Link>
+              </>
+            )}
 
             {user && (
               <div className="relative flex items-center">

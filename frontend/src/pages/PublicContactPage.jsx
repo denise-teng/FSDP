@@ -23,7 +23,9 @@ const PublicContactPage = () => {
       case "email":
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Invalid email format.";
       case "phone":
-        return /^\d{8}$/.test(value) ? "" : "Phone number must be 8 digits.";
+        // Regular expression to ensure phone number includes a country code with no space between country code and number
+        const phoneRegex = /^\+(\d{1,3})\d{7,15}$/; // Matches: +6512345678, +11234567890
+        return phoneRegex.test(value) ? "" : "Phone number must include a valid country code without spaces (e.g. +6512345678).";
       case "message":
         return value.trim() === "" ? "This field is required." : "";
       case "subject":
@@ -32,6 +34,7 @@ const PublicContactPage = () => {
         return "";
     }
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -130,7 +133,7 @@ const PublicContactPage = () => {
                     field === "email"
                       ? "Email"
                       : field === "phone"
-                      ? "Phone Number"
+                      ? "Eg. +6512345678"
                       : field.charAt(0).toUpperCase() + field.slice(1)
                   }
                   className="mt-1 w-full p-3 rounded bg-gray-100 text-black border border-gray-300 text-lg"

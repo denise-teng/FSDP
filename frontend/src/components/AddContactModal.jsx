@@ -24,7 +24,8 @@ export default function AddContactModal({ onClose }) {
   const isValid = {
     firstName: formData.firstName.trim() !== '',
     lastName: formData.lastName.trim() !== '',
-    phone: /^[0-9]{8}$/.test(formData.phone),
+    // Phone validation to ensure country code + followed by 8 digits
+    phone: /^\+([0-9]{1,4})\d{8}$/.test(formData.phone), // regex for valid phone number with country code
     email: formData.email.includes('@'),
     subject: formData.subject !== '',
     message: formData.message.trim() !== ''
@@ -97,7 +98,7 @@ export default function AddContactModal({ onClose }) {
 
         {/* Phone */}
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Phone Number (8 digits) <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-medium text-white mb-1">Phone Number (E.g. +6512345678) <span className="text-red-500">*</span></label>
           <div className="flex items-center">
             <input
               type="tel"

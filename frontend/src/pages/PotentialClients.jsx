@@ -8,7 +8,6 @@ import WhatsAppReplyTabsModal from '../components/WhatsAppReplyTabsModal';
 import FinalMessageEditModal from '../components/FinalMessageEditModal';
 import EmailReplyModal from '../components/EmailReplyModal';
 
-
 export default function PotentialClientsPage() {
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -18,11 +17,7 @@ export default function PotentialClientsPage() {
   const [finalMessage, setFinalMessage] = useState(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
-  const [activeMessage, setActiveMessage] = useState({ name: '', message: '' });
-
-
-
-
+  const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '' });
 
   useEffect(() => {
     fetchPotentialClients();
@@ -30,20 +25,41 @@ export default function PotentialClientsPage() {
 
   const handleSelectedReply = (msg) => {
     setShowWhatsAppTabs(false);
-    toast.success(`Reply selected: ${msg.content || msg.message}`);
+    
+    // For manual replies, go directly to WhatsApp
+    if (msg.source === 'Manual Reply') {
+      if (!activeMessage.phone) {
+        toast.error('No phone number available for this contact');
+        return;
+      }
+      
+      const cleanedPhoneNumber = activeMessage.phone.replace(/\D/g, '');
+      const encodedMessage = encodeURIComponent(msg.content);
+      const uniqueUrl = `https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}&ts=${Date.now()}`;
+      
+      if (window.waWindow) {
+        window.waWindow.close();
+      }
+      
+      window.waWindow = window.open(uniqueUrl, "_blank");
+      return;
+    }
+    
+    // For quick/AI messages, show final edit modal
     setFinalMessage({
-      content: msg.content || msg.message || '',
-      source: 'Quick Message',
+      content: msg.content || msg.message,
+      source: msg.source || 'Quick Message',
+      phone: activeMessage.phone,
+      name: activeMessage.name
     });
   };
 
   const filtered = potentialClients
-  .filter(c =>
-    (c.firstName + ' ' + c.lastName).toLowerCase().includes(search.toLowerCase()) &&
-    (!subjectFilter || c.subject?.toLowerCase() === subjectFilter.toLowerCase())
-  )
-  .sort((a, b) => a.contactId - b.contactId); // 👈 sort ascending by contactId
-
+    .filter(c =>
+      (c.firstName + ' ' + c.lastName).toLowerCase().includes(search.toLowerCase()) &&
+      (!subjectFilter || c.subject?.toLowerCase() === subjectFilter.toLowerCase())
+    )
+    .sort((a, b) => a.contactId - b.contactId);
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-6">
@@ -76,7 +92,6 @@ export default function PotentialClientsPage() {
           </select>
         </div>
 
-
         <div className="overflow-x-auto rounded">
           <table className="w-full border border-gray-600 bg-gray-900 text-sm">
             <thead className="bg-gray-700 text-gray-300">
@@ -94,7 +109,7 @@ export default function PotentialClientsPage() {
             </thead>
             <tbody>
               {filtered.length > 0 ? (
-                filtered.map((c, index) => (
+                filtered.map((c) => (
                   <tr key={c._id} className="text-center border-t border-gray-700 hover:bg-gray-800">
                     <td className="p-3 border border-gray-600">{c.contactId || '-'}</td>
                     <td className="p-3 border border-gray-600">{c.firstName}</td>
@@ -109,6 +124,7 @@ export default function PotentialClientsPage() {
                           setActiveMessage({
                             name: `${c.firstName} ${c.lastName}`,
                             message: c.message,
+                            phone: c.phone
                           })
                         }
                       >
@@ -123,8 +139,12 @@ export default function PotentialClientsPage() {
                       <button className="bg-yellow-500 px-2 py-1 rounded hover:bg-yellow-600">Broadcast</button>
                       <button
                         onClick={() => {
-                          setContactEmail(c.email); // Set the contact's email for reply
-                          setShowReplyModal(true);   // Open the reply method modal
+                          setContactEmail(c.email);
+                          setActiveMessage({
+                            phone: c.phone,
+                            name: `${c.firstName} ${c.lastName}`
+                          });
+                          setShowReplyModal(true);
                         }}
                         className="bg-emerald-500 px-2 py-1 rounded hover:bg-emerald-600"
                       >
@@ -157,74 +177,86 @@ export default function PotentialClientsPage() {
         </div>
       </div>
 
-    {showReplyModal && (
-          <ReplyMethodModal
-            onClose={() => setShowReplyModal(false)}
-            onSelect={(method, email) => {
-              setShowReplyModal(false);
-              if (method === 'whatsapp') {
-                setShowWhatsAppTabs(true); // WhatsApp reply tab
-              } else if (method === 'email') {
-                setContactEmail(email); // Pass the contact's email
-                setShowEmailModal(true); // Open the Email modal
-              }
-            }}
-            contactEmail={contactEmail}  // Pass email here if required
-          />
-        )}
+      {showReplyModal && (
+        <ReplyMethodModal
+          onClose={() => setShowReplyModal(false)}
+          onSelect={(method, email) => {
+            setShowReplyModal(false);
+            if (method === 'whatsapp') {
+              setShowWhatsAppTabs(true);
+            } else if (method === 'email') {
+              setContactEmail(email);
+              setShowEmailModal(true);
+            }
+          }}
+          contactEmail={contactEmail}
+        />
+      )}
 
-    {activeMessage.message && (
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-[90%] max-w-3xl text-white">
-          <h3 className="text-2xl font-bold text-center mb-4 text-emerald-400">
-            {activeMessage.name}'s Message
-          </h3>
-          <div className="border border-emerald-400 bg-gray-900 p-4 rounded mb-6 text-center">
-            {activeMessage.message}
-          </div>
-          <div className="flex justify-center">
-            <button
-              onClick={() => setActiveMessage({ name: '', message: '' })}
-              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded"
-            >
-              Close
-            </button>
+      {activeMessage.message && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-[90%] max-w-3xl text-white">
+            <h3 className="text-2xl font-bold text-center mb-4 text-emerald-400">
+              {activeMessage.name}'s Message
+            </h3>
+            <div className="border border-emerald-400 bg-gray-900 p-4 rounded mb-6 text-center">
+              {activeMessage.message}
+            </div>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setActiveMessage({ name: '', message: '', phone: '' })}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-    
-    {showEmailModal && (
-      <EmailReplyModal
-        onClose={() => setShowEmailModal(false)}
-        contactEmail={contactEmail}
-      />
-    )}
+      )}
 
+      {showEmailModal && (
+        <EmailReplyModal
+          onClose={() => setShowEmailModal(false)}
+          contactEmail={contactEmail}
+        />
+      )}
 
-    {showWhatsAppTabs && (
-      <WhatsAppReplyTabsModal
-        onClose={() => setShowWhatsAppTabs(false)}
-        onSelect={handleSelectedReply}
-      />
-    )}
+      {showWhatsAppTabs && (
+        <WhatsAppReplyTabsModal
+          onClose={() => setShowWhatsAppTabs(false)}
+          onSelect={handleSelectedReply}
+        />
+      )}
 
-    {finalMessage && (
-      <FinalMessageEditModal
-        initialContent={finalMessage.content}
-        onClose={() => setFinalMessage(null)}
-        onSend={(text) => {
-          toast.success('Message sent!');
-          console.log('Sending:', text);
-          setFinalMessage(null);
-        }}
-        onBack={() => {
-          setFinalMessage(null);
-          setShowWhatsAppTabs(true); 
-        }}
-      />
-    )}
-
+      {finalMessage && (
+        <FinalMessageEditModal
+          initialContent={finalMessage.content}
+          contactName={finalMessage.name}
+          onClose={() => setFinalMessage(null)}
+          onSend={(editedText) => {
+            if (!finalMessage.phone) {
+              toast.error('No phone number available for this contact');
+              return;
+            }
+            
+            const cleanedPhoneNumber = finalMessage.phone.replace(/\D/g, '');
+            const encodedMessage = encodeURIComponent(editedText);
+            const uniqueUrl = `https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}&ts=${Date.now()}`;
+            
+            if (window.waWindow) {
+              window.waWindow.close();
+            }
+            
+            window.waWindow = window.open(uniqueUrl, "_blank");
+            setFinalMessage(null);
+            toast.success('Opening WhatsApp...');
+          }}
+          onBack={() => {
+            setFinalMessage(null);
+            setShowWhatsAppTabs(true);
+          }}
+        />
+      )}
     </div>
   );
 }

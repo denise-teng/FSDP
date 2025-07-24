@@ -9,16 +9,11 @@ import WhatsAppReplyTabsModal from '../components/WhatsAppReplyTabsModal';
 import FinalMessageEditModal from '../components/FinalMessageEditModal';
 import EmailReplyModal from '../components/EmailReplyModal';
 
-
-
-
-
-
 export default function ContactPage() {
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [contacts, setContacts] = useState([]);
-  const [activeMessage, setActiveMessage] = useState({ name: '', message: '' });
+  const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '' });
   const [editContact, setEditContact] = useState(null);
   const [deleteContactId, setDeleteContactId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -28,11 +23,6 @@ export default function ContactPage() {
   const [finalMessage, setFinalMessage] = useState(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
-
-
-
-
-
 
   useEffect(() => {
     fetchContacts();
@@ -50,14 +40,39 @@ export default function ContactPage() {
 
   const handleSelectedReply = (msg) => {
     setShowWhatsAppTabs(false);
-    toast.success(`Reply selected: ${msg.content || msg.message}`);
+    
+    // Get phone number (common for both paths)
+    if (!activeMessage.phone) {
+      toast.error('No phone number available for this contact');
+      return;
+    }
+    
+    const cleanedPhoneNumber = activeMessage.phone.replace(/\D/g, '');
+    const encodedMessage = encodeURIComponent(msg.content || msg.message);
+    
+    // For manual replies, go directly to WhatsApp with refresh fix
+    if (msg.source === 'Manual Reply') {
+      // Add timestamp to force refresh
+      const uniqueUrl = `https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}&ts=${Date.now()}`;
+      
+      // Close previous window if exists
+      if (window.waWindow) {
+        window.waWindow.close();
+      }
+      
+      // Open new window and store reference
+      window.waWindow = window.open(uniqueUrl, "_blank");
+      return;
+    }
+    
+    // For quick/AI messages, show final edit modal
     setFinalMessage({
-      content: msg.content || msg.message || '',
-      source: 'Quick Message',
+      content: msg.content || msg.message,
+      source: msg.source || 'Quick Message',
+      phone: activeMessage.phone,
+      name: activeMessage.name
     });
   };
-
-
 
   const fetchPotentialClients = async () => {
     try {
@@ -100,7 +115,6 @@ export default function ContactPage() {
       toast.error('Failed to delete contact.');
     }
   };
-
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-6">
@@ -174,6 +188,7 @@ export default function ContactPage() {
                           setActiveMessage({
                             name: `${c.firstName} ${c.lastName}`,
                             message: c.message,
+                            phone: c.phone
                           })
                         }
                         className="underline text-emerald-300 hover:text-emerald-500"
@@ -213,14 +228,18 @@ export default function ContactPage() {
                       <button onClick={() => setEditContact(c)} className="bg-blue-500 px-2 py-1 rounded hover:bg-blue-600">Edit</button>
                       <button
                         onClick={() => {
-                          setContactEmail(c.email); // Set the contact's email for reply
-                          setShowReplyModal(true);   // Open the reply method modal
+                          setContactEmail(c.email);
+                          // Store the phone number in state before showing reply modal
+                          setActiveMessage({
+                            phone: c.phone,
+                            name: `${c.firstName} ${c.lastName}`
+                          });
+                          setShowReplyModal(true);
                         }}
                         className="bg-emerald-500 px-2 py-1 rounded hover:bg-emerald-600"
                       >
                         Reply
                       </button>
-
                       <button onClick={() => setDeleteContactId(c._id)} className="bg-red-500 px-2 py-1 rounded hover:bg-red-600">Delete</button>
                     </td>
                   </tr>
@@ -255,7 +274,7 @@ export default function ContactPage() {
             </div>
             <div className="flex justify-center">
               <button
-                onClick={() => setActiveMessage({ name: '', message: '' })}
+                onClick={() => setActiveMessage({ name: '', message: '', phone: '' })}
                 className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded"
               >
                 Close
@@ -330,56 +349,54 @@ export default function ContactPage() {
         </div>
       )}
 
+      {showReplyModal && (
+        <ReplyMethodModal
+          onClose={() => setShowReplyModal(false)}
+          onSelect={(method) => {
+            setShowReplyModal(false);
+            if (method === 'whatsapp') {
+              setShowWhatsAppTabs(true);
+            } else if (method === 'email') {
+              setShowEmailModal(true);
+            }
+          }}
+          contactEmail={contactEmail}
+          contactPhone={activeMessage.phone} // Pass the phone number
+          contactName={activeMessage.name} // Pass the name
+        />
+      )}
 
-    {showReplyModal && (
-      <ReplyMethodModal
-        onClose={() => setShowReplyModal(false)}
-        onSelect={(method, email) => {
-          setShowReplyModal(false);
-          if (method === 'whatsapp') {
-            setShowWhatsAppTabs(true); // WhatsApp reply tab
-          } else if (method === 'email') {
-            setContactEmail(email); // Pass the contact's email
-            setShowEmailModal(true); // Open the Email modal
-          }
-        }}
-        contactEmail={contactEmail}  // Pass email here if required
-      />
-    )}
+      {showEmailModal && (
+        <EmailReplyModal
+          onClose={() => setShowEmailModal(false)}
+          contactEmail={contactEmail}
+        />
+      )}
 
-    {showEmailModal && (
-      <EmailReplyModal
-        onClose={() => setShowEmailModal(false)}
-        contactEmail={contactEmail}
-      />
-    )}
+      {showWhatsAppTabs && (
+        <WhatsAppReplyTabsModal
+          onClose={() => setShowWhatsAppTabs(false)}
+          onSelect={handleSelectedReply}
+        />
+      )}
 
-
-
-     {showWhatsAppTabs && (
-      <WhatsAppReplyTabsModal
-        onClose={() => setShowWhatsAppTabs(false)}
-        onSelect={handleSelectedReply}
-      />
-    )}
-
-    {finalMessage && (
-      <FinalMessageEditModal
-        initialContent={finalMessage.content}
-        onClose={() => setFinalMessage(null)}
-        onSend={(text) => {
-          toast.success('Message sent!');
-          console.log('Sending:', text);
-          setFinalMessage(null);
-        }}
-        onBack={() => {
-          setFinalMessage(null);
-          setShowWhatsAppTabs(true); // Go back to tabs
-        }}
-      />
-    )}
-
-
+      {finalMessage && (
+        <FinalMessageEditModal
+          initialContent={finalMessage.content}
+          contactName={finalMessage.name}
+          onClose={() => setFinalMessage(null)}
+          onSend={(editedText) => {
+            const cleanedPhoneNumber = finalMessage.phone.replace(/\D/g, '');
+            const encodedMessage = encodeURIComponent(editedText);
+            window.open(`https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}`, "_blank");
+            setFinalMessage(null);
+          }}
+          onBack={() => {
+            setFinalMessage(null);
+            setShowWhatsAppTabs(true);
+          }}
+        />
+      )}
     </div>
   );
 }
