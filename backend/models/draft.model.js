@@ -59,6 +59,10 @@ const draftSchema = new mongoose.Schema({
     type: String,
     enum: ['newsletter', 'generated'],
     default: 'newsletter'
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

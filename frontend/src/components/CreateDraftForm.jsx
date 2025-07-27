@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { PlusCircle, Loader } from "lucide-react";
-import { useDraftStore } from "../stores/useDraftStore";
+import { useDraftStore } from "../stores/useDraftsStore";
 
 const categories = [
   "Financial Planning",

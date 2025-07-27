@@ -31,6 +31,9 @@ import engagementRoutes from './routes/engagement.route.js';
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
 import generateRoute from './routes/generate.genAI.route.js';
+import { subscribe } from './controllers/subscribe.controller.js';
+import deletedDraftRoutes from './routes/deleted_draft.route.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -75,6 +78,7 @@ app.use('/api/drafts', draftRoutes);
 app.use('/api/engagements', engagementRoutes);
 
 // Additional Routes
+app.use('/api/deleted-drafts', deletedDraftRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/contacts', contactRoutes);
@@ -86,11 +90,14 @@ app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
+app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscribe
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);
   res.status(500).json({ error: "Unexpected server error" });
 });
+
 
 // Ensure 'uploads' directory exists
 const uploadsDir = path.join(process.cwd(), 'uploads');
