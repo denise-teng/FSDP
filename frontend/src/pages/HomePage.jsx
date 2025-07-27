@@ -3,6 +3,7 @@ import { useNewsletterStore } from '../stores/useNewsletterStore';
 import { motion } from 'framer-motion';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 
+
   const handleTags = (tags) => {
     if (Array.isArray(tags)) {
       return tags.map(tag => tag.trim()); // If it's an array, map and trim the values
@@ -287,6 +288,8 @@ const HomePage = () => {
           </motion.div>
         </div>
       </section>
+
+
 
       {/* FAQ Section */}
       <section className="py-20 px-4 bg-white">

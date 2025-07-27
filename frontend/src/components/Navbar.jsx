@@ -1,9 +1,11 @@
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell, Calendar } from 'lucide-react'; // Added Bell import
+import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell, Calendar,  } from 'lucide-react'; // Added Bell import
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
 import { useCartStore } from '../stores/useCartStore'; 
 import Notifications from './Notifications';
 import { useState } from 'react';
+import { User } from 'lucide-react'; // Add this line
+
 
 
 const Navbar = () => {
@@ -44,6 +46,15 @@ const Navbar = () => {
       <Calendar className="mr-1" size={20} />
       <span className="hidden sm:inline">Calendar</span>
     </Link>
+
+  <Link
+      to="/users"
+      className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+      title="User Directory"
+    >
+      <User size={20} />
+    </Link>
+
   </>
 )}
 

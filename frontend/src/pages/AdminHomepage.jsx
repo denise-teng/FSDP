@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Users, BarChart2, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+
 // Example of tabs
 const tabs = [
   { id: 'contacts', label: 'Contacts', icon: Mail },
@@ -46,6 +47,10 @@ const AdminHomePage = () => {
           </div>
         </motion.div>
       </div>
+
+
+      
+
 
       {/* Upcoming Events */}
       <section className="mb-24">
