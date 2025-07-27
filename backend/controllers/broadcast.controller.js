@@ -3,7 +3,10 @@ import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js';
 import EmailService from '../lib/emailService.js';
 import { logMessage } from '../lib/messageLogger.service.js';
 import RecentMessage from '../models/recentMessage.model.js';
+<<<<<<< HEAD
 import Contact from '../models/Contact.model.js';
+=======
+>>>>>>> 4437936 (Implemented broadcast sending with scheduling for)
 // ==================== STANDARD BROADCASTS ====================
 
 export const getAllBroadcasts = async (req, res) => {
@@ -367,6 +370,150 @@ export const createScheduledBroadcast = async (req, res) => {
       error: 'Failed to schedule broadcast',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+<<<<<<< HEAD
+=======
+  }
+};
+
+export const cancelScheduledBroadcast = async (req, res) => {
+  try {
+    const broadcast = await ScheduledBroadcast.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Cancelled' },
+      { new: true }
+    );
+
+    if (!broadcast) {
+      return res.status(404).json({ error: 'Scheduled broadcast not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Broadcast cancelled successfully'
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: 'Failed to cancel broadcast',
+      details: err.message
+    });
+  }
+};
+
+// ==================== WORKER ENDPOINT ====================
+
+export const processScheduledBroadcasts = async (req, res) => {
+  try {
+    const now = new Date();
+    const broadcasts = await ScheduledBroadcast.find({
+      scheduledTime: { $lte: now },
+      status: 'Scheduled'
+    }).populate('recipients');
+
+    for (const broadcast of broadcasts) {
+      try {
+        // 1. Send the broadcast (your existing sending logic)
+        await sendBroadcastImplementation(broadcast);
+
+        // 2. Move to RecentMessages collection
+        const recentMessage = new RecentMessage({
+          title: broadcast.title,
+          content: broadcast.message,
+          channel: broadcast.channel,
+          recipients: broadcast.recipients,
+          sentAt: new Date(),
+          originalBroadcast: broadcast._id
+        });
+        await recentMessage.save();
+
+        // 3. Update status
+        broadcast.status = 'Sent';
+        await broadcast.save();
+      } catch (err) {
+        console.error(`Failed to process broadcast ${broadcast._id}:`, err);
+        broadcast.status = 'Failed';
+        await broadcast.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      processed: broadcasts.length
+    });
+  } catch (error) {
+    console.error('Process Scheduled Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process scheduled broadcasts'
+    });
+  }
+};
+
+// Get message history
+export const getMessageHistory = async (req, res) => {
+  try {
+    const messages = await RecentMessage.find()
+      .sort({ sentAt: -1 })
+      .populate('recipients._id', 'email firstName lastName')
+      .populate('originalBroadcast', 'title')
+      .limit(100);
+
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get specific message details
+export const getMessageDetails = async (req, res) => {
+  try {
+    const message = await RecentMessage.findById(req.params.id)
+      .populate('recipients._id', 'email firstName lastName')
+      .populate('originalBroadcast', 'title content');
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    res.json(message);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Retry failed messages
+export const retryFailedMessage = async (req, res) => {
+  try {
+    const message = await RecentMessage.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Your logic to retry failed messages here
+    // This will depend on your email/SMS service
+
+    res.json({ success: true, message: 'Retry initiated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Update scheduled broadcast
+export const updateScheduledBroadcast = async (req, res) => {
+  try {
+    const updatedBroadcast = await ScheduledBroadcast.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+      .populate('broadcast', 'title')
+      .populate('createdBy', 'name');
+
+    res.json(updatedBroadcast);
+  } catch (error) {
+    console.error('Error updating scheduled broadcast:', error);
+    res.status(500).json({ message: 'Failed to update scheduled broadcast' });
+>>>>>>> 4437936 (Implemented broadcast sending with scheduling for)
   }
 };
 

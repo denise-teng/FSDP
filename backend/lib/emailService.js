@@ -53,6 +53,7 @@ class EmailService {
                 from: VERIFIED_SENDER,
                 subject: msg.subject
             });
+
             await sgMail.send(msg);
             console.log(`✅ Sent to ${to}`);
             return { success: true };

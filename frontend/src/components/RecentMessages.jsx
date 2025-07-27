@@ -27,34 +27,20 @@ function RecentMessages() {
             setError(null);
             
             // Get messages from recent broadcasts endpoint
-            const response = await axios.get('broadcasts/recent');
-            console.log('API Response:', response.data); // Debug log
+            const response = await axios.get('/broadcasts/message-history');
             
-            let responseData = Array.isArray(response.data) ? 
+            const responseData = Array.isArray(response.data) ? 
                 response.data : 
                 response.data?.data || [];
 
-            // Ensure we have all the required fields
-            const processedMessages = responseData.map(msg => ({
-                _id: msg._id,
-                title: msg.title || 'Untitled Message',
-                content: msg.content || msg.message || '', // Try both content and message fields
-                channel: msg.channel || 'Unknown',
-                status: msg.status || 'partial',
-                sentAt: msg.sentAt || null,
-                recipients: msg.recipients || [],
-                error: msg.error || null
-            }));
-
-            console.log('Processed Messages:', processedMessages); // Debug log
-            setMessages(processedMessages);
+            setMessages(responseData);
 
             // Calculate stats based on your model's status field
-            const sentCount = processedMessages.reduce((acc, msg) => 
+            const sentCount = responseData.reduce((acc, msg) => 
                 acc + (msg.status === 'complete' ? 1 : 0), 0);
-            const failedCount = processedMessages.reduce((acc, msg) => 
+            const failedCount = responseData.reduce((acc, msg) => 
                 acc + (msg.status === 'failed' ? 1 : 0), 0);
-            const partialCount = processedMessages.reduce((acc, msg) =>
+            const partialCount = responseData.reduce((acc, msg) =>
                 acc + (msg.status === 'partial' ? 1 : 0), 0);
 
             setStats({
@@ -81,9 +67,8 @@ function RecentMessages() {
         return () => clearInterval(interval);
     }, []);
 
-    const getContentPreview = (message) => {
-        const content = message.content || message.message || '';
-        if (!content.trim()) return 'No message content';
+    const getContentPreview = (content) => {
+        if (!content) return 'No content';
         return content.length > 50 ? `${content.substring(0, 50)}...` : content;
     };
 
@@ -119,7 +104,7 @@ function RecentMessages() {
         }
         if (window.confirm('Are you sure you want to delete this message?')) {
             try {
-                await axios.delete(`broadcasts/recent/${messageId}`);
+                await axios.delete(`/broadcasts/message-history/${messageId}`);
                 toast.success('Message deleted successfully');
                 fetchMessages(); // Refresh the list
             } catch (err) {
@@ -175,8 +160,6 @@ function RecentMessages() {
         );
     };
 
-    // ... [keep your existing loading and error states]
-
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-md text-white">
             <div className="flex justify-between items-center mb-6">
@@ -198,13 +181,11 @@ function RecentMessages() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-gray-700 border border-gray-600 text-white px-4 py-2 rounded-md pl-10 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
-                        {/* Search icon */}
                     </div>
                     <button
                         onClick={fetchMessages}
                         className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md text-sm"
                     >
-                        {/* Refresh icon */}
                         Refresh
                     </button>
                 </div>
@@ -231,16 +212,13 @@ function RecentMessages() {
                                         {message.title || 'Untitled Message'}
                                     </td>
                                     <td className="px-6 py-4 text-gray-300 max-w-xs truncate">
-                                        {getContentPreview(message)}
+                                        {getContentPreview(message.content)}
                                     </td>
                                     <td className="px-6 py-4">
                                         {getChannelBadge(message.channel)}
                                     </td>
                                     <td className="px-6 py-4">
                                         {getStatusBadge(message.status)}
-                                        {message.error && (
-                                            <div className="text-xs text-red-400 mt-1">{message.error}</div>
-                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         {getDeliveryStats(message)}
@@ -249,34 +227,12 @@ function RecentMessages() {
                                         {message.sentAt ? new Date(message.sentAt).toLocaleString() : 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    handleView(message);
-                                                }}
-                                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                                </svg>
-                                                View
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleDelete(message._id);
-                                                }}
-                                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
-                                                Delete
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => navigate(`/messages/${message._id}`)}
+                                            className="text-emerald-400 hover:text-emerald-300 text-sm"
+                                        >
+                                            Details
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
