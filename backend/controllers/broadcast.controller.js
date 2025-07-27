@@ -1,47 +1,511 @@
 import Broadcast from '../models/broadcast.model.js';
-import ScheduledBroadcast from '../models/scheduledBroadcast.model.js'; // Import the new model
+import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js';
+import EmailService from '../lib/emailService.js';
+import { logMessage } from '../lib/messageLogger.service.js';
+import RecentMessage from '../models/recentMessage.model.js';
+// ==================== STANDARD BROADCASTS ====================
 
-// Get all broadcasts (normal ones)
 export const getAllBroadcasts = async (req, res) => {
   try {
-    const broadcasts = await Broadcast.find().sort({ createdAt: -1 });
+    const broadcasts = await Broadcast.find()
+      .populate('recipients', 'firstName lastName email phone')
+      .sort({ createdAt: -1 });
     res.json(broadcasts);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch broadcasts' });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Create a new broadcast (normal one)
+export const getBroadcastRecipients = async (req, res) => {
+  try {
+    if (req.params.id) {
+      const broadcast = await Broadcast.findById(req.params.id)
+        .populate('recipients', 'firstName lastName email phone');
+      if (!broadcast) return res.status(404).json({ error: 'Broadcast not found' });
+      return res.json(broadcast.recipients);
+    }
+
+    const broadcasts = await Broadcast.find()
+      .populate('recipients', 'firstName lastName email phone');
+
+    const recipientsMap = new Map();
+    broadcasts.forEach(broadcast => {
+      broadcast.recipients?.forEach(recipient => {
+        const recipientId = recipient._id.toString();
+        if (!recipientsMap.has(recipientId)) {
+          recipientsMap.set(recipientId, {
+            ...recipient.toObject(),
+            broadcastGroups: []
+          });
+        }
+        recipientsMap.get(recipientId).broadcastGroups.push({
+          id: broadcast._id,
+          name: broadcast.title
+        });
+      });
+    });
+
+    res.json(Array.from(recipientsMap.values()));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const createBroadcast = async (req, res) => {
   try {
+    // Convert the channel to lowercase to match enum value
+    req.body.channel = req.body.channel.toLowerCase();
+
     const broadcast = new Broadcast({ ...req.body });
     await broadcast.save();
     res.status(201).json(broadcast);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create broadcast', details: err.message });
+    console.error('Error creating broadcast:', err); // More detailed logging
+    res.status(500).json({
+      error: 'Failed to create broadcast',
+      details: err.message, // Return the error message to understand the failure
+    });
   }
 };
 
-// Fetch scheduled broadcasts
+export const deleteBroadcast = async (req, res) => {
+  try {
+    const deletedBroadcast = await Broadcast.findByIdAndDelete(req.params.id);
+    if (!deletedBroadcast) {
+      return res.status(404).json({ error: 'Broadcast not found' });
+    }
+    res.status(200).json({ message: 'Broadcast deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete broadcast' });
+  }
+};
+
+export const addContactToBroadcast = async (req, res) => {
+  try {
+    const { broadcastId, contactId } = req.body;
+
+    // Basic validation to check if both broadcastId and contactId are provided
+    if (!broadcastId || !contactId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing broadcastId or contactId',
+      });
+    }
+
+    // Find the broadcast by its ID
+    const broadcast = await Broadcast.findById(broadcastId);
+    if (!broadcast) {
+      return res.status(404).json({
+        success: false,
+        message: 'Broadcast not found',
+      });
+    }
+
+    // Check if the contact is already in the recipients array
+    if (broadcast.recipients.includes(contactId)) {
+      return res.status(200).json({
+        success: true,
+        message: 'Contact already in broadcast',
+      });
+    }
+
+    // Add the contact to the recipients array and save the broadcast
+    broadcast.recipients.push(contactId);
+    await broadcast.save();
+
+    // Respond with the success message and updated data
+    return res.status(200).json({
+      success: true,
+      message: 'Contact added to broadcast successfully',
+      data: {
+        broadcastId: broadcast._id,
+        contactId,
+        totalRecipients: broadcast.recipients.length, // Return the number of recipients
+      },
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+
+
+
+// ==================== EMAIL SENDING ====================
+
+export const sendNow = async (req, res) => {
+  try {
+    const { broadcastId, message } = req.body;
+
+    // 1. Get broadcast with populated contacts (unchanged)
+    const broadcast = await Broadcast.findById(broadcastId)
+      .populate({
+        path: 'recipients',
+        select: 'email firstName lastName',
+        match: {
+          email: {
+            $exists: true,
+            $ne: null,
+            $regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          }
+        }
+      });
+
+    // 2. Validate recipients (unchanged)
+    if (!broadcast?.recipients || broadcast.recipients.length === 0) {
+      return res.status(400).json({
+        error: 'No valid recipients found'
+      });
+    }
+
+    // 3. Prepare email data (unchanged)
+    const emailData = broadcast.recipients.map(contact => ({
+      to: contact.email,
+      subject: `Hi ${contact.firstName}, ${broadcast.title || 'Important Update'}`,
+      text: `Dear ${contact.firstName},\n\n${message}`,
+      html: `
+        <p>Dear ${contact.firstName},</p>
+        <p>${message}</p>
+        <p>Best regards,</p>
+        <p>Your Team</p>
+      `,
+      contactId: contact._id // Added for tracking
+    }));
+
+    // 4. Create recent message record (NEW)
+    const recentMessage = await RecentMessage.create({
+      title: broadcast.title,
+      content: message,
+      channel: 'Email',
+      recipients: emailData.map(data => ({
+        _id: data.contactId,
+        status: 'pending' // Initial status
+      })),
+      originalBroadcast: broadcastId,
+      status: 'partial'
+    });
+
+    // 5. Send emails in batches (modified to track status)
+    const batchSize = 100;
+    let successfulSends = 0;
+    const recipientStatuses = [];
+
+    for (let i = 0; i < emailData.length; i += batchSize) {
+      const batch = emailData.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(data =>
+          EmailService.sendEmail(data.to, data.subject, data.text, data.html)
+            .then(() => ({
+              success: true,
+              contactId: data.contactId
+            }))
+            .catch(error => ({
+              success: false,
+              contactId: data.contactId,
+              error: error.message
+            }))
+        )
+      );
+
+      // Process results (NEW)
+      const batchStatuses = results.map(result => ({
+        contactId: result.value.contactId,
+        status: result.value.success ? 'sent' : 'failed',
+        error: result.value.error,
+        deliveredAt: result.value.success ? new Date() : null
+      }));
+
+      recipientStatuses.push(...batchStatuses);
+      successfulSends += batchStatuses.filter(s => s.status === 'sent').length;
+
+      // Update recent message with batch results (NEW)
+      await RecentMessage.updateOne(
+        { _id: recentMessage._id },
+        {
+          $set: {
+            'recipients.$[elem].status': 'sent',
+            'recipients.$[elem].deliveredAt': new Date()
+          }
+        },
+        {
+          arrayFilters: [
+            { 'elem._id': { $in: batchStatuses.filter(s => s.status === 'sent').map(s => s.contactId) } }
+          ]
+        }
+      );
+    }
+
+    // 6. Final status update (NEW)
+    const finalStatus = successfulSends === emailData.length ? 'complete' :
+      successfulSends > 0 ? 'partial' : 'failed';
+
+    await RecentMessage.updateOne(
+      { _id: recentMessage._id },
+      {
+        status: finalStatus,
+        sentAt: new Date()
+      }
+    );
+
+    // 7. Update broadcast (unchanged)
+    await Broadcast.updateOne(
+      { _id: broadcastId },
+      {
+        status: "sent",
+        sentAt: new Date(),
+        sentCount: successfulSends
+      }
+    );
+
+    res.json({
+      success: true,
+      sentCount: successfulSends,
+      failedCount: emailData.length - successfulSends,
+      messageId: recentMessage._id // NEW: Return reference to logged message
+    });
+
+  } catch (error) {
+    console.error('Send error:', error);
+
+    // Update message as failed if recentMessage was created (NEW)
+    if (recentMessage?._id) {
+      await RecentMessage.updateOne(
+        { _id: recentMessage._id },
+        { status: 'failed' }
+      );
+    }
+
+    res.status(500).json({
+      error: 'Failed to send broadcast',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+export const getRecentBroadcasts = async (req, res) => {
+  try {
+    const broadcasts = await Broadcast.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('recipients', 'email');
+
+    res.json({
+      success: true,
+      data: broadcasts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch recent broadcasts'
+    });
+  }
+};
+
+// ==================== SCHEDULED BROADCASTS ====================
+
 export const getScheduledBroadcasts = async (req, res) => {
   try {
-    const scheduledBroadcasts = await ScheduledBroadcast.find().sort({ scheduledTime: 1 }); // Sort by scheduled time
-    res.json(scheduledBroadcasts);
+    const filter = {
+      status: { $ne: 'Cancelled' },
+      ...(req.query.status && { status: req.query.status })
+    };
+
+    const broadcasts = await ScheduledBroadcast.find(filter)
+      .sort({ scheduledTime: 1 })
+      .populate('createdBy', 'name email');
+
+    res.json(broadcasts);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch scheduled broadcasts' });
   }
 };
 
-// Create a new scheduled broadcast
 export const createScheduledBroadcast = async (req, res) => {
   try {
+    const { broadcastId, title, channel, message, scheduledTime } = req.body;
+
+    // Validate required fields
+    if (!broadcastId || !title || !channel || !message || !scheduledTime) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['broadcastId', 'title', 'channel', 'message', 'scheduledTime']
+      });
+    }
+
+    // Get the original broadcast to copy recipients
+    const originalBroadcast = await Broadcast.findById(broadcastId);
+    if (!originalBroadcast) {
+      return res.status(404).json({ error: 'Broadcast not found' });
+    }
+
     const scheduledBroadcast = new ScheduledBroadcast({
-      ...req.body,
-      scheduledTime: new Date(req.body.scheduledTime), // Ensure correct format
+      title,
+      broadcast: broadcastId,
+      channel,
+      message,
+      scheduledTime: new Date(scheduledTime),
+      recipients: originalBroadcast.recipients,
+      status: 'Scheduled',
+      createdBy: req.user._id
     });
+
     await scheduledBroadcast.save();
-    res.status(201).json(scheduledBroadcast);
+
+    res.status(201).json({
+      message: 'Broadcast scheduled successfully',
+      scheduledBroadcast
+    });
+
+  } catch (error) {
+    console.error('Error scheduling broadcast:', error);
+    res.status(500).json({
+      error: 'Failed to schedule broadcast',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+export const cancelScheduledBroadcast = async (req, res) => {
+  try {
+    const broadcast = await ScheduledBroadcast.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Cancelled' },
+      { new: true }
+    );
+
+    if (!broadcast) {
+      return res.status(404).json({ error: 'Scheduled broadcast not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Broadcast cancelled successfully'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create scheduled broadcast', details: err.message });
+    res.status(500).json({
+      error: 'Failed to cancel broadcast',
+      details: err.message
+    });
+  }
+};
+
+// ==================== WORKER ENDPOINT ====================
+
+export const processScheduledBroadcasts = async (req, res) => {
+  try {
+    const now = new Date();
+    const broadcasts = await ScheduledBroadcast.find({
+      scheduledTime: { $lte: now },
+      status: 'Scheduled'
+    }).populate('recipients');
+
+    for (const broadcast of broadcasts) {
+      try {
+        // 1. Send the broadcast (your existing sending logic)
+        await sendBroadcastImplementation(broadcast);
+
+        // 2. Move to RecentMessages collection
+        const recentMessage = new RecentMessage({
+          title: broadcast.title,
+          content: broadcast.message,
+          channel: broadcast.channel,
+          recipients: broadcast.recipients,
+          sentAt: new Date(),
+          originalBroadcast: broadcast._id
+        });
+        await recentMessage.save();
+
+        // 3. Update status
+        broadcast.status = 'Sent';
+        await broadcast.save();
+      } catch (err) {
+        console.error(`Failed to process broadcast ${broadcast._id}:`, err);
+        broadcast.status = 'Failed';
+        await broadcast.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      processed: broadcasts.length
+    });
+  } catch (error) {
+    console.error('Process Scheduled Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process scheduled broadcasts'
+    });
+  }
+};
+
+// Get message history
+export const getMessageHistory = async (req, res) => {
+  try {
+    const messages = await RecentMessage.find()
+      .sort({ sentAt: -1 })
+      .populate('recipients._id', 'email firstName lastName')
+      .populate('originalBroadcast', 'title')
+      .limit(100);
+
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get specific message details
+export const getMessageDetails = async (req, res) => {
+  try {
+    const message = await RecentMessage.findById(req.params.id)
+      .populate('recipients._id', 'email firstName lastName')
+      .populate('originalBroadcast', 'title content');
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    res.json(message);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Retry failed messages
+export const retryFailedMessage = async (req, res) => {
+  try {
+    const message = await RecentMessage.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Your logic to retry failed messages here
+    // This will depend on your email/SMS service
+
+    res.json({ success: true, message: 'Retry initiated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Update scheduled broadcast
+export const updateScheduledBroadcast = async (req, res) => {
+  try {
+    const updatedBroadcast = await ScheduledBroadcast.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+      .populate('broadcast', 'title')
+      .populate('createdBy', 'name');
+
+    res.json(updatedBroadcast);
+  } catch (error) {
+    console.error('Error updating scheduled broadcast:', error);
+    res.status(500).json({ message: 'Failed to update scheduled broadcast' });
   }
 };
