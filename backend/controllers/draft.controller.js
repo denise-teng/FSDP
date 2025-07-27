@@ -107,13 +107,13 @@ export const deleteDraft = async (req, res) => {
       });
     }
 
-    // Soft delete with timestamp
+    // Soft delete with timestamp only (don't change status)
     const updatedDraft = await Draft.findByIdAndUpdate(
       req.params.id,
       { 
         $set: { 
-          deletedAt: new Date(),
-          status: 'deleted'
+          deletedAt: new Date()
+          // Remove status update since it's not in your schema
         } 
       },
       { new: true }

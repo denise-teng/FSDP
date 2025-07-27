@@ -44,7 +44,7 @@ export const useDraftStore = create((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      const response = await axios.get("/deleted-drafts");
+      const response = await axios.get("/deleted_drafts");
       set({ 
         deletedDrafts: response.data,
         loading: false,

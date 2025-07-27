@@ -28,10 +28,12 @@ const DraftList = () => {
     loadDrafts();
   }, [fetchDrafts]);
 
-  const filteredDrafts = useMemo(() => {
-    return drafts.filter(draft => draft.status === "draft")
-                .filter(draft => filterType === "all" || draft.type === filterType);
-  }, [drafts, filterType]);
+const filteredDrafts = useMemo(() => {
+  return drafts
+    .filter(draft => draft.status === "draft")
+    .filter(draft => !draft.deletedAt) // Add this line
+    .filter(draft => filterType === "all" || draft.type === filterType);
+}, [drafts, filterType]);
 
   if (error) {
     return (

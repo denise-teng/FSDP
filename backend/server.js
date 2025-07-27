@@ -79,7 +79,7 @@ app.use('/api/drafts', draftRoutes);
 app.use('/api/engagements', engagementRoutes);
 
 // Additional Routes
-app.use('/api/deleted-drafts', deletedDraftRoutes);
+app.use('/api/deleted_drafts', deletedDraftRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/contacts', contactRoutes);

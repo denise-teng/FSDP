@@ -66,7 +66,8 @@ const draftSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Default export of the Draft model
+draftSchema.index({ deletedAt: 1 });
+draftSchema.index({ title: 'text' }); 
 const Draft = mongoose.model('Draft', draftSchema);
 
 export default Draft;
