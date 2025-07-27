@@ -23,13 +23,18 @@ axiosInstance.interceptors.request.use(config => {
 
 // Response interceptor
 axiosInstance.interceptors.response.use(
-  response => response,
+  response => {
+    console.log('Response:', response); // Log successful response
+    return response;
+  },
   async error => {
+    console.log('Error:', error.response); // Log error response
     const originalRequest = error.config;
     
     // Handle 401 errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+      console.log("Attempting token refresh...");
       
       try {
         // Attempt token refresh
@@ -39,11 +44,13 @@ axiosInstance.interceptors.response.use(
         
         const newToken = refreshResponse.data.token;
         localStorage.setItem('token', newToken);
+        console.log("New Token Retrieved:", newToken);
         
         // Retry original request
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
         // Refresh failed - clear storage and redirect
         localStorage.removeItem('token');
         sessionStorage.clear();

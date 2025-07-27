@@ -33,6 +33,7 @@ import newsletterRoutes from './routes/newsletter.route.js';
 import generateRoute from './routes/generate.genAI.route.js';
 import { subscribe } from './controllers/subscribe.controller.js';
 import deletedDraftRoutes from './routes/deleted_draft.route.js';
+import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -91,6 +92,7 @@ app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscribe
+app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
