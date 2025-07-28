@@ -30,13 +30,20 @@ const getFileUrl = (path) => {
 };
 
 const DraftCard = ({ draft, onPreview, onEdit }) => {
-  console.log(draft); 
+  console.log(draft);
   const [showConfirm, setShowConfirm] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const { deleteDraft, publishDraft, loading } = useDraftStore();
 
   const thumbnailUrl = getFileUrl(draft.thumbnailPath); // Get the file URL for the thumbnail
-
+  const handlePublish = async () => {
+    try {
+      await publishDraft(draft._id);
+    } catch (error) {
+      console.error("Publish failed:", error);
+      // Optional: show error message
+    }
+  };
   return (
     <div className="bg-gray-700 p-4 rounded-lg shadow-md mb-4 flex justify-between items-start">
       {/* Left: Thumbnail + text */}
@@ -74,7 +81,7 @@ const DraftCard = ({ draft, onPreview, onEdit }) => {
           <PencilLine className="w-5 h-5 text-yellow-400 hover:text-yellow-600" />
         </button>
         <button
-          onClick={() => publishDraft(draft._id)}
+          onClick={handlePublish}
           disabled={loading}
           title="Publish"
           className="disabled:opacity-50"

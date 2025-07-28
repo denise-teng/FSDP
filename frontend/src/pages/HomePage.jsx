@@ -622,7 +622,7 @@ const handleSubmit = async (e) => {
 
 
 const HomePage = () => {
-  const { homepageSlots, fetchNewsletters } = useNewsletterStore();
+  const { homepageSlots, fetchNewsletters,  initializeSlots, loading } = useNewsletterStore();
   const [showAll, setShowAll] = useState(false);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -633,9 +633,18 @@ const HomePage = () => {
     ? testimonials
     : testimonials.slice(0, 3);
 
-  useEffect(() => {
-    fetchNewsletters();
-  }, [fetchNewsletters]);
+useEffect(() => {
+    const loadData = async () => {
+      try {
+        await fetchNewsletters();
+        await initializeSlots(); // Add this line
+      } catch (error) {
+        console.error("Failed to load data", error);
+      }
+    };
+    
+    loadData();
+  }, [fetchNewsletters, initializeSlots]);
 
 const handleSubmit = async (e) => {
   e.preventDefault();
