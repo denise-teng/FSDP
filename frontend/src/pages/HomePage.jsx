@@ -3,7 +3,7 @@ import { useNewsletterStore } from '../stores/useNewsletterStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronDown, X, Check, MapPin, Phone, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import ConsultationBooking from './ConsultationBookingPage';
 
   const handleTags = (tags) => {
     if (Array.isArray(tags)) {
