@@ -13,7 +13,9 @@ import {
     updateScheduledBroadcast,
     cancelScheduledBroadcast,
     createScheduledBroadcast,
-    getScheduledBroadcasts
+    getScheduledBroadcasts,
+    createAIBroadcast,
+    matchContactsByTopics
 } from '../controllers/broadcast.controller.js';
 import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js';
 import Broadcast from '../models/broadcast.model.js';
@@ -30,7 +32,9 @@ router.use(authMiddleware);
 
 // ==================== BROADCAST ROUTES ====================
 router.get('/', getAllBroadcasts); // Get all broadcasts
-router.post('/', createBroadcast); // Create a new broadcast
+router.post('/', createBroadcast); // Create a new manual broadcast
+router.post('/ai', createAIBroadcast); // New route for AI-generated broadcasts
+router.post('/match-contacts', matchContactsByTopics); // New route for contact matching
 router.delete('/:id', deleteBroadcast); // Delete a broadcast
 router.get('/recipients', getBroadcastRecipients); // Get all broadcast recipients
 router.get('/:id/recipients', getBroadcastRecipients); // Get recipients for a specific broadcast
@@ -133,7 +137,6 @@ router.post('/add-whatsapp-contact', async (req, res) => {
         session.endSession();
     }
 });
-
 
 // ==================== SCHEDULED BROADCASTS ROUTES ====================
 router.get('/scheduled', getScheduledBroadcasts); // Get all scheduled broadcasts

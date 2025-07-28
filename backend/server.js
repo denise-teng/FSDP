@@ -24,9 +24,9 @@ import potentialClientRoutes from './routes/PotentialClient.route.js';
 import replySuggestionAiRoutes from './routes/replySuggestionAi.route.js';
 import publicContactRoutes from './routes/publicContact.route.js';
 import broadcastRoutes from './routes/broadcast.route.js'; // Broadcast Groups/Lists
-import scheduledBroadcastRoutes from './routes/scheduledBroadcast.route.js'; // Scheduled Broadcasts
-import recentBroadcastRoutes from './routes/recentBroadcast.route.js'; // New route for recent broadcasts
 import engagementRoutes from './routes/engagement.route.js';
+import './lib/scheduleWorker.js'; // Add this line
+import articleRoutes from './routes/articles.route.js';
 
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
@@ -84,8 +84,7 @@ app.use('/api/potential-clients', potentialClientRoutes);
 app.use('/api', replySuggestionAiRoutes);
 app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
-app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
-app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
+app.use('/api/articles', articleRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

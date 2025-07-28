@@ -3,6 +3,7 @@ import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js';
 import EmailService from '../lib/emailService.js';
 import { logMessage } from '../lib/messageLogger.service.js';
 import RecentMessage from '../models/recentMessage.model.js';
+import Contact from '../models/Contact.model.js';
 // ==================== STANDARD BROADCASTS ====================
 
 export const getAllBroadcasts = async (req, res) => {
@@ -507,5 +508,48 @@ export const updateScheduledBroadcast = async (req, res) => {
   } catch (error) {
     console.error('Error updating scheduled broadcast:', error);
     res.status(500).json({ message: 'Failed to update scheduled broadcast' });
+  }
+};
+
+// backend/controllers/broadcast.controller.js
+
+// Add these new functions at the bottom (before the last export)
+export const createAIBroadcast = async (req, res) => {
+  try {
+    const { title, listName, channel, recipients, tags } = req.body;
+
+    const broadcast = new Broadcast({
+      title,
+      listName,
+      channel: channel.toLowerCase(),
+      recipients,
+      tags,
+      isAIGenerated: true,
+      createdAt: new Date()
+    });
+
+    await broadcast.save();
+    res.status(201).json(broadcast);
+  } catch (error) {
+    console.error('Error saving AI broadcast:', error);
+    res.status(500).json({ message: 'Failed to save AI broadcast' });
+  }
+};
+
+export const matchContactsByTopics = async (req, res) => {
+  try {
+    const { topics } = req.body;
+
+    const matchedContacts = await Contact.find({
+      $or: [
+        { tags: { $in: topics } },
+        { subject: { $in: topics } }
+      ]
+    }).select('_id firstName lastName email tags subject channel');
+
+    res.json(matchedContacts);
+  } catch (error) {
+    console.error('Error matching contacts:', error);
+    res.status(500).json({ message: 'Error matching contacts' });
   }
 };
