@@ -12,15 +12,25 @@ const CalendarView = ({ mode = 'admin' }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [showForm, setShowForm] = useState(false);
-  const [filterType, setFilterType] = useState('');
+  const [filterType, setFilterType] = useState(mode === 'admin' ? '' : 'Consultation');
   const [searchName, setSearchName] = useState('');
   const { user } = useUserStore();
-  const { events, fetchAllEvents } = useEventStore();
+  const { events, fetchAllEvents, updateEvent } = useEventStore();
   const [hoveredDay, setHoveredDay] = useState(null);
 
   useEffect(() => {
     fetchAllEvents();
   }, []);
+
+  const handleApprove = async (eventId) => {
+    await updateEvent(eventId, { status: 'approved' });
+    fetchAllEvents();
+  };
+
+  const handleReject = async (eventId) => {
+    await updateEvent(eventId, { status: 'rejected' });
+    fetchAllEvents();
+  };
 
   const selectedEvents = useMemo(() => {
     if (!selectedDate || !events) return [];
@@ -34,9 +44,12 @@ const CalendarView = ({ mode = 'admin' }) => {
       const matchesSearch = searchName
         ? event.name?.toLowerCase().includes(searchName.toLowerCase())
         : true;
-      return isSameDay && matchesType && matchesSearch;
+      const isOwnRequest = mode === 'request' && event.requestedBy === user?.email;
+      
+      return isSameDay && matchesType && matchesSearch && 
+             (mode === 'admin' || isOwnRequest || event.status === 'approved');
     });
-  }, [selectedDate, events, filterType, searchName]);
+  }, [selectedDate, events, filterType, searchName, mode, user]);
 
   const getEventColorsForDay = (day) => {
     const dayEvents = events.filter((event) => {
@@ -49,18 +62,22 @@ const CalendarView = ({ mode = 'admin' }) => {
         eventDate.getDate() === day &&
         eventDate.getMonth() === currentMonth &&
         eventDate.getFullYear() === currentYear;
-      return (isSameDay || isPermanentEvent) && (filterType ? event.type === filterType : true);
+      return (isSameDay || isPermanentEvent) && 
+             (filterType ? event.type === filterType : true) &&
+             (mode === 'admin' || event.status === 'approved');
     });
 
     const eventColors = {
       Broadcast: 'bg-blue-500',
-      Consultation: 'bg-green-500',
+      Consultation: mode === 'admin' ? 'bg-green-500' : 'bg-green-300',
       Sales: 'bg-yellow-500',
       Service: 'bg-purple-500',
       'Policy-updates': 'bg-red-500',
     };
 
-    const colors = dayEvents.slice(0, 3).map((event) => eventColors[event.type] || 'bg-gray-500');
+    const colors = dayEvents.slice(0, 3).map((event) => 
+      eventColors[event.type] || 'bg-gray-500'
+    );
 
     return { colors, totalEvents: dayEvents.length };
   };
@@ -119,7 +136,7 @@ const CalendarView = ({ mode = 'admin' }) => {
 
         {hoveredDay === day && totalEvents > 3 && (
           <div className="absolute top-0 left-0 w-full h-full bg-gray-800 bg-opacity-80 text-white flex items-center justify-center text-xs z-20">
-            <span>{`+${totalEvents - 3} more events`}</span>
+            <span>{`+${totalEvents - 3} more ${mode === 'admin' ? 'events' : 'bookings'}`}</span>
           </div>
         )}
       </div>
@@ -133,7 +150,9 @@ const CalendarView = ({ mode = 'admin' }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
     >
-      <h1 className="text-3xl font-bold text-emerald-400 mb-2">CALENDAR</h1>
+      <h1 className="text-3xl font-bold text-emerald-400 mb-2">
+        {mode === 'admin' ? 'CALENDAR MANAGEMENT' : 'BOOK CONSULTATION'}
+      </h1>
 
       {/* Month Nav */}
       <div className="flex items-center justify-between mb-4 text-white">
@@ -207,16 +226,21 @@ const CalendarView = ({ mode = 'admin' }) => {
             <EventCard
               key={idx}
               event={event}
+              mode={mode}
               onEdit={(event) => {
                 setSelectedDate(new Date(event.date));
                 setShowForm(true);
               }}
+              onApprove={mode === 'admin' ? () => handleApprove(event._id) : null}
+              onReject={mode === 'admin' ? () => handleReject(event._id) : null}
             />
           ))}
         </div>
       )}
       {selectedDate && selectedEvents.length === 0 && (
-        <div className="text-white text-center mt-4">No events on this date.</div>
+        <div className="text-white text-center mt-4">
+          {mode === 'admin' ? 'No events on this date' : 'No available slots on this date'}
+        </div>
       )}
 
       {showForm && (
@@ -225,6 +249,7 @@ const CalendarView = ({ mode = 'admin' }) => {
           mode={mode}
           defaultType={mode === 'request' ? 'Consultation' : undefined}
           defaultStatus={mode === 'request' ? 'pending' : 'approved'}
+          userEmail={user?.email}
           onClose={() => {
             setShowForm(false);
             setSelectedDate(null);

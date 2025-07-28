@@ -3,6 +3,7 @@ import { useEventStore } from '../stores/useEventStore';
 import CalendarView from '../components/CalendarView';
 import SendReminderForm from '../components/SendReminderForm';
 import AnalyzeMeetingsComponent from '../components/AnalyzeMeetingsComponent';
+import ManageConsultationsTab from '../components/ManageConsultationsTab'; // ✅ NEW
 
 const CalendarPage = () => {
   const { fetchAllEvents } = useEventStore();
@@ -16,30 +17,20 @@ const CalendarPage = () => {
     <div className="min-h-screen px-4 py-8 bg-gray-900 text-white">
       {/* Toggle Buttons */}
       <div className="flex justify-center flex-wrap gap-4 mb-8">
-        <button
-          className={`px-5 py-2 rounded font-semibold ${
-            activeTab === 'calendar' ? 'bg-emerald-600' : 'bg-gray-700'
-          }`}
-          onClick={() => setActiveTab('calendar')}
-        >
-          Show Calendar
-        </button>
-        <button
-          className={`px-5 py-2 rounded font-semibold ${
-            activeTab === 'reminder' ? 'bg-emerald-600' : 'bg-gray-700'
-          }`}
-          onClick={() => setActiveTab('reminder')}
-        >
-          Send Reminder
-        </button>
-        <button
-          className={`px-5 py-2 rounded font-semibold ${
-            activeTab === 'analyze' ? 'bg-emerald-600' : 'bg-gray-700'
-          }`}
-          onClick={() => setActiveTab('analyze')}
-        >
-          Analyze Meetings
-        </button>
+        {['calendar', 'reminder', 'analyze', 'consultations'].map((tab) => (
+          <button
+            key={tab}
+            className={`px-5 py-2 rounded font-semibold ${
+              activeTab === tab ? 'bg-emerald-600' : 'bg-gray-700'
+            }`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === 'calendar' && 'Show Calendar'}
+            {tab === 'reminder' && 'Send Reminder'}
+            {tab === 'analyze' && 'Analyze Meetings'}
+            {tab === 'consultations' && 'Manage Consultations'}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}
@@ -47,6 +38,7 @@ const CalendarPage = () => {
         {activeTab === 'calendar' && <CalendarView />}
         {activeTab === 'reminder' && <SendReminderForm />}
         {activeTab === 'analyze' && <AnalyzeMeetingsComponent />}
+        {activeTab === 'consultations' && <ManageConsultationsTab />}
       </div>
     </div>
   );

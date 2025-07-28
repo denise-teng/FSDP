@@ -37,7 +37,7 @@ import generateRoute from './routes/generate.genAI.route.js';
 import { subscribe } from './controllers/subscribe.controller.js';
 import deletedDraftRoutes from './routes/deleted_draft.route.js';
 import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
-
+import consultationRoutes from './routes/consultation.routes.js'
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
 import { analyzeMessagesWithBedrock } from './ai/awsBedrockAnalysis.js';
@@ -137,7 +137,7 @@ app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled bro
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscribe
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
-
+app.use("/api/consultations", consultationRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

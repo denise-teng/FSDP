@@ -31,6 +31,7 @@ import UploadNewsletterPage from "./pages/UploadNewsletter";
 import EditNewsletterPage from "./pages/EditNewsletterPage";
 import UserPage from "./pages/UserPage";
 import { throttle } from 'lodash';
+import ConsultationBooking from './pages/ConsultationBookingPage';
 
 function HomeRouter() {
   const { user } = useUserStore();
@@ -135,6 +136,7 @@ return (
           user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
         } />
         <Route path='/category/:category' element={<CategoryPage />} />
+        <Route path='/booking' element={<ConsultationBooking />} />
         <Route path='/add-contact' element={
           user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />
         } />
