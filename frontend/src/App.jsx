@@ -20,9 +20,9 @@ import CalendarPage from "./pages/CalendarPage";
 import VerifyEmail from "./components/VerifyEmail";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import AdminHomePage from "./pages/AdminHomepage";
+import AdminHomePage from "./pages/AdminHomePage";
 import AddContactForm from './components/AddContactModal';
-import ContactPage from "./pages/ContactPage";
+import ContactPage from "./pages/Contactpage";
 import PublicContactPage from './pages/PublicContactPage';
 import BroadcastPage from "./pages/BroadcastPage";
 import ContentGenerationPage from './pages/ContentGenerationPage';
@@ -30,6 +30,8 @@ import DraftsPage from './pages/DraftsPage';
 import UploadNewsletterPage from "./pages/UploadNewsletter";
 import EditNewsletterPage from "./pages/EditNewsletterPage";
 import UserPage from "./pages/UserPage";
+import QuickMessagesPage from "./pages/QuickMessagesPage";
+import AdminContactPage from "./pages/AdminContactPage";
 import { throttle } from 'lodash';
 import ConsultationBooking from './pages/ConsultationBookingPage';
 
@@ -134,6 +136,12 @@ return (
         <Route path='/login' element={!user ? <LoginPage /> : <Navigate to='/' />} />
         <Route path='/secret-dashboard' element={
           user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
+        } />
+        <Route path='/admin-contacts' element={
+          user?.role === "admin" ? <AdminContactPage /> : <Navigate to='/login' />
+        } />
+        <Route path='/quick-messages' element={
+          user?.role === "admin" ? <QuickMessagesPage /> : <Navigate to='/login' />
         } />
         <Route path='/category/:category' element={<CategoryPage />} />
         <Route path='/booking' element={<ConsultationBooking />} />

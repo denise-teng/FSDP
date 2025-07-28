@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageSquareHeart, RadioTower, BarChart, Newspaper } from 'lucide-react';
+import { RadioTower, BarChart, Newspaper } from 'lucide-react';
 import { motion } from 'framer-motion';
-import AdminContactPage from './AdminContactPage';
-import QuickMessagesPage from './QuickMessagesPage'; // ✅ still needed
 import BroadcastPage from './BroadcastPage'; // Adjust path if it's a page
 import AnalyticsTab from '../components/AnalyticsTab';
 import ContentGenerationPage from './ContentGenerationPage';
@@ -10,15 +8,13 @@ import ContentGenerationPage from './ContentGenerationPage';
 
 
 const tabs = [
-  { id: 'contacts', label: 'Contacts', icon: Mail },
-  { id: 'quickMessages', label: 'Quick Messages', icon: MessageSquareHeart },
   { id: "broadcast", label: "Broadcast", icon: RadioTower },
   { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "content", label: "Content Generation", icon: Newspaper },
 ];
 
 const AdminPage = () => {
-  const [activeTab, setActiveTab] = useState('contacts');
+  const [activeTab, setActiveTab] = useState('broadcast');
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -48,8 +44,6 @@ const AdminPage = () => {
           ))}
         </div>
 
-        {activeTab === 'contacts' && <AdminContactPage />}
-        {activeTab === 'quickMessages' && <QuickMessagesPage />}
         {activeTab === "broadcast" && <BroadcastPage />}
         {activeTab === "analytics" && <AnalyticsTab />}
         {activeTab === "content" && <ContentGenerationPage />}

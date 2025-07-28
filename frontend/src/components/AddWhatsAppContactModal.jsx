@@ -32,48 +32,77 @@ export default function AddWhatsAppContactModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-800 p-6 rounded shadow-lg w-full max-w-md space-y-4 text-white"
+        className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-gray-100/50 w-full max-w-md space-y-6 relative overflow-hidden"
       >
-        <h3 className="text-xl font-bold text-emerald-400 text-center">Add WhatsApp Contact</h3>
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -translate-y-10 translate-x-10 opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-emerald-100 to-blue-100 rounded-full translate-y-8 -translate-x-8 opacity-40"></div>
+        
+        <div className="relative text-center">
+          <h3 className="text-3xl font-bold mb-3">
+            <span className="bg-gradient-to-r from-green-600 via-emerald-600 to-blue-600 bg-clip-text text-transparent">
+              💬 Add WhatsApp Contact
+            </span>
+          </h3>
+          <p className="text-gray-600 text-lg">Add a new contact for WhatsApp events</p>
+        </div>
 
-        {['firstName', 'lastName', 'phone', 'email', 'company', 'eventName'].map((field) => (
+        {['firstName', 'lastName', 'phone', 'email', 'company', 'eventName'].map((field) => {
+          const fieldIcons = {
+            firstName: '👤',
+            lastName: '👥', 
+            phone: '📱',
+            email: '📧',
+            company: '🏢',
+            eventName: '🎉'
+          };
+          
+          return (
+            <div key={field} className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {fieldIcons[field]} {field.replace(/([A-Z])/g, ' $1')}
+              </label>
+              <input
+                type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
+                name={field}
+                placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}...`}
+                value={formData[field]}
+                onChange={handleChange}
+                required
+                className="w-full p-3 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+              />
+            </div>
+          );
+        })}
+
+        <div className="relative">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">📅 Event Date</label>
           <input
-            key={field}
-            type="text"
-            name={field}
-            placeholder={field.replace(/([A-Z])/g, ' $1')}
-            value={formData[field]}
+            type="date"
+            name="eventDate"
+            value={formData.eventDate}
             onChange={handleChange}
             required
-            className="w-full p-2 rounded bg-gray-700 border border-gray-600 placeholder-gray-400"
+            className="w-full p-3 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
           />
-        ))}
+        </div>
 
-        <input
-          type="date"
-          name="eventDate"
-          value={formData.eventDate}
-          onChange={handleChange}
-          required
-          className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white"
-        />
-
-        <div className="flex justify-between pt-4">
+        <div className="flex justify-end gap-4 pt-6 border-t border-gray-200/50 relative">
           <button
             type="button"
             onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded"
+            className="bg-white/80 backdrop-blur-sm text-gray-700 border border-gray-200/50 hover:bg-white hover:border-gray-300 font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
           >
-            Submit
+            Add Contact
           </button>
         </div>
       </form>
