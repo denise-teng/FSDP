@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Mail, Users, BarChart2, LayoutDashboard, MessageSquare, 
+import React, { useState } from 'react';
+import { Mail, Users, BarChart2, LayoutDashboard, MessageSquare, 
   ArrowRight, ChevronDown, X, Check, MapPin, Phone, 
-  ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle 
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+  ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle  } from 'lucide-react';
+import {  motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
+import Navbar from '../components/Navbar';
+import NearEvents from '../components/NearEvents';
+import { Link } from 'react-router-dom';
+// Example of tabs
+const tabs = [
+  { id: 'contacts', label: 'Contacts', icon: Mail },
+  { id: 'quickMessages', label: 'Quick Messages', icon: MessageSquare },
+];
 
 const AdminHomePage = () => {
   const [currentUpdate, setCurrentUpdate] = useState(0);
@@ -71,7 +78,9 @@ const AdminHomePage = () => {
   const maxValue = Math.max(...engagementData.map(item => item.value));
 
   return (
+    
     <div className="bg-gray-50 min-h-screen text-gray-900 font-sans px-4 sm:px-6 lg:px-8 pt-8 pb-12">
+      < Navbar/>
       {/* Welcome Header with animated gradient */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -302,35 +311,20 @@ const AdminHomePage = () => {
         <section className="mb-16">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-gray-900">UPCOMING EVENTS</h2>
-            <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
-              View all events
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </button>
+           <Link 
+  to="/secret-calendar" 
+  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"
+>
+  View all events
+  <ArrowRight className="h-4 w-4 ml-1" />
+</Link>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <EventCard
-              title="Taxes for IRAS NOA (July)"
-              date="24 June 2025"
-              time="3:00 PM"
-              location="Virtual Meeting"
-              notes="Send soft/hardcopy reminders for IRAS NOA tax filing (if applicable)"
-              status="urgent"
-            />
-            <EventCard
-              title="Meeting with Shannon"
-              date="27 June 2025"
-              time="2:30 PM"
-              location="Kallang Road, 362172"
-              notes="Bring documents and past paperwork to my office"
-              status="upcoming"
-            />
-          </div>
+          <NearEvents />
         </section>
       </div>
 
-      {/* Footer */}
-      <Footer />
+
     </div>
   );
 };
@@ -354,7 +348,8 @@ const EventCard = ({ title, date, time, location, notes, status }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-white/50 to-transparent z-10"></div>
         <div className="absolute top-4 right-4 z-20">
           <span className={`text-xs px-2 py-1 rounded-full ${statusColors[status] || 'bg-gray-100'}`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+   {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending'}
+
           </span>
         </div>
         <Users className="h-12 w-12 text-indigo-400 z-10" />

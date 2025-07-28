@@ -10,15 +10,16 @@ export const useUserStore = create((set, get) => ({
 
 
   getUsers: async () => {
-    set({ loading: true });
-    try {
-      const res = await axios.get("/users"); // Assuming this is your endpoint
-      set({ users: res.data, loading: false }); // Store users in state
-    } catch (error) {
-      set({ loading: false });
-      toast.error(error.response?.data?.message || "Error fetching users");
-    }
-  },
+  set({ loading: true });
+  try { 
+    const res = await axios.get("/users/raw"); // ← Use the new route
+    set({ users: res.data, loading: false });
+  } catch (error) {
+    set({ loading: false });
+    toast.error(error.response?.data?.message || "Error fetching users");
+  }
+},
+
   signup: async ({ name, email, password, confirmPassword }) => {
     set({ loading: true });
 

@@ -2,44 +2,17 @@ import { useEffect, useState } from 'react';
 import { useNewsletterStore } from '../stores/useNewsletterStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronDown, X, Check, MapPin, Phone, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 
-// Add this to your global CSS or at the top of your component file
-const globalStyles = `
-  .aws-hover-card {
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-    border-radius: 8px;
-  }
-  
-  .aws-hover-card:hover {
-    border-color: rgba(147, 197, 253, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 
-                0 0 0 1px rgba(147, 197, 253, 0.5);
-    transform: translateY(-2px);
-  }
-  
-  .aws-hover-button {
-    transition: all 0.2s ease;
-  }
-  
-  .aws-hover-button:hover {
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
-  }
-`;
-
-// Add this component at the root of your app
-const GlobalStyles = () => <style>{globalStyles}</style>;
-
-const handleTags = (tags) => {
-  if (Array.isArray(tags)) {
-    return tags.map(tag => tag.trim()); // If it's an array, map and trim the values
-  } else if (typeof tags === 'string') {
-    return tags.split(',').map(tag => tag.trim()); // If it's a string, split by commas
-  }
-  return []; // Return an empty array if neither condition is met
-};
+  const handleTags = (tags) => {
+    if (Array.isArray(tags)) {
+      return tags.map(tag => tag.trim()); // If it's an array, map and trim the values
+    } else if (typeof tags === 'string') {
+      return tags.split(',').map(tag => tag.trim()); // If it's a string, split by commas
+    }
+    return []; // Return an empty array if neither condition is met
+  };
 
 const testimonials = [
   {
@@ -291,9 +264,12 @@ const ServicesSection = () => {
                       ))}
                     </ul>
                   </div>
-                  <button className="mt-8 w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
-                    Schedule Consultation
-                  </button>
+                  <Link to="/calendar">
+  <button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition">
+    Schedule Consultation
+  </button>
+</Link>
+
                 </div>
               </motion.div>
             </motion.div>
@@ -680,7 +656,7 @@ const handleSubmit = async (e) => {
 
   return (
     <div className="bg-white text-gray-900 font-sans">
-      <GlobalStyles />
+    
       {/* Hero Section */}
       <section id="hero" className="relative bg-gradient-to-br from-indigo-50 to-blue-50 py-24 px-4">
         <div className="max-w-6xl mx-auto text-center">
@@ -915,14 +891,12 @@ const handleSubmit = async (e) => {
       viewport={{ once: true }}
       className="flex flex-col sm:flex-row gap-4 justify-center"
     >
-      <button 
-        className="px-8 py-3 bg-white text-indigo-600 rounded-full font-semibold hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-        </svg>
-        Book Free Consultation
-      </button>
+      <Link to="/calendar">
+  <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-3 rounded-lg shadow-md transition">
+    Book Free Consultation
+  </button>
+</Link>
+
 
       <a
   href="files/Dollars and Sense Ebook.pdf"
@@ -1019,6 +993,8 @@ const handleSubmit = async (e) => {
     </p>
   </div>
 </section>
+
+
 
       {/* FAQ Section */}
       <section id="faq" className="py-20 px-4 bg-white">

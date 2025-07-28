@@ -29,6 +29,7 @@ import ContentGenerationPage from './pages/ContentGenerationPage';
 import DraftsPage from './pages/DraftsPage';
 import UploadNewsletterPage from "./pages/UploadNewsletter";
 import EditNewsletterPage from "./pages/EditNewsletterPage";
+import UserPage from "./pages/UserPage";
 import { throttle } from 'lodash';
 
 function HomeRouter() {
@@ -149,6 +150,10 @@ return (
         <Route path='/contact' element={
           user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
         } />
+        <Route
+  path="/users"
+  element={user?.role === "admin" ? <UserPage /> : <Navigate to="/login" />}
+/>
 
         <Route path="/broadcasts" element={<BroadcastPage />} />
         <Route path="/drafts" element={user ? <DraftsPage /> : <Navigate to="/login" />} />
