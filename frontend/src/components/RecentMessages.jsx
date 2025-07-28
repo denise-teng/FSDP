@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import axios from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { Dialog, Transition } from '@headlessui/react';
 
 function RecentMessages() {
     const [messages, setMessages] = useState([]);
@@ -16,27 +17,44 @@ function RecentMessages() {
         total: 0,
         partial: 0
     });
+    
+    const [selectedMessage, setSelectedMessage] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchMessages = async () => {
         try {
             setLoading(true);
             setError(null);
             
-            // Updated endpoint to fetch from recentmessages collection
-            const response = await axios.get('/broadcasts/message-history');
+            // Get messages from recent broadcasts endpoint
+            const response = await axios.get('broadcasts/recent');
+            console.log('API Response:', response.data); // Debug log
             
-            const responseData = Array.isArray(response.data) ? 
+            let responseData = Array.isArray(response.data) ? 
                 response.data : 
                 response.data?.data || [];
 
-            setMessages(responseData);
+            // Ensure we have all the required fields
+            const processedMessages = responseData.map(msg => ({
+                _id: msg._id,
+                title: msg.title || 'Untitled Message',
+                content: msg.content || msg.message || '', // Try both content and message fields
+                channel: msg.channel || 'Unknown',
+                status: msg.status || 'partial',
+                sentAt: msg.sentAt || null,
+                recipients: msg.recipients || [],
+                error: msg.error || null
+            }));
+
+            console.log('Processed Messages:', processedMessages); // Debug log
+            setMessages(processedMessages);
 
             // Calculate stats based on your model's status field
-            const sentCount = responseData.reduce((acc, msg) => 
+            const sentCount = processedMessages.reduce((acc, msg) => 
                 acc + (msg.status === 'complete' ? 1 : 0), 0);
-            const failedCount = responseData.reduce((acc, msg) => 
+            const failedCount = processedMessages.reduce((acc, msg) => 
                 acc + (msg.status === 'failed' ? 1 : 0), 0);
-            const partialCount = responseData.reduce((acc, msg) =>
+            const partialCount = processedMessages.reduce((acc, msg) =>
                 acc + (msg.status === 'partial' ? 1 : 0), 0);
 
             setStats({
@@ -63,8 +81,9 @@ function RecentMessages() {
         return () => clearInterval(interval);
     }, []);
 
-    const getContentPreview = (content) => {
-        if (!content) return 'No content';
+    const getContentPreview = (message) => {
+        const content = message.content || message.message || '';
+        if (!content.trim()) return 'No message content';
         return content.length > 50 ? `${content.substring(0, 50)}...` : content;
     };
 
@@ -91,6 +110,29 @@ function RecentMessages() {
                  status === 'partial' ? 'Partial' : 'Failed'}
             </span>
         );
+    };
+
+    const handleDelete = async (messageId) => {
+        if (!messageId) {
+            toast.error('Invalid message ID');
+            return;
+        }
+        if (window.confirm('Are you sure you want to delete this message?')) {
+            try {
+                await axios.delete(`broadcasts/recent/${messageId}`);
+                toast.success('Message deleted successfully');
+                fetchMessages(); // Refresh the list
+            } catch (err) {
+                console.error('Error deleting message:', err);
+                toast.error(err.response?.data?.message || 'Failed to delete message');
+            }
+        }
+    };
+
+    const handleView = (message) => {
+        console.log('Opening modal for message:', message); // Debug log
+        setSelectedMessage(message);
+        setIsModalOpen(true);
     };
 
     const getDeliveryStats = (message) => {
@@ -189,7 +231,7 @@ function RecentMessages() {
                                         {message.title || 'Untitled Message'}
                                     </td>
                                     <td className="px-6 py-4 text-gray-300 max-w-xs truncate">
-                                        {getContentPreview(message.content)}
+                                        {getContentPreview(message)}
                                     </td>
                                     <td className="px-6 py-4">
                                         {getChannelBadge(message.channel)}
@@ -207,12 +249,34 @@ function RecentMessages() {
                                         {message.sentAt ? new Date(message.sentAt).toLocaleString() : 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => navigate(`/messages/${message._id}`)}
-                                            className="text-emerald-400 hover:text-emerald-300 text-sm"
-                                        >
-                                            Details
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleView(message);
+                                                }}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                                </svg>
+                                                View
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleDelete(message._id);
+                                                }}
+                                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -221,9 +285,124 @@ function RecentMessages() {
                 </div>
             ) : (
                 <div className="bg-gray-700/50 p-8 rounded-lg border border-dashed border-gray-600 text-center">
-                    {/* No messages found UI */}
+                    <p className="text-gray-400">
+                        {loading ? 'Loading messages...' : error ? error : 'No messages found'}
+                    </p>
                 </div>
             )}
+
+            {/* View Message Modal */}
+            <Transition appear show={isModalOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black bg-opacity-25" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4 text-center">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                                    {selectedMessage && (
+                                        <>
+                                            <Dialog.Title
+                                                as="h3"
+                                                className="text-lg font-medium leading-6 text-emerald-300"
+                                            >
+                                                {selectedMessage.title || 'Message Details'}
+                                            </Dialog.Title>
+                                            <div className="mt-4 space-y-6">
+                                                {/* Title */}
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-emerald-300 mb-2">Title</h4>
+                                                    <div className="text-sm text-gray-300 bg-gray-700/50 p-3 rounded-lg">
+                                                        {selectedMessage.title || 'Untitled Message'}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Content */}
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-emerald-300 mb-2">Message Content</h4>
+                                                    <div className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-700/50 p-4 rounded-lg max-h-48 overflow-y-auto">
+                                                        {selectedMessage.content || 'No content available'}
+                                                    </div>
+                                                </div>
+
+                                                {/* Channel, Status, and Time */}
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div>
+                                                        <h4 className="text-sm font-medium text-emerald-300 mb-2">Channel</h4>
+                                                        <div>
+                                                            {getChannelBadge(selectedMessage.channel)}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-medium text-emerald-300 mb-2">Status</h4>
+                                                        <div>
+                                                            {getStatusBadge(selectedMessage.status)}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-medium text-emerald-300 mb-2">Sent At</h4>
+                                                        <p className="text-sm text-gray-300">
+                                                            {selectedMessage.sentAt ? 
+                                                                new Date(selectedMessage.sentAt).toLocaleString() : 
+                                                                'N/A'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Delivery Stats */}
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-emerald-300 mb-2">Delivery Statistics</h4>
+                                                    <div className="bg-gray-700/50 p-4 rounded-lg">
+                                                        {getDeliveryStats(selectedMessage)}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Error Message if any */}
+                                                {selectedMessage.error && (
+                                                    <div>
+                                                        <h4 className="text-sm font-medium text-red-400 mb-2">Error Details</h4>
+                                                        <div className="text-sm text-red-300 bg-red-900/30 p-3 rounded-lg">
+                                                            {selectedMessage.error}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-6 flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md text-sm transition-colors duration-150"
+                                                    onClick={() => setIsModalOpen(false)}
+                                                >
+                                                    Close
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </div>
     );
 }
