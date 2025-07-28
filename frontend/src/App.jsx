@@ -1,13 +1,14 @@
 axios.defaults.withCredentials = true;
+import { useEffect, useRef, useCallback } from 'react'; 
+import axios from 'axios';
 import { Navigate, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/Navbar";
-import './index.css'; // This file should include Tailwind imports
+import './index.css'; 
 import { Toaster } from 'react-hot-toast';
 import { useUserStore } from "./stores/useUserStore";
-import { useEffect } from "react";
 import LoadingSpinner from "./components/LoadingSpinner";
 import AdminPage from "./pages/AdminPage";
 import CartPage from "./pages/CartPage";
@@ -15,7 +16,6 @@ import PurchaseSuccessPage from "./pages/PurchaseSuccessPage";
 import PurchaseCancelPage from "./pages/PurchaseCancelPage";
 import { useCartStore } from "./stores/useCartStore";
 import CategoryPage from "./pages/CategoryPage";
-import axios from 'axios';
 import CalendarPage from "./pages/CalendarPage";
 import VerifyEmail from "./components/VerifyEmail";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -30,82 +30,88 @@ import DraftsPage from './pages/DraftsPage';
 import UploadNewsletterPage from "./pages/UploadNewsletter";
 import EditNewsletterPage from "./pages/EditNewsletterPage";
 import UserPage from "./pages/UserPage";
+import { throttle } from 'lodash';
+
 function HomeRouter() {
   const { user } = useUserStore();
+  const { getCartItems } = useCartStore();
   return user?.role === 'admin' ? <Navigate to="/admin-home" /> : <HomePage />;
 }
 
 function App() {
   const { user, checkAuth, checkingAuth } = useUserStore();
   const { getCartItems } = useCartStore();
+  const authChecked = useRef(false);
 
-  useEffect(() => {
-    checkAuth();
+  const stableCheckAuth = useCallback(async () => {
+    try {
+      await checkAuth();
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    }
   }, [checkAuth]);
 
+useEffect(() => {
+  if (!authChecked.current) {
+    authChecked.current = true;
+    stableCheckAuth().finally(() => {
+      // Any cleanup or state updates
+    });
+  }
+}, [stableCheckAuth]);
+
   useEffect(() => {
-    if (!user) return;
-    getCartItems();
-  }, [getCartItems, user]);
+    if (user) {
+      getCartItems();
+    }
+  }, [user, getCartItems]);
 
-  // ✅ Engagement tracking: clicks + time spent
+  // Engagement tracking
   useEffect(() => {
-    if (!user || !user._id || !user.role) return;
+  if (!user || !user._id || !user.role) return;
 
-    const userId = user._id;
-    const userType = user.role;
-    const sessionStart = Date.now(); // mark when user session begins
+  const userId = user._id;
+  const userType = user.role;
+  const sessionStart = Date.now();
 
-    // ✅ Track time accurately on every click
-    const handleClick = () => {
-      const engagingTime = Math.floor((Date.now() - sessionStart) / 1000); // seconds since session start
+  // Throttled click handler
+  const handleClick = throttle(() => {
+    const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
+    
+    axios.post("http://localhost:5000/api/engagements/log", {
+      userId,
+      userType,
+      engagementType: "click",
+      clicks: 1,
+      engagingTime,
+      replies: 0
+    }).catch(console.error);
+  }, 1000); // Throttle to 1 second
 
-      const body = {
-        userId,
-        userType,
-        engagementType: "click",
-        clicks: 1,
-        engagingTime, // ✅ updates on every click
-        replies: 0
-      };
+  const handleBeforeUnload = () => {
+    const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
+    
+    // Use sendBeacon for reliability during page unload
+    navigator.sendBeacon("http://localhost:5000/api/engagements/log", JSON.stringify({
+      userId,
+      userType,
+      engagementType: "session",
+      clicks: 0,
+      engagingTime,
+      replies: 0
+    }));
+  };
 
-      axios.post("http://localhost:5000/api/engagements/log", body, {
-        withCredentials: true
-      }).catch(err => {
-        console.error("❌ Error logging click:", err);
-      });
-    };
+  document.addEventListener("click", handleClick);
+  window.addEventListener("beforeunload", handleBeforeUnload);
 
-    const handleBeforeUnload = () => {
-      const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
+  return () => {
+    document.removeEventListener("click", handleClick);
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, [user]);
 
-      axios.post("http://localhost:5000/api/engagements/log", {
-        userId,
-        userType,
-        engagementType: "session",
-        clicks: 0,
-        engagingTime,
-        replies: 0
-      }, {
-        withCredentials: true
-      }).catch(err => {
-        console.error("❌ Error logging session:", err);
-      });
-    };
-
-    // ✅ Add + cleanup
-    document.addEventListener("click", handleClick);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      document.removeEventListener("click", handleClick);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [user]);
-
-
-
-if (checkingAuth) return <LoadingSpinner />;
+  if (checkingAuth) return <LoadingSpinner />;
 
 return (
   <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">

@@ -7,7 +7,7 @@ import EventCard from './EventCard';
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const CalendarView = () => {
+const CalendarView = ({ mode = 'admin' }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -32,7 +32,7 @@ const CalendarView = () => {
         (d.getFullYear() === selectedDate.getFullYear() || event.isPermanent);
       const matchesType = filterType ? event.type === filterType : true;
       const matchesSearch = searchName
-        ? event.name.toLowerCase().includes(searchName.toLowerCase())
+        ? event.name?.toLowerCase().includes(searchName.toLowerCase())
         : true;
       return isSameDay && matchesType && matchesSearch;
     });
@@ -109,7 +109,6 @@ const CalendarView = () => {
       >
         <span className="relative z-10">{day}</span>
 
-        {/* Colored stripes */}
         {colors.length > 0 && (
           <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-start">
             {colors.map((color, idx) => (
@@ -118,7 +117,6 @@ const CalendarView = () => {
           </div>
         )}
 
-        {/* Hover Popup */}
         {hoveredDay === day && totalEvents > 3 && (
           <div className="absolute top-0 left-0 w-full h-full bg-gray-800 bg-opacity-80 text-white flex items-center justify-center text-xs z-20">
             <span>{`+${totalEvents - 3} more events`}</span>
@@ -135,10 +133,9 @@ const CalendarView = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
     >
-      {/* ✅ Header */}
-        <h1 className="text-3xl font-bold text-emerald-400 mb-2">CALENDAR</h1>
+      <h1 className="text-3xl font-bold text-emerald-400 mb-2">CALENDAR</h1>
 
-      {/* Nav */}
+      {/* Month Nav */}
       <div className="flex items-center justify-between mb-4 text-white">
         <button className="rounded hover:bg-gray-500 bg-black px-4 py-1" onClick={handlePrevMonth}>
           Prev
@@ -154,28 +151,30 @@ const CalendarView = () => {
         </button>
       </div>
 
-      {/* Filter + Search */}
-      <div className="flex flex-col sm:flex-row justify-between gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Search by event name..."
-          value={searchName}
-          onChange={(e) => setSearchName(e.target.value)}
-          className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
-        />
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
-        >
-          <option value="">All Types</option>
-          {types.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Filter/Search (only for admin) */}
+      {mode === 'admin' && (
+        <div className="flex flex-col sm:flex-row justify-between gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Search by event name..."
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
+          />
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
+          >
+            <option value="">All Types</option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Weekdays */}
       <div className="grid grid-cols-7 text-white text-sm gap-px bg-gray-800 [&>div]:p-2 text-center font-semibold uppercase">
@@ -184,12 +183,12 @@ const CalendarView = () => {
         ))}
       </div>
 
-      {/* Calendar Days */}
+      {/* Days Grid */}
       <div className="grid grid-cols-7 gap-px bg-gray-800 [&>div]:p-4 [&>div]:text-white text-center">
         {calendarDays}
       </div>
 
-      {/* Selected Day Events */}
+      {/* Events for Selected Date */}
       {selectedDate && (
         <div className="text-white mt-6 text-center">
           <p className="mb-2">Selected Date: {selectedDate.toDateString()}</p>
@@ -197,10 +196,11 @@ const CalendarView = () => {
             onClick={() => setShowForm(true)}
             className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
           >
-            Add Event
+            {mode === 'admin' ? 'Add Event' : 'Request Consultation'}
           </button>
         </div>
       )}
+
       {selectedDate && selectedEvents.length > 0 && (
         <div className="mt-4 space-y-4">
           {selectedEvents.map((event, idx) => (
@@ -218,9 +218,13 @@ const CalendarView = () => {
       {selectedDate && selectedEvents.length === 0 && (
         <div className="text-white text-center mt-4">No events on this date.</div>
       )}
+
       {showForm && (
         <CreateEventForm
           selectedDate={selectedDate}
+          mode={mode}
+          defaultType={mode === 'request' ? 'Consultation' : undefined}
+          defaultStatus={mode === 'request' ? 'pending' : 'approved'}
           onClose={() => {
             setShowForm(false);
             setSelectedDate(null);

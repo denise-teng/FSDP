@@ -30,7 +30,7 @@ const getFileUrl = (path) => {
 };
 
 const DraftCard = ({ draft, onPreview, onEdit }) => {
-  // ✅ Correct placement of hooks - at the top of the component
+  console.log(draft); 
   const [showConfirm, setShowConfirm] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const { deleteDraft, publishDraft, loading } = useDraftStore();

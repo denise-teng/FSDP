@@ -1,16 +1,24 @@
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Bell, Calendar,  } from 'lucide-react'; // Added Bell import
+import {
+  ShoppingCart,
+  UserPlus,
+  LogIn,
+  LogOut,
+  Lock,
+  Bell,
+  Calendar,
+  User,
+  Home,
+  Users, // Added Users icon for user management
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
-import { useCartStore } from '../stores/useCartStore'; 
+import { useCartStore } from '../stores/useCartStore';
 import Notifications from './Notifications';
 import { useState } from 'react';
-import { User } from 'lucide-react'; // Add this line
-
-
 
 const Navbar = () => {
   const { user, logout } = useUserStore();
-  const { cart } = useCartStore(); // Cart is now used if needed
+  const { cart } = useCartStore();
   const isAdmin = user?.role === 'admin';
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -18,46 +26,76 @@ const Navbar = () => {
     <header className="fixed top-0 left-0 w-full bg-gray-900 bg-opacity-90 backdrop-blur-md shadow-lg z-40 transition-all duration-300 border-b border-emerald-800">
       <div className="container mx-auto px-4 py-3">
         <div className="flex flex-wrap justify-between items-center">
-          <Link to="/" className="text-2xl font-bold text-emerald-400 items-center space-x-2 flex">
+          {/* Logo link goes to role-specific home */}
+          <Link
+            to={user ? (isAdmin ? "/admin-home" : "/user-home") : "/"}
+            className="text-2xl font-bold text-emerald-400 items-center space-x-2 flex"
+          >
             YCF
           </Link>
 
           <nav className="flex flex-wrap items-center gap-4">
-            <Link to="/" className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out">
-              Home
+            {/* Main Home link - shows different home based on role */}
+            <Link
+              to={user ? (isAdmin ? "/admin-home" : "/user-home") : "/"}
+              className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+            >
+              <Home className="mr-1" size={20} />
+              <span className="hidden sm:inline">
+                {user ? (isAdmin ? "Admin Home" : "My Home") : "Home"}
+              </span>
             </Link>
 
-           {isAdmin && (
-  <>
-    <div className="relative group">
-      <Link
-        to="/secret-dashboard"
-        className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-      >
-        <Lock className="inline-block mr-1" size={18} />
-        <span className="hidden sm:inline">Dashboard</span>
-      </Link>
-    </div>
+            {/* For admins only - show link to user home */}
+            {isAdmin && (
+              <Link
+                to="/user-home"
+                className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+              >
+                <User className="mr-1" size={20} />
+                <span className="hidden sm:inline">User View</span>
+              </Link>
+            )}
 
-    <Link
-      to="/secret-calendar"
-      className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-    >
-      <Calendar className="mr-1" size={20} />
-      <span className="hidden sm:inline">Calendar</span>
-    </Link>
+            {/* Contact Us link - shown to all */}
+            <Link
+              to="/contact"
+              className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out"
+            >
+              Contact Us
+            </Link>
 
-  <Link
-      to="/users"
-      className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
-      title="User Directory"
-    >
-      <User size={20} />
-    </Link>
+            {/* Admin-only management links */}
+            {isAdmin && (
+              <>
+                <Link
+                  to="/secret-dashboard"
+                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+                >
+                  <Lock className="mr-1" size={18} />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Link>
 
-  </>
-)}
+                <Link
+                  to="/secret-calendar"
+                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+                >
+                  <Calendar className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Calendar</span>
+                </Link>
 
+                {/* NEW: User Management Link - Admin Only */}
+                <Link
+                  to="/users"
+                  className="text-gray-300 hover:text-emerald-400 transition duration-300 ease-in-out flex items-center"
+                >
+                  <Users className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Users</span>
+                </Link>
+              </>
+            )}
+
+            {/* Notifications */}
             {user && (
               <div className="relative flex items-center">
                 <button
@@ -66,7 +104,6 @@ const Navbar = () => {
                 >
                   <Bell size={20} />
                 </button>
-
                 {showNotifications && (
                   <div className="absolute top-full mt-2 right-0 w-80 z-50">
                     <Notifications onClose={() => setShowNotifications(false)} />
@@ -75,10 +112,11 @@ const Navbar = () => {
               </div>
             )}
 
+            {/* Auth buttons */}
             {user ? (
               <button
-                className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out"
                 onClick={logout}
+                className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md flex items-center transition duration-300 ease-in-out"
               >
                 <LogOut size={18} />
                 <span className="hidden sm:inline ml-2">Log Out</span>

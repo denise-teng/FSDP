@@ -1,34 +1,53 @@
+// components/DraftList.jsx
 import { useDraftStore } from '../stores/useDraftsStore';
 import { useState, useEffect, useMemo } from 'react';
 import DraftCard from './DraftCard';
-import DraftPreview from './DraftPreview';
 import { useNavigate } from 'react-router-dom';
 
 const DraftList = () => {
   const { drafts, fetchDrafts } = useDraftStore();
-  const [previewDraft, setPreviewDraft] = useState(null);
   const [filterType, setFilterType] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadDrafts = async () => {
       setLoading(true);
+      setError(null);
       try {
         await fetchDrafts();
-      } catch (error) {
-        console.error("Failed to fetch drafts:", error);
+      } catch (err) {
+        console.error("Failed to fetch drafts:", err);
+        setError(err.message || 'Failed to load drafts');
       } finally {
         setLoading(false);
       }
     };
     
     loadDrafts();
-  }, []); 
+  }, [fetchDrafts]);
 
-  const filteredDrafts = useMemo(() => {
-    return drafts.filter(draft => draft.status === "draft").filter(draft => filterType === "all" || draft.type === filterType);
-  }, [drafts, filterType]);
+const filteredDrafts = useMemo(() => {
+  return drafts
+    .filter(draft => draft.status === "draft")
+    .filter(draft => !draft.deletedAt) // Add this line
+    .filter(draft => filterType === "all" || draft.type === filterType);
+}, [drafts, filterType]);
+
+  if (error) {
+    return (
+      <div className="text-red-500 p-4 bg-gray-800 rounded-lg">
+        Error: {error}
+        <button 
+          onClick={() => window.location.reload()}
+          className="ml-4 px-3 py-1 bg-gray-700 rounded hover:bg-gray-600"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="text-white">Loading drafts...</div>;
@@ -56,17 +75,9 @@ const DraftList = () => {
           <DraftCard
             key={draft._id}
             draft={draft}
-            onPreview={() => {
-              console.log('Previewing draft:', draft);
-              setPreviewDraft(draft);
-            }}
             onEdit={() => navigate(`/edit-draft/${draft._id}`)}
           />
         ))
-      )}
-
-      {previewDraft && (
-        <DraftPreview draft={previewDraft} onClose={() => setPreviewDraft(null)} />
       )}
     </div>
   );
