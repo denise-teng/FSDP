@@ -16,7 +16,13 @@ export default function WhatsAppContacts() {
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [showWhatsAppTabs, setShowWhatsAppTabs] = useState(false);
   const [finalMessage, setFinalMessage] = useState(null);
-
+  const [activeMessage, setActiveMessage] = useState({
+    name: '',
+    message: '',
+    phone: '',
+    subject: '',
+    isViewing: false
+  });
 
   const fetchContacts = async () => {
     try {
@@ -30,12 +36,38 @@ export default function WhatsAppContacts() {
 
   const handleSelectedReply = (msg) => {
     setShowWhatsAppTabs(false);
-    toast.success(`Reply selected: ${msg.content || msg.message}`);
+    
+    // For manual replies and quick/AI messages
+    if (!activeMessage.phone) {
+      toast.error('No phone number available for this contact');
+      return;
+    }
+      
+    const cleanedPhoneNumber = activeMessage.phone.replace(/\D/g, '');
+    const content = msg.content || msg.message || '';
+    const encodedMessage = encodeURIComponent(content);
+    const uniqueUrl = `https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}&ts=${Date.now()}`;
+    
+    // For manual replies, go directly to WhatsApp
+    if (msg.source === 'Manual Reply') {
+      if (window.waWindow) {
+        window.waWindow.close();
+      }
+      window.waWindow = window.open(uniqueUrl, "_blank");
+      toast.success('Opening WhatsApp...');
+      return;
+    }
+    
+    // For quick/AI messages, show final edit modal
     setFinalMessage({
-      content: msg.content || msg.message || '',
-      source: 'Quick Message',
+      content: content,
+      source: msg.source || 'Quick Message',
+      phone: activeMessage.phone,
+      name: activeMessage.name
     });
   };
+
+
 
   const deleteContact = async () => {
     try {
@@ -98,6 +130,7 @@ export default function WhatsAppContacts() {
                 <th className="p-3 border border-gray-600">First Name</th>
                 <th className="p-3 border border-gray-600">Last Name</th>
                 <th className="p-3 border border-gray-600">Phone No.</th>
+                <th className="p-3 border border-gray-600">Email</th>
                 <th className="p-3 border border-gray-600">Company</th>
                 <th className="p-3 border border-gray-600">Event Name</th>
                 <th className="p-3 border border-gray-600">Event Date</th>
@@ -112,11 +145,27 @@ export default function WhatsAppContacts() {
                     <td className="p-3 border border-gray-600">{c.firstName}</td>
                     <td className="p-3 border border-gray-600">{c.lastName}</td>
                     <td className="p-3 border border-gray-600">{c.phone}</td>
+                    <td className="p-3 border border-gray-600">{c.email}</td>
                     <td className="p-3 border border-gray-600">{c.company}</td>
                     <td className="p-3 border border-gray-600">{c.eventName}</td>
                     <td className="p-3 border border-gray-600">{new Date(c.eventDate).toLocaleDateString()}</td>
                     <td className="p-3 border border-gray-600 space-x-1">
                       <button className="bg-yellow-500 px-2 py-1 rounded hover:bg-yellow-600">Broadcast</button>
+                      <button
+                        onClick={() => {
+                          setActiveMessage({
+                            phone: c.phone,
+                            name: `${c.firstName} ${c.lastName}`,
+                            message: `Event: ${c.eventName}\nDate: ${new Date(c.eventDate).toLocaleDateString()}\nCompany: ${c.company}`,
+                            subject: 'Event Follow-up',
+                            isViewing: false
+                          });
+                          setShowReplyModal(true);
+                        }}
+                        className="bg-emerald-500 px-2 py-1 rounded hover:bg-emerald-600"
+                      >
+                        Reply
+                      </button>
                       <button onClick={() => setEditContact(c)} className="bg-blue-500 px-2 py-1 rounded hover:bg-blue-600">Edit</button>
                       <button onClick={() => setDeleteContactId(c._id)} className="bg-red-500 px-2 py-1 rounded hover:bg-red-600">Delete</button>
                     </td>
@@ -148,7 +197,7 @@ export default function WhatsAppContacts() {
           <div className="bg-gray-800 p-6 rounded-lg w-full max-w-xl">
             <h3 className="text-2xl text-center font-bold text-emerald-400 mb-6">Edit WhatsApp Contact</h3>
             <div className="space-y-4">
-              {['firstName', 'lastName', 'phone', 'company', 'eventName', 'eventDate'].map((field) => (
+              {['firstName', 'lastName', 'phone', 'email', 'company', 'eventName', 'eventDate'].map((field) => (
                 <div key={field}>
                   <label className="block text-sm text-gray-300 mb-1">{field}</label>
                   <input
@@ -206,11 +255,25 @@ export default function WhatsAppContacts() {
     {finalMessage && (
       <FinalMessageEditModal
         initialContent={finalMessage.content}
+        contactName={finalMessage.name}
         onClose={() => setFinalMessage(null)}
-        onSend={(text) => {
-          toast.success('Message sent!');
-          console.log('Sending:', text);
+        onSend={(editedText) => {
+          if (!finalMessage.phone) {
+            toast.error('No phone number available for this contact');
+            return;
+          }
+          
+          const cleanedPhoneNumber = finalMessage.phone.replace(/\D/g, '');
+          const encodedMessage = encodeURIComponent(editedText);
+          const uniqueUrl = `https://wa.me/${cleanedPhoneNumber}?text=${encodedMessage}&ts=${Date.now()}`;
+          
+          if (window.waWindow) {
+            window.waWindow.close();
+          }
+          
+          window.waWindow = window.open(uniqueUrl, "_blank");
           setFinalMessage(null);
+          toast.success('Opening WhatsApp...');
         }}
         onBack={() => {
           setFinalMessage(null);
@@ -218,6 +281,35 @@ export default function WhatsAppContacts() {
         }}
       />
     )}
+
+      {/* Reply Method Modal */}
+      {showReplyModal && (
+        <ReplyMethodModal
+          onClose={() => setShowReplyModal(false)}
+          onSelect={(method) => {
+            setShowReplyModal(false);
+            if (method === 'whatsapp') {
+              // Make sure we have message and subject before showing WhatsApp tabs
+              if (!activeMessage.message || !activeMessage.subject) {
+                toast.error('Message or subject is missing');
+                return;
+              }
+              setShowWhatsAppTabs(true);
+            }
+          }}
+        />
+      )}
+
+      {/* WhatsApp Reply Tabs Modal */}
+      {showWhatsAppTabs && (
+        <WhatsAppReplyTabsModal
+          onClose={() => setShowWhatsAppTabs(false)}
+          onSelect={handleSelectedReply}
+          contactMessage={activeMessage.message}
+          contactSubject={activeMessage.subject}
+          contactName={activeMessage.name}
+        />
+      )}
 
     </div>
   );

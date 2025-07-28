@@ -17,7 +17,7 @@ export default function PotentialClientsPage() {
   const [finalMessage, setFinalMessage] = useState(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
-  const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '' });
+  const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '', subject: '' });
 
   useEffect(() => {
     fetchPotentialClients();
@@ -103,7 +103,7 @@ export default function PotentialClientsPage() {
                 <th className="p-3 border border-gray-600">Email</th>
                 <th className="p-3 border border-gray-600">Subject Type</th>
                 <th className="p-3 border border-gray-600">Message</th>
-                <th className="p-3 border border-gray-600">AI Client Insight</th>
+                <th className="p-3 border border-gray-600">Flagged Reason</th>
                 <th className="p-3 border border-gray-600">Action</th>
               </tr>
             </thead>
@@ -124,7 +124,9 @@ export default function PotentialClientsPage() {
                           setActiveMessage({
                             name: `${c.firstName} ${c.lastName}`,
                             message: c.message,
-                            phone: c.phone
+                            phone: c.phone,
+                            subject: c.subject,
+                            isViewing: true
                           })
                         }
                       >
@@ -142,7 +144,9 @@ export default function PotentialClientsPage() {
                           setContactEmail(c.email);
                           setActiveMessage({
                             phone: c.phone,
-                            name: `${c.firstName} ${c.lastName}`
+                            name: `${c.firstName} ${c.lastName}`,
+                            message: c.message,
+                            subject: c.subject
                           });
                           setShowReplyModal(true);
                         }}
@@ -193,7 +197,7 @@ export default function PotentialClientsPage() {
         />
       )}
 
-      {activeMessage.message && (
+      {activeMessage.message && activeMessage.isViewing && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
           <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-[90%] max-w-3xl text-white">
             <h3 className="text-2xl font-bold text-center mb-4 text-emerald-400">
@@ -204,7 +208,7 @@ export default function PotentialClientsPage() {
             </div>
             <div className="flex justify-center">
               <button
-                onClick={() => setActiveMessage({ name: '', message: '', phone: '' })}
+                onClick={() => setActiveMessage({ ...activeMessage, isViewing: false })}
                 className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded"
               >
                 Close
@@ -225,6 +229,9 @@ export default function PotentialClientsPage() {
         <WhatsAppReplyTabsModal
           onClose={() => setShowWhatsAppTabs(false)}
           onSelect={handleSelectedReply}
+          contactMessage={activeMessage.message}
+          contactSubject={activeMessage.subject}
+          contactName={activeMessage.name}
         />
       )}
 

@@ -24,6 +24,15 @@ export default function ContactPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
 
+  const FLAGGED_KEYWORDS = ['schedule', 'meeting', 'help', 'urgent'];
+
+  const checkForFlaggedKeywords = (message) => {
+    const messageLower = message.toLowerCase();
+    const flagged = FLAGGED_KEYWORDS.filter(keyword => messageLower.includes(keyword));
+    return flagged.length ? flagged : null;
+  };
+
+
   useEffect(() => {
     fetchContacts();
     fetchPotentialClients();
@@ -37,6 +46,17 @@ export default function ContactPage() {
       console.error('Error fetching contacts:', err);
     }
   };
+
+  const handleReply = (contact) => {
+  setContactEmail(contact.email);
+  setActiveMessage({
+    phone: contact.phone,
+    name: `${contact.firstName} ${contact.lastName}`,
+    message: contact.message || "No message provided", // Fallback if empty
+    subject: contact.subject || "General Inquiry"     // Fallback if empty
+  });
+  setShowReplyModal(true);
+};
 
   const handleSelectedReply = (msg) => {
     setShowWhatsAppTabs(false);
@@ -87,10 +107,12 @@ export default function ContactPage() {
     return potentialClients.some((pc) => pc.contactId === contact.contactId);
   };
 
-  const filteredContacts = contacts.filter(c =>
+  const filteredContacts = contacts
+  .filter(c =>
     (c.firstName + ' ' + c.lastName).toLowerCase().includes(search.toLowerCase()) &&
     (!subjectFilter || c.subject.toLowerCase() === subjectFilter.toLowerCase())
-  );
+  )
+  .sort((a, b) => (a.contactId || 0) - (b.contactId || 0));
 
   const handleUpdate = async () => {
     try {
@@ -104,17 +126,6 @@ export default function ContactPage() {
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`/api/contacts/${deleteContactId}`);
-      setContacts(prev => prev.filter(c => c._id !== deleteContactId));
-      setDeleteContactId(null);
-      toast.success('Contact deleted successfully!');
-    } catch (err) {
-      console.error('Error deleting contact:', err);
-      toast.error('Failed to delete contact.');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-6">
@@ -184,13 +195,16 @@ export default function ContactPage() {
                     <td className="p-3 border border-gray-600">{c.subject}</td>
                     <td className="p-3 border border-gray-600 text-emerald-400">
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          // Only set message viewing related state
                           setActiveMessage({
                             name: `${c.firstName} ${c.lastName}`,
                             message: c.message,
-                            phone: c.phone
-                          })
-                        }
+                            phone: c.phone,
+                            subject: c.subject,
+                            isViewing: true  // Add this flag
+                          });
+                        }}
                         className="underline text-emerald-300 hover:text-emerald-500"
                       >
                         Click to view Message
@@ -228,11 +242,19 @@ export default function ContactPage() {
                       <button onClick={() => setEditContact(c)} className="bg-blue-500 px-2 py-1 rounded hover:bg-blue-600">Edit</button>
                       <button
                         onClick={() => {
+                          console.log('Contact data before reply:', {  // Debug log
+                            message: c.message,
+                            subject: c.subject,
+                            name: `${c.firstName} ${c.lastName}`,
+                            phone: c.phone
+                          });
+                          
                           setContactEmail(c.email);
-                          // Store the phone number in state before showing reply modal
                           setActiveMessage({
                             phone: c.phone,
-                            name: `${c.firstName} ${c.lastName}`
+                            name: `${c.firstName} ${c.lastName}`,
+                            message: c.message,          // Ensure message exists
+                            subject: c.subject           // Ensure subject exists
                           });
                           setShowReplyModal(true);
                         }}
@@ -240,7 +262,13 @@ export default function ContactPage() {
                       >
                         Reply
                       </button>
-                      <button onClick={() => setDeleteContactId(c._id)} className="bg-red-500 px-2 py-1 rounded hover:bg-red-600">Delete</button>
+                      <button
+                        onClick={() => setDeleteContactId(c._id)} // Set the contact ID to trigger the confirmation modal
+                        className="bg-red-500 px-2 py-1 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+
                     </td>
                   </tr>
                 ))
@@ -263,7 +291,7 @@ export default function ContactPage() {
         />
       )}
 
-      {activeMessage.message && (
+      {activeMessage.isViewing && activeMessage.message && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
           <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-[90%] max-w-3xl text-white">
             <h3 className="text-2xl font-bold text-center mb-4 text-emerald-400">
@@ -274,7 +302,7 @@ export default function ContactPage() {
             </div>
             <div className="flex justify-center">
               <button
-                onClick={() => setActiveMessage({ name: '', message: '', phone: '' })}
+                onClick={() => setActiveMessage({ name: '', message: '', phone: '', subject: '', isViewing: false })}
                 className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded"
               >
                 Close
@@ -283,6 +311,7 @@ export default function ContactPage() {
           </div>
         </div>
       )}
+
 
       {editContact && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
@@ -342,12 +371,53 @@ export default function ContactPage() {
             <h3 className="text-xl font-bold text-red-400 mb-4">Confirm Deletion</h3>
             <p className="mb-6 text-white">Are you sure you want to delete this contact?</p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => setDeleteContactId(null)} className="bg-gray-600 px-4 py-2 rounded">Cancel</button>
-              <button onClick={handleDelete} className="bg-red-500 px-4 py-2 rounded">Delete</button>
+              <button
+                onClick={() => setDeleteContactId(null)} // Cancel action
+                className="bg-gray-600 px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const contact = contacts.find(c => c._id === deleteContactId);
+
+                    // Delete the contact - the backend will handle archiving
+                    const deleteRes = await axios.delete(`/api/contacts/${contact._id}`);
+
+                    // Check if deletion was successful
+                    if (deleteRes.status !== 200) {
+                      throw new Error('Failed to delete contact');
+                    }
+
+                    // Update UI after deleting
+                    setContacts(prev => prev.filter(c => c._id !== contact._id));  // Remove contact from list
+
+                    // Close modal and show success message
+                    setDeleteContactId(null); // Close confirmation modal
+                    toast.success('Contact deleted successfully');
+
+                  } catch (err) {
+                    console.error("DELETE ERROR:", err.response?.data || err.message);
+                    toast.error(
+                      err.response?.data?.message || 
+                      "Server error. Check console for details."
+                    );
+
+                    // Refresh list as fallback to make sure UI is consistent
+                    fetchContacts();
+                  }
+                }}
+                className="bg-red-500 px-4 py-2 rounded"
+              >
+                Delete
+              </button>
+
             </div>
           </div>
         </div>
       )}
+
 
       {showReplyModal && (
         <ReplyMethodModal
@@ -377,6 +447,9 @@ export default function ContactPage() {
         <WhatsAppReplyTabsModal
           onClose={() => setShowWhatsAppTabs(false)}
           onSelect={handleSelectedReply}
+          contactMessage={activeMessage.message}
+          contactSubject={activeMessage.subject}
+          contactName={activeMessage.name}
         />
       )}
 

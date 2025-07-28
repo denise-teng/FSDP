@@ -27,6 +27,7 @@ import broadcastRoutes from './routes/broadcast.route.js'; // Broadcast Groups/L
 import scheduledBroadcastRoutes from './routes/scheduledBroadcast.route.js'; // Scheduled Broadcasts
 import recentBroadcastRoutes from './routes/recentBroadcast.route.js'; // New route for recent broadcasts
 import engagementRoutes from './routes/engagement.route.js';
+import contactHistoryRoute from './routes/contacthistory.route.js';
 
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
@@ -75,6 +76,7 @@ app.use('/api/drafts', draftRoutes);
 app.use('/api/engagements', engagementRoutes);
 
 // Additional Routes
+app.use('/api/contact-history', contactHistoryRoute);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/contacts', contactRoutes);

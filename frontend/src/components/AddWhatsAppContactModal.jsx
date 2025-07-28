@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import axios from '../lib/axios';
-import { toast } from 'react-hot-toast';
 import { useWhatsappContactStore } from '../stores/useWhatsappContactStore';
 
 
@@ -9,6 +7,7 @@ export default function AddWhatsAppContactModal({ onClose }) {
     firstName: '',
     lastName: '',
     phone: '',
+    email: '',
     company: '',
     eventName: '',
     eventDate: ''
@@ -19,14 +18,16 @@ export default function AddWhatsAppContactModal({ onClose }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const { createWhatsappContact } = useWhatsappContactStore();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/whatsapp-contacts', formData);
-      toast.success('Contact added!');
+      console.log('🚀 Modal submitting data:', formData); // Debug log
+      await createWhatsappContact(formData);
       onClose();
     } catch (err) {
-      toast.error('Failed to add contact');
+      console.error('❌ Modal error:', err);
     }
   };
 
@@ -38,7 +39,7 @@ export default function AddWhatsAppContactModal({ onClose }) {
       >
         <h3 className="text-xl font-bold text-emerald-400 text-center">Add WhatsApp Contact</h3>
 
-        {['firstName', 'lastName', 'phone', 'company', 'eventName'].map((field) => (
+        {['firstName', 'lastName', 'phone', 'email', 'company', 'eventName'].map((field) => (
           <input
             key={field}
             type="text"

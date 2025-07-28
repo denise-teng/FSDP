@@ -8,7 +8,7 @@ export const useWhatsappContactStore = create((set) => ({
   createWhatsappContact: async (formData) => {
     set({ loading: true });
 
-    const requiredFields = ['firstName', 'lastName', 'phone', 'company', 'eventName', 'eventDate'];
+    const requiredFields = ['firstName', 'lastName', 'phone', 'email', 'company', 'eventName', 'eventDate'];
     for (const field of requiredFields) {
       if (!formData[field]) {
         toast.error(`${field} is required`);
@@ -18,7 +18,9 @@ export const useWhatsappContactStore = create((set) => ({
     }
 
     try {
+      console.log('📤 Sending WhatsApp contact data:', formData); // Debug log
       const res = await axios.post('/whatsapp-contacts', formData);
+      console.log('📥 Server response:', res.data); // Debug log
       toast.success('WhatsApp contact added successfully!');
       return res.data;
     } catch (error) {
