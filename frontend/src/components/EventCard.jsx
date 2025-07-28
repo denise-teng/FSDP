@@ -9,7 +9,6 @@ const EventCard = ({ event }) => {
   const { addEvent, deleteEvent } = useEventStore();
   const [editing, setEditing] = useState(false);
 
-  // Mapping event types to colors
   const eventTypeColors = {
     Broadcast: 'bg-blue-500',
     Consultation: 'bg-green-500',
@@ -18,8 +17,7 @@ const EventCard = ({ event }) => {
     'Policy-updates': 'bg-red-500',
   };
 
-  // Get the color for this event type
-  const eventColor = eventTypeColors[event.type] || 'bg-gray-500';
+  const eventColor = eventTypeColors[event.type] || 'bg-gray-400';
 
   const handleAddEvent = () => {
     if (!user) {
@@ -31,7 +29,6 @@ const EventCard = ({ event }) => {
 
   const handleDelete = async () => {
     const toastId = toast.loading('Deleting event...');
-
     try {
       await deleteEvent(event._id);
       toast.success('Event deleted successfully!', { id: toastId });
@@ -44,68 +41,60 @@ const EventCard = ({ event }) => {
     setEditing(true);
   };
 
-  // Format date without year for permanent events
   const formattedDate = () => {
     const eventDate = new Date(event.date);
-    if (event.isPermanent) {
-      // Only show the day and month for permanent events
-      return eventDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'long' });
-    } else {
-      // Show full date for non-permanent events
-      return eventDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' });
-    }
+    return event.isPermanent
+      ? eventDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'long' })
+      : eventDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   return (
     <>
-      {/* ✅ Popup modal for editing */}
+      {/* ✅ Light Modal */}
       {editing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <EditEventForm event={event} onClose={() => setEditing(false)} />
           </div>
         </div>
       )}
 
-      <div className="mt-4 px-5 pb-5 border border-gray-700 rounded-md bg-gray-800 text-white">
-        <h5 className="text-xl font-semibold tracking-tight mb-1">Name: {event.name}</h5>
-        <p className="text-sm mb-1 text-gray-300">Date: {formattedDate()}</p>
+      {/* ✅ Light Event Card */}
+      <div className="mt-4 px-5 pb-5 border border-gray-200 rounded-md bg-white text-gray-800 shadow-sm">
+        <h5 className="text-lg font-semibold tracking-tight mb-1">Name: {event.name}</h5>
+        <p className="text-sm mb-1 text-gray-600">Date: {formattedDate()}</p>
 
         {event.startTime && (
-          <p className="text-sm text-gray-300">
-            Time: {event.startTime}{' '}
-            {event.endTime ? `– ${event.endTime}` : ''}
+          <p className="text-sm text-gray-600">
+            Time: {event.startTime}{event.endTime ? ` – ${event.endTime}` : ''}
           </p>
         )}
 
-        <p className="text-sm mb-1 text-gray-300">Description: {event.description}</p>
+        <p className="text-sm mb-1 text-gray-700">Description: {event.description}</p>
 
-        {/* Type and Color Indicator */}
-        <p className="text-sm mb-1 text-gray-300 flex items-center">
+        <p className="text-sm mb-1 text-gray-600 flex items-center">
           Type: {event.type}
-          <span
-            className={`${eventColor} w-3 h-3 rounded-full ml-2`} // Small color indicator next to the event type
-          ></span>
+          <span className={`${eventColor} w-3 h-3 rounded-full ml-2`} />
         </p>
 
         {event.location && (
-          <p className="text-sm text-gray-400 mb-1">Location: {event.location}</p>
+          <p className="text-sm text-gray-500 mb-1">Location: {event.location}</p>
         )}
 
         {event.isPermanent && (
-          <p className="text-xs text-emerald-400 font-bold uppercase">Permanent Event</p>
+          <p className="text-xs text-emerald-600 font-semibold uppercase">Permanent Event</p>
         )}
 
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleDelete}
-            className="bg-red-500 hover:bg-red-800 px-4 py-2 rounded"
+            className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-1 rounded text-sm font-medium"
           >
             Delete
           </button>
           <button
             onClick={handleUpdate}
-            className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
+            className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-1 rounded text-sm font-medium"
           >
             Edit
           </button>

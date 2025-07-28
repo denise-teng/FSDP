@@ -6,18 +6,25 @@ const UserPage = () => {
   const { user } = useUserStore();
 
   if (!user) {
-    return <div className="p-6 text-gray-300">You must be logged in to view this page.</div>;
+    return (
+      <div className="min-h-screen bg-[#f3f5ff] flex items-center justify-center px-6">
+        <div className="text-gray-500 text-lg font-medium">
+          You must be logged in to view this page.
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto bg-[#0f172a] min-h-screen">
+    <div className="bg-[#f3f5ff] min-h-screen p-6">
       {user.role === 'admin' ? (
-        <>
-         
-          <UserTable />
-        </>
+        <UserTable />
       ) : (
-        <p className="text-gray-400">You do not have permission to view this page.</p>
+        <div className="max-w-3xl mx-auto mt-20 bg-white rounded-xl shadow-md p-8 text-center">
+          <p className="text-gray-500 text-lg">
+            🚫 You do not have permission to view this page.
+          </p>
+        </div>
       )}
     </div>
   );

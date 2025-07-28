@@ -264,7 +264,7 @@ const ServicesSection = () => {
                       ))}
                     </ul>
                   </div>
-                  <Link to="/calendar">
+                  <Link to="/booking">
   <button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition">
     Schedule Consultation
   </button>
@@ -598,7 +598,7 @@ const handleSubmit = async (e) => {
 
 
 const HomePage = () => {
-  const { homepageSlots, fetchNewsletters,  initializeSlots, loading } = useNewsletterStore();
+  const { homepageSlots, fetchNewsletters } = useNewsletterStore();
   const [showAll, setShowAll] = useState(false);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -609,18 +609,9 @@ const HomePage = () => {
     ? testimonials
     : testimonials.slice(0, 3);
 
-useEffect(() => {
-    const loadData = async () => {
-      try {
-        await fetchNewsletters();
-        await initializeSlots(); // Add this line
-      } catch (error) {
-        console.error("Failed to load data", error);
-      }
-    };
-    
-    loadData();
-  }, [fetchNewsletters, initializeSlots]);
+  useEffect(() => {
+    fetchNewsletters();
+  }, [fetchNewsletters]);
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -891,7 +882,7 @@ const handleSubmit = async (e) => {
       viewport={{ once: true }}
       className="flex flex-col sm:flex-row gap-4 justify-center"
     >
-      <Link to="/calendar">
+      <Link to="/booking">
   <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-3 rounded-lg shadow-md transition">
     Book Free Consultation
   </button>

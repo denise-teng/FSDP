@@ -21,7 +21,7 @@ const MeetingsToSchedule = () => {
   return (
     <div className="bg-gray-800 text-white p-6 rounded-xl shadow-md max-w-3xl mx-auto mt-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-emerald-400">Meetings to Schedule</h2>
+        <h2 className="text-2xl font-bold text-sky-400">Meetings to Schedule</h2>
       </div>
 
       {meetings.map((m, i) => (
@@ -33,7 +33,7 @@ const MeetingsToSchedule = () => {
           <div className="text-sm text-gray-300">{m.phone}</div>
 
           <div className="mt-2 text-sm flex items-center gap-2">
-            <span className="text-gray-400">Rec timing: 1:00PM - 6:00PM</span>
+            <span className="text-sky-400">Rec timing: 1:00PM - 6:00PM</span>
             <div className="relative group inline-block cursor-pointer">
               <Info className="w-4 h-4 text-gray-400" />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow">
@@ -51,7 +51,7 @@ const MeetingsToSchedule = () => {
             </button>
 
             <button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-full text-sm"
+              className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-1.5 rounded-full text-sm"
               onClick={() => {
                 setShowSendPopup(i);
                 setSendText(`Hi ${m.name}, just checking when you'd be available to meet?`);
@@ -83,7 +83,7 @@ const MeetingsToSchedule = () => {
               />
               <div className="flex justify-between items-center">
                 <button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-full text-sm flex items-center gap-1"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-1.5 rounded-full text-sm flex items-center gap-1"
                   onClick={() => handleSend(m.name)}
                 >
                   <Send className="w-4 h-4" />

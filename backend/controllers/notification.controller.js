@@ -59,7 +59,7 @@ export const createEventNotificationsForToday = async (userId) => {
     if (!isToday) continue;
 
     if (user.deletedEventIds.includes(event._id.toString())) {
-      console.log(`⏭️ Skipping ${event.name} — user deleted`);
+      console.log(` Skipping ${event.name} — user deleted`);
       continue;
     }
 

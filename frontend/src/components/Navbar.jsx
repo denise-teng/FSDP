@@ -24,7 +24,8 @@ const Navbar = () => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 w-full bg-white shadow-md z-40 transition-all duration-300 border-b border-gray-200">
+    <header className="fixed top-0 left-0 w-full bg-white bg-opacity-90 backdrop-blur-md shadow-md z-40 transition-all duration-300 border-b border-indigo-200">
+
       <div className="container mx-auto px-4 py-3">
         <div className="flex flex-wrap justify-between items-center">
           <Link

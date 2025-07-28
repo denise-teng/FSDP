@@ -120,11 +120,13 @@ const CalendarView = ({ mode = 'admin' }) => {
         onClick={() => setSelectedDate(new Date(currentYear, currentMonth, day))}
         onMouseEnter={() => setHoveredDay(day)}
         onMouseLeave={() => setHoveredDay(null)}
-        className={`cursor-pointer relative ${
-          isSelected ? 'bg-emerald-700' : 'bg-gray-600'
-        } hover:bg-emerald-500`}
+        className={`cursor-pointer relative rounded-md border ${
+  isSelected ? 'bg-emerald-100 border-emerald-400' : 'bg-white'
+} hover:bg-emerald-50`}
+
       >
-        <span className="relative z-10">{day}</span>
+        <span className="relative z-10 text-black font-medium">{day}</span>
+
 
         {colors.length > 0 && (
           <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-start">
@@ -145,18 +147,20 @@ const CalendarView = ({ mode = 'admin' }) => {
 
   return (
     <motion.div
-      className="bg-gray-800 shadow-lg rounded-lg overflow-hidden max-w-4xl mx-auto p-6"
+      className="bg-gray-100 shadow-lg rounded-lg overflow-hidden max-w-4xl mx-auto p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
     >
-      <h1 className="text-3xl font-bold text-emerald-400 mb-2">
-        {mode === 'admin' ? 'CALENDAR MANAGEMENT' : 'BOOK CONSULTATION'}
-      </h1>
+      <h1 className="text-3xl font-bold text-blue-600 mb-2">
+  {mode === 'admin' ? 'CALENDAR MANAGEMENT' : 'BOOK CONSULTATION'}
+</h1>
+
 
       {/* Month Nav */}
-      <div className="flex items-center justify-between mb-4 text-white">
-        <button className="rounded hover:bg-gray-500 bg-black px-4 py-1" onClick={handlePrevMonth}>
+      <div className="flex items-center justify-between mb-4 text-gray-700 font-medium">
+
+        <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full px-4 py-1 text-sm" onClick={handlePrevMonth}>
           Prev
         </button>
         <h2>
@@ -165,7 +169,7 @@ const CalendarView = ({ mode = 'admin' }) => {
             year: 'numeric',
           })}
         </h2>
-        <button className="rounded hover:bg-gray-500 bg-black px-4 py-1" onClick={handleNextMonth}>
+        <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full px-4 py-1 text-sm" onClick={handleNextMonth}>
           Next
         </button>
       </div>
@@ -174,17 +178,18 @@ const CalendarView = ({ mode = 'admin' }) => {
       {mode === 'admin' && (
         <div className="flex flex-col sm:flex-row justify-between gap-2 mb-4">
           <input
-            type="text"
-            placeholder="Search by event name..."
-            value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
-            className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
-          />
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="w-full sm:w-1/2 px-3 py-1 rounded bg-gray-700 text-white"
-          >
+  type="text"
+  placeholder="Search by event name..."
+  value={searchName}
+  onChange={(e) => setSearchName(e.target.value)}
+  className="w-full sm:w-1/2 px-3 py-1 rounded-md bg-white text-gray-800 border border-gray-300"
+/>
+<select
+  value={filterType}
+  onChange={(e) => setFilterType(e.target.value)}
+  className="w-full sm:w-1/2 px-3 py-1 rounded-md bg-white text-gray-800 border border-gray-300"
+>
+
             <option value="">All Types</option>
             {types.map((type) => (
               <option key={type} value={type}>
@@ -196,24 +201,27 @@ const CalendarView = ({ mode = 'admin' }) => {
       )}
 
       {/* Weekdays */}
-      <div className="grid grid-cols-7 text-white text-sm gap-px bg-gray-800 [&>div]:p-2 text-center font-semibold uppercase">
+      <div className="grid grid-cols-7 text-gray-700 text-sm gap-px bg-gray-100 [&>div]:p-2 text-center font-semibold uppercase">
+
         {weekdays.map((day) => (
           <div key={day}>{day}</div>
         ))}
       </div>
 
       {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-px bg-gray-800 [&>div]:p-4 [&>div]:text-white text-center">
+      <div className="grid grid-cols-7 gap-px bg-gray-100 [&>div]:p-4 [&>div]:text-gray-800 text-center">
+
         {calendarDays}
       </div>
 
       {/* Events for Selected Date */}
       {selectedDate && (
-        <div className="text-white mt-6 text-center">
+        <div className="text-gray-800 mt-6 text-center">
+
           <p className="mb-2">Selected Date: {selectedDate.toDateString()}</p>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
+            className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-1 rounded text-sm font-medium"
           >
             {mode === 'admin' ? 'Add Event' : 'Request Consultation'}
           </button>
@@ -238,7 +246,8 @@ const CalendarView = ({ mode = 'admin' }) => {
         </div>
       )}
       {selectedDate && selectedEvents.length === 0 && (
-        <div className="text-white text-center mt-4">
+        <div className="text-gray-500 text-center mt-4 italic">
+
           {mode === 'admin' ? 'No events on this date' : 'No available slots on this date'}
         </div>
       )}

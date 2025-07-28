@@ -55,53 +55,50 @@ const ConsultationBooking = () => {
     .split('T')[0];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white px-4 py-8">
-      <div className="max-w-4xl mx-auto bg-[#1f2937] p-6 rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-emerald-400">Book a Consultation</h1>
+    <div className="min-h-screen bg-gray-100 py-12 px-6">
+      <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+        <h1 className="text-3xl font-bold mb-8 text-blue-600 text-center">Book a Consultation</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block font-semibold mb-1">Topic</label>
+            <label className="block font-semibold text-gray-700 text-base mb-1">Topic</label>
             <input
               type="text"
               name="topic"
               value={formData.topic}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-600"
               placeholder="e.g., Project review, Code help..."
+              className="w-full border border-gray-300 rounded-lg px-5 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block font-semibold mb-1">Preferred Date</label>
+            <label className="block font-semibold text-gray-700 text-base mb-1">Preferred Date</label>
             <input
               type="date"
               name="preferredDate"
               value={formData.preferredDate}
               onChange={handleChange}
               min={minDate}
-              className="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-600 placeholder:text-gray-400 
-                     focus:outline-none focus:ring-2 focus:ring-emerald-500 
-                     [&::-webkit-calendar-picker-indicator]:invert"
+              className="w-full border border-gray-300 rounded-lg px-5 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block font-semibold mb-1">Preferred Time</label>
+            <label className="block font-semibold text-gray-700 text-base mb-1">Preferred Time</label>
             <input
               type="time"
               name="preferredTime"
               value={formData.preferredTime}
               onChange={handleChange}
-              className="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-600
-                     [&::-webkit-calendar-picker-indicator]:invert"
+              className="w-full border border-gray-300 rounded-lg px-5 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <button
             type="submit"
-            className="px-6 py-2 rounded bg-emerald-600 hover:bg-emerald-700 transition font-semibold"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base py-3 px-6 rounded-lg transition"
           >
             Submit Request
           </button>

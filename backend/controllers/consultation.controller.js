@@ -45,7 +45,7 @@ export const submitConsultationRequest = async (req, res) => {
       admins.map((admin) =>
         Notification.create({
           userId: admin._id,
-          text: `📬 New consultation request: "${name}" by ${email}`,
+          text: `New consultation request: "${name}" by ${email}`,
           trigger: '/admin/consultation-requests',
         })
       )
@@ -57,6 +57,24 @@ export const submitConsultationRequest = async (req, res) => {
     res.status(500).json({ error: 'Failed to submit consultation request' });
   }
 };
+
+// DELETE /api/consultations/consultation-request/:id
+export const deleteConsultationRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await ConsultationRequest.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    res.status(200).json({ message: 'Consultation request deleted' });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: 'Failed to delete consultation request' });
+  }
+};
+
 
 // PATCH /api/consultations/consultation-request/:id/approve
 export const approveConsultationRequest = async (req, res) => {

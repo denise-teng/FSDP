@@ -6,7 +6,6 @@ const bedrockClient = new BedrockRuntimeClient({ region: "ap-southeast-2" });
 export async function analyzeMessagesWithBedrock(messages) {
   const keywords = ["zoom", "discuss", "meet up", "call", "meet"];
 
-  // Add unique IDs while preserving contact info
   const messagesWithIds = messages.map(msg => ({
     ...msg,
     id: uuidv4()
@@ -38,18 +37,19 @@ export async function analyzeMessagesWithBedrock(messages) {
   try {
     const response = await bedrockClient.send(new InvokeModelCommand(params));
     const result = JSON.parse(Buffer.from(response.body).toString());
+
+    // Try to parse Claude's text response
     const parsedResponse = JSON.parse(result.content[0].text);
-    
-    // Merge flagged messages with original metadata
-    const flaggedMessages = messagesWithIds.filter(msg => 
-      parsedResponse.flagged_messages.some(f => 
+
+    const flaggedMessages = messagesWithIds.filter(msg =>
+      parsedResponse.flagged_messages.some(f =>
         f.text === msg.text && f.contact === msg.contact
       )
     );
-    
+
     return flaggedMessages;
   } catch (err) {
-    console.error("Analysis error:", err);
-    throw err;
+    console.error("Bedrock analysis error:", err);
+    throw new Error("Invalid contact name");
   }
 }

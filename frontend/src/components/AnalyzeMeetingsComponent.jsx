@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 
 const AnalyzeMeetingsComponent = () => {
   const [inputContacts, setInputContacts] = useState('');
@@ -8,7 +9,6 @@ const AnalyzeMeetingsComponent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
 
   const parseContacts = () => {
     return inputContacts
@@ -21,13 +21,10 @@ const AnalyzeMeetingsComponent = () => {
     const loadInitialData = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/flagged-messages');
-
-        // ✅ FIX: Extract only the array and the object
         setFlaggedMessages(response.data.flaggedMessages || []);
         setRecommendedTimes(response.data.recommendedTimes || {});
         setLastUpdated(new Date());
       } catch (err) {
-        console.error('Initial load error:', err);
         setError('Failed to load existing messages');
       }
     };
@@ -37,7 +34,6 @@ const AnalyzeMeetingsComponent = () => {
   const handleAnalyzeMessages = async () => {
     setLoading(true);
     setError(null);
-    setSuccessMessage(null);
     const contacts = parseContacts();
 
     if (contacts.length === 0) {
@@ -51,21 +47,21 @@ const AnalyzeMeetingsComponent = () => {
         contacts: contacts
       });
 
-      // ✅ Only set flagged + recommended from POST response
       setFlaggedMessages(response.data.flaggedMessages || []);
       setRecommendedTimes(response.data.recommendedTimes || {});
       setLastUpdated(new Date());
 
-      // ✅ Re-fetch clean list from storage
       const updatedResponse = await axios.get('http://localhost:5000/api/flagged-messages');
       setFlaggedMessages(updatedResponse.data.flaggedMessages || []);
       setRecommendedTimes(updatedResponse.data.recommendedTimes || {});
       setLastUpdated(new Date());
 
-     
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Analysis failed');
-      console.error('Error:', err);
+      const errMsg = err?.response?.data?.error || err.message || 'Analysis failed';
+      const isJsonError = errMsg.includes("Unexpected token");
+      const userFriendlyError = isJsonError ? "Invalid contact name" : errMsg;
+      setError(userFriendlyError);
+      toast.error(userFriendlyError);
     } finally {
       setLoading(false);
     }
@@ -77,9 +73,10 @@ const AnalyzeMeetingsComponent = () => {
         data: { messageId }
       });
       setFlaggedMessages(prev => prev.filter(m => m.id !== messageId));
+      toast.success("Message deleted");
     } catch (err) {
       setError('Failed to delete message');
-      console.error('Delete error:', err);
+      toast.error("Failed to delete message");
     }
   };
 
@@ -99,12 +96,12 @@ const AnalyzeMeetingsComponent = () => {
   };
 
   return (
-    <div className="flex justify-center p-6 bg-gray-950 min-h-screen">
-      <div className="w-full max-w-3xl bg-gray-900 text-white rounded-lg shadow-lg p-6">
+    <div className="flex justify-center p-6 bg-gray-100 min-h-screen">
+      <div className="w-full max-w-3xl bg-white text-gray-900 rounded-xl shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-white">Meetings to Schedule</h2>
+          <h2 className="text-3xl font-bold text-blue-600">Potential Opportunities</h2>
           {lastUpdated && (
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-gray-500">
               Last updated: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
@@ -112,7 +109,7 @@ const AnalyzeMeetingsComponent = () => {
 
         <div className="flex flex-col space-y-4 mb-6">
           <div className="flex items-center space-x-2">
-            <label htmlFor="contacts" className="text-sm font-medium text-gray-300">
+            <label htmlFor="contacts" className="text-sm font-medium text-gray-700">
               Contacts to scan:
             </label>
             <input
@@ -120,8 +117,8 @@ const AnalyzeMeetingsComponent = () => {
               type="text"
               value={inputContacts}
               onChange={(e) => setInputContacts(e.target.value)}
-              className="bg-gray-700 text-white px-3 py-2 rounded text-sm flex-1"
-              placeholder="Enter contacts (comma separated)"
+              className="bg-gray-100 border border-gray-300 text-gray-800 px-3 py-2 rounded text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter exact contact name"
             />
           </div>
 
@@ -129,7 +126,7 @@ const AnalyzeMeetingsComponent = () => {
             <button
               onClick={handleAnalyzeMessages}
               disabled={loading}
-              className={`px-5 py-2 rounded font-semibold text-white transition flex items-center justify-center ${loading ? 'bg-gray-500' : 'bg-green-600 hover:bg-green-700'}`}
+              className={`px-5 py-2 rounded-full font-semibold text-white transition flex items-center justify-center text-sm ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {loading ? (
                 <>
@@ -147,24 +144,18 @@ const AnalyzeMeetingsComponent = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-900/50 border-l-4 border-red-500 text-red-100 rounded">
+          <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded">
             <p>{error}</p>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mb-4 p-4 bg-green-900/50 border-l-4 border-green-500 text-green-100 rounded">
-            <p>{successMessage}</p>
           </div>
         )}
 
         {filteredMessages.length > 0 ? (
           <ul className="space-y-6">
             {Object.entries(groupMessagesByContact(filteredMessages)).map(([contact, messages]) => (
-              <li key={contact} className="bg-gray-800 rounded-md p-4 shadow-md">
-                <h3 className="text-xl font-semibold text-white mb-1">{contact}</h3>
+              <li key={contact} className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                <h3 className="text-lg font-semibold text-blue-700 mb-2">{contact}</h3>
                 {recommendedTimes[contact] && (
-                  <p className="text-sm text-green-400 mb-2">
+                  <p className="text-sm text-green-600 mb-2">
                     🕒 Recommended meeting time: <strong>{recommendedTimes[contact]}</strong>
                   </p>
                 )}
@@ -173,26 +164,21 @@ const AnalyzeMeetingsComponent = () => {
                   {messages.map((message) => (
                     <li
                       key={message.id ?? `${contact}-${message.timestamp}-${message.text.slice(0, 10)}`}
-                      className="bg-gray-700 rounded p-3"
+                      className="bg-white border border-gray-200 rounded-md p-3"
                     >
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-100 whitespace-pre-wrap">{message.text}</p>
+                      <div className="flex justify-between items-start">
+                        <p className="text-gray-800 whitespace-pre-wrap">{message.text}</p>
                         <div className="flex space-x-2">
+                          
                           <button
-                            className="px-2 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded"
-                            onClick={() => navigator.clipboard.writeText(message.text)}
-                          >
-                            Copy
-                          </button>
-                          <button
-                            className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 rounded"
+                            className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded"
                             onClick={() => handleDeleteMessage(message.id)}
                           >
                             Delete
                           </button>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         {message.meta
                           ? message.meta.match(/\[(.*?)\]/)?.[1] || 'Unknown Time'
                           : new Date(message.timestamp).toLocaleString()}
@@ -205,8 +191,8 @@ const AnalyzeMeetingsComponent = () => {
           </ul>
         ) : (
           <div className="text-center py-10">
-            <p className="text-gray-500 italic">No meeting requests found.</p>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-gray-400 italic">No meeting requests found.</p>
+            <p className="text-sm text-gray-500 mt-2">
               Enter contacts and click "Analyze Messages" to scan for meeting requests.
             </p>
           </div>
