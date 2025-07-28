@@ -50,6 +50,7 @@ export default function ScheduledBroadcasts() {
       Processing: 'bg-blue-900/50 text-blue-300',
       Sent: 'bg-green-900/50 text-green-300',
       Failed: 'bg-red-900/50 text-red-300',
+      Cancelled: 'bg-gray-900/50 text-gray-300'
     };
 
     return (
@@ -164,85 +165,45 @@ export default function ScheduledBroadcasts() {
             <thead className="bg-gray-700 text-emerald-300">
               <tr>
                 <th className="px-6 py-3">Title</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">List</th>
                 <th className="px-6 py-3">Scheduled Time</th>
                 <th className="px-6 py-3">Channel</th>
                 <th className="px-6 py-3">Recipients</th>
+                <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredBroadcasts.map((broadcast) => (
-                <tr 
-                  key={broadcast._id} 
-                  className="border-t border-gray-700 hover:bg-gray-700/50 transition-colors"
-                >
+                <tr key={broadcast._id} className="border-t border-gray-700 hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-emerald-300">
                     {broadcast.title}
-                    {broadcast.tags?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {broadcast.tags.map(tag => (
-                          <span 
-                            key={tag} 
-                            className="px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-300 text-xs"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(broadcast.status)}
-                    {broadcast.status === 'Failed' && broadcast.error && (
-                      <div className="text-xs text-red-400 mt-1">{broadcast.error}</div>
-                    )}
-                    {broadcast.status === 'Sent' && broadcast.sentAt && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        Sent at: {new Date(broadcast.sentAt).toLocaleString()}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {broadcast.listName || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-gray-300">
                     {new Date(broadcast.scheduledTime).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      broadcast.channel === 'Email' ? 'bg-blue-900/50 text-blue-300' :
-                      broadcast.channel === 'SMS' ? 'bg-green-900/50 text-green-300' :
-                      broadcast.channel === 'WhatsApp' ? 'bg-emerald-900/50 text-emerald-300' :
-                      'bg-purple-900/50 text-purple-300'
-                    }`}>
-                      {broadcast.channel}
-                    </span>
+                    {getChannelBadge(broadcast.channel)}
+                  </td>
+                  <td className="px-6 py-4 text-gray-300">
+                    {broadcast.recipients?.length || 0} recipients
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full bg-gray-700 text-gray-300 text-xs">
-                      {broadcast.recipients?.length || 0}
-                    </span>
+                    {getStatusBadge(broadcast.status)}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      {broadcast.status === 'Scheduled' && (
-                        <button
-                          onClick={() => handleCancelBroadcast(broadcast._id)}
-                          className="text-red-400 hover:text-red-300 text-sm"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {broadcast.status === 'Sent' && broadcast.recentMessageId && (
-                        <a 
-                          href={`/recent-messages/${broadcast.recentMessageId}`}
-                          className="text-emerald-400 hover:text-emerald-300 text-sm"
-                        >
-                          View Details
-                        </a>
-                      )}
+                      <button
+                        onClick={() => handleView(broadcast)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => handleCancelBroadcast(broadcast._id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -252,25 +213,126 @@ export default function ScheduledBroadcasts() {
         </div>
       ) : (
         <div className="bg-gray-700/50 p-8 rounded-lg border border-dashed border-gray-600 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-300">No scheduled broadcasts</h3>
-          <p className="mt-1 text-gray-500">
-            {searchTerm ? 'Try a different search term' : 'Schedule a broadcast to see it here'}
+          <p className="text-gray-400">
+            {loading ? 'Loading scheduled broadcasts...' : error ? error : 'No scheduled broadcasts found'}
           </p>
         </div>
       )}
+
+      {/* View Message Modal */}
+      <Transition appear show={isModalOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setIsModalOpen(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                  {selectedMessage && (
+                    <>
+                      <Dialog.Title
+                        as="h3"
+                        className="text-lg font-medium leading-6 text-emerald-300"
+                      >
+                        {selectedMessage.listName}
+                      </Dialog.Title>
+                      <div className="mt-4 space-y-6">
+                        {/* List Name */}
+                        <div>
+                          <h4 className="text-sm font-medium text-emerald-300 mb-2">List Name</h4>
+                          <div className="text-sm text-gray-300 bg-gray-700/50 p-3 rounded-lg">
+                            {selectedMessage.listName}
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                          <h4 className="text-sm font-medium text-emerald-300 mb-2">Title</h4>
+                          <div className="text-sm text-gray-300 bg-gray-700/50 p-3 rounded-lg">
+                            {selectedMessage.title}
+                          </div>
+                        </div>
+                        
+                        {/* Content */}
+                        <div>
+                          <h4 className="text-sm font-medium text-emerald-300 mb-2">Message Content</h4>
+                          <div className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-700/50 p-4 rounded-lg max-h-48 overflow-y-auto">
+                            {selectedMessage.content || 'No content available'}
+                          </div>
+                        </div>
+
+                        {/* Channel and Schedule */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-emerald-300 mb-2">Channel</h4>
+                            <div>
+                              {getChannelBadge(selectedMessage.channel)}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-emerald-300 mb-2">Scheduled Time</h4>
+                            <p className="text-sm text-gray-300">
+                              {selectedMessage.scheduledTime ? 
+                                new Date(selectedMessage.scheduledTime).toLocaleString() : 
+                                'Not scheduled'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Recipients */}
+                        <div>
+                          <h4 className="text-sm font-medium text-emerald-300 mb-2">Recipients</h4>
+                          <div className="text-sm text-gray-300 bg-gray-700/50 p-4 rounded-lg">
+                            {selectedMessage.recipients?.length || 0} recipients scheduled
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm transition-colors duration-150"
+                          onClick={() => {
+                            handleDelete(selectedMessage._id);
+                            setIsModalOpen(false);
+                          }}
+                        >
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md text-sm transition-colors duration-150"
+                          onClick={() => setIsModalOpen(false)}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }
