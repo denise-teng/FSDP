@@ -4,9 +4,13 @@ import EmailService from '../lib/emailService.js';
 import { logMessage } from '../lib/messageLogger.service.js';
 import RecentMessage from '../models/recentMessage.model.js';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Contact from '../models/Contact.model.js';
 =======
 >>>>>>> 4437936 (Implemented broadcast sending with scheduling for)
+=======
+import Contact from '../models/Contact.model.js';
+>>>>>>> bd6f9ab (Implemented AI to generate a Broadcast List/Group)
 // ==================== STANDARD BROADCASTS ====================
 
 export const getAllBroadcasts = async (req, res) => {

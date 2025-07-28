@@ -33,6 +33,7 @@ import recentBroadcastRoutes from './routes/recentBroadcast.route.js';
 import engagementRoutes from './routes/engagement.route.js';
 import './lib/scheduleWorker.js';
 import contactHistoryRoute from './routes/contacthistory.route.js';
+import articleRoutes from './routes/articles.route.js';
 
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
