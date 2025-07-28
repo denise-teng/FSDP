@@ -1,6 +1,11 @@
 import Draft from '../models/draft.model.js';
 import path from 'path';
 
+const getDraftsQuery = { 
+  status: "draft",
+  deletedAt: null 
+};
+
 // Helper function to ensure array structure for tags, sendTo, audience, and content
 const ensureArray = (data) => {
   if (!data) return [];  // If data is undefined or null, return an empty array
@@ -30,10 +35,10 @@ export const createDraft = async (req, res) => {
     // Validate category field
     const validCategories = ['Financial Planning', 'Insurance', 'Estate Planning', 'Tax Relief'];
     const category = String(req.body.category || '').trim();
-    
+
     if (!validCategories.includes(category)) {
-      return res.status(400).json({ 
-        error: `Invalid category. Must be one of: ${validCategories.join(', ')}` 
+      return res.status(400).json({
+        error: `Invalid category. Must be one of: ${validCategories.join(', ')}`
       });
     }
 
@@ -74,22 +79,108 @@ export const createDraft = async (req, res) => {
 };
 
 
+
 export const getDrafts = async (req, res) => {
-try{
-const drafts = await Draft.find({ status: "draft" }).sort({ createdAt: -1 });
-res.json(drafts);
-} catch (error) {
-console.log('Error in drafts controller', error.message);
-res.status(500).json({message: ' Server error', error: error.message});
-}
+  try {
+    console.log('Fetching drafts...');
+    const drafts = await Draft.find({ status: 'draft' });
+    console.log('Fetched drafts:', drafts);  // Log the fetched drafts
+    res.json(drafts);
+  } catch (error) {
+    console.error('Error fetching drafts:', error);
+    res.status(500).json({ error: 'Failed to fetch drafts' });
+  }
 };
 
-// Delete a draft by ID
+
 export const deleteDraft = async (req, res) => {
   try {
+    // Verify draft exists and isn't already deleted
+    const existingDraft = await Draft.findOne({
+      _id: req.params.id,
+      deletedAt: null
+    });
+    
+    if (!existingDraft) {
+      return res.status(404).json({ 
+        message: 'Draft not found or already deleted' 
+      });
+    }
+
+    // Soft delete with timestamp only (don't change status)
+    const updatedDraft = await Draft.findByIdAndUpdate(
+      req.params.id,
+      { 
+        $set: { 
+          deletedAt: new Date()
+          // Remove status update since it's not in your schema
+        } 
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Draft moved to trash',
+      draft: updatedDraft
+    });
+  } catch (error) {
+    console.error('Delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete draft',
+      details: error.message
+    });
+  }
+};
+
+export const getDeletedDrafts = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    let query = { deletedAt: { $ne: null } };
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const deletedDrafts = await Draft.find(query).sort({ deletedAt: -1 });
+    res.json(deletedDrafts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch deleted drafts' });
+  }
+};
+
+export const restoreDraft = async (req, res) => {
+  try {
+    const draft = await Draft.findByIdAndUpdate(
+      req.params.id,
+      { $set: { deletedAt: null } },
+      { new: true }
+    );
+
+    if (!draft) {
+      return res.status(404).json({ message: 'Draft not found' });
+    }
+
+    res.json({ message: 'Draft restored successfully', draft });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to restore draft' });
+  }
+};
+
+export const permanentlyDeleteDraft = async (req, res) => {
+  try {
     const draft = await Draft.findByIdAndDelete(req.params.id);
-    if (!draft) return res.status(404).json({ message: 'Draft not found' });
-    res.status(200).json({ message: 'Draft deleted' });
+
+    if (!draft) {
+      return res.status(404).json({ message: 'Draft not found' });
+    }
+
+    res.json({ message: 'Draft permanently deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete draft' });
   }
@@ -105,8 +196,8 @@ export const editDraft = async (req, res) => {
     const validType = ['draft', 'newsletter'];
 
     if (!validCategories.includes(category)) {
-      return res.status(400).json({ 
-        error: `Invalid category. Must be one of: ${validCategories.join(', ')}` 
+      return res.status(400).json({
+        error: `Invalid category. Must be one of: ${validCategories.join(', ')}`
       });
     }
 
@@ -132,7 +223,7 @@ export const editDraft = async (req, res) => {
 
     // Update the draft or newsletter
     const draft = await Draft.findByIdAndUpdate(req.params.id, updateData, {
-      new: true, 
+      new: true,
       runValidators: true, // Ensure any validations are run
     });
 
@@ -150,3 +241,5 @@ export const editDraft = async (req, res) => {
     res.status(500).json({ error: "Failed to update draft" });
   }
 };
+
+

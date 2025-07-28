@@ -1,16 +1,35 @@
-const wbm = require("wbm");  // Ensure you've installed wbm using npm
+// backend/lib/wbm.js
+import wbm from 'wbm';
 
-module.exports = {
-  start: (options) => {
-    return wbm.start(options);  // Starts the session and returns QR code data
-  },
-  waitQRCode: () => {
-    return wbm.waitQRCode();  // Wait for the QR code to be scanned
-  },
-  send: (phones, message) => {
-    return wbm.send(phones, message);  // Send the message
-  },
-  end: () => {
-    return wbm.end();  // Ends the session after sending
+export async function start(options = {}) {
+  return new Promise((resolve, reject) => {
+    wbm.start({
+      qrCodeData: true,
+      session: true,  // Enable session persistence
+      showBrowser: false,
+      ...options
+    }).then((qrData) => {
+      const qrUrl = typeof qrData === 'object' ? qrData.url : qrData;
+      if (!qrUrl.includes('web.whatsapp.com')) {
+        reject(new Error('Invalid WhatsApp QR data'));
+        return;
+      }
+      resolve(qrUrl);
+    }).catch(reject);
+  });
+}
+
+
+
+export async function send(phones, message) {
+  try {
+    await wbm.send(phones, message);
+    return true;
+  } catch (e) {
+    throw new Error('Message sending failed: ' + e.message);
   }
-};
+}
+
+export function end() {
+  return wbm.end();
+}

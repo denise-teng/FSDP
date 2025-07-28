@@ -36,7 +36,7 @@ const Notifications = ({ onClose }) => {
 
   return (
     <div className="bg-white shadow-md rounded-lg p-4 w-full max-w-md mx-auto border border-gray-200">
-      <h2 className="text-xl font-semibold mb-3 text-emerald-600">Notifications</h2>
+      <h2 className="text-xl font-semibold mb-3 text-blue-600">Notifications</h2>
       <ul className="space-y-2">
         {messages.length > 0 ? (
           messages.map((msg) => (
