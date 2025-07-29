@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { Mail, Users, BarChart2, LayoutDashboard, MessageSquare } from 'lucide-react';
-import { motion } from 'framer-motion';
-
+import { Mail, Users, BarChart2, LayoutDashboard, MessageSquare, 
+  ArrowRight, ChevronDown, X, Check, MapPin, Phone, 
+  ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle  } from 'lucide-react';
+import {  motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
+import Navbar from '../components/Navbar';
+import NearEvents from '../components/NearEvents';
+import { Link } from 'react-router-dom';
 // Example of tabs
 const tabs = [
   { id: 'contacts', label: 'Contacts', icon: Mail },
