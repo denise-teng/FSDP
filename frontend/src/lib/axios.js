@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  withCredentials: true,
+const axiosInstance = axios.create({ 
+    baseURL: import.meta.env.MODE === 'development' ? 'http://localhost:5000/api' : '/api',
+    withCredentials: true, // send cookies to server
+    timeout: 30000
 });
 
 // Request interceptor

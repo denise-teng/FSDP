@@ -31,13 +31,18 @@ import broadcastRoutes from './routes/broadcast.route.js';
 import scheduledBroadcastRoutes from './routes/scheduledBroadcast.route.js';
 import recentBroadcastRoutes from './routes/recentBroadcast.route.js';
 import engagementRoutes from './routes/engagement.route.js';
+import './lib/scheduleWorker.js';
+import contactHistoryRoute from './routes/contacthistory.route.js';
+import articleRoutes from './routes/articles.route.js';
+
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
 import generateRoute from './routes/generate.genAI.route.js';
 import { subscribe } from './controllers/subscribe.controller.js';
 import deletedDraftRoutes from './routes/deleted_draft.route.js';
 import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
-import consultationRoutes from './routes/consultation.routes.js'
+import consultationRoutes from './routes/consultation.routes.js';
+import articlesRoutes from './routes/articles.route.js';
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
 import { analyzeMessagesWithBedrock } from './ai/awsBedrockAnalysis.js';
@@ -123,6 +128,7 @@ function getRecentMessages(messages, timeFrame = '2days') {
 app.use('/api/engagements', engagementRoutes);
 
 // Additional Routes
+app.use('/api/contact-history', contactHistoryRoute);
 app.use('/api/deleted_drafts', deletedDraftRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -132,12 +138,14 @@ app.use('/api/quick-messages', quickMessageRoutes); // ✅ added
 app.use('/api/potential-clients', potentialClientRoutes);
 app.use('/api', replySuggestionAiRoutes);
 app.use('/api/contacts/public', publicContactRoutes);
+app.use('/api/broadcasts/recent', recentBroadcastRoutes); // Recent Broadcasts (must come before general broadcasts route)
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscribe
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 app.use("/api/consultations", consultationRoutes);
+app.use('/api/articles', articlesRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

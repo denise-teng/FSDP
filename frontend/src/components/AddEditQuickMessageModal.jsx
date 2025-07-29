@@ -36,42 +36,67 @@ export default function AddEditQuickMessageModal({ message, onClose, onSaved }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#1e293b] w-full max-w-xl p-8 rounded-lg shadow-md space-y-6 mx-4 text-white"
+        className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
       >
-        <h2 className="text-2xl font-bold text-center text-emerald-400">
-          {message ? 'Edit Quick Message' : 'New Quick Message'}
-        </h2>
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full -translate-y-16 translate-x-16 opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-100 to-pink-100 rounded-full translate-y-12 -translate-x-12 opacity-40"></div>
+        
+        <div className="relative p-8 space-y-6">
+          {/* Enhanced title */}
+          <div className="text-center">
+            <h2 className="text-3xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
+                {message ? 'Edit Quick Message' : 'New Quick Message'}
+              </span>
+            </h2>
+            <p className="text-gray-600">
+              {message ? 'Update your message template' : 'Create a new quick message template'}
+            </p>
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Message
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows="5"
-            placeholder="Type your quick message here..."
-            className="w-full p-3 rounded bg-gray-800 text-white placeholder-gray-400 border border-gray-600 focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
+          {/* Enhanced form field */}
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">
+              Message Content
+            </label>
+            <div className="relative">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows="6"
+                placeholder="Type your quick message here..."
+                className="w-full p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 resize-none text-gray-800 placeholder-gray-400 shadow-sm"
+              />
+              {/* Character count indicator */}
+              <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                {content.length} characters
+              </div>
+            </div>
+          </div>
 
-        <div className="flex justify-end gap-4 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded"
-          >
-            {message ? 'Update' : 'Add'}
-          </button>
+          {/* Enhanced buttons */}
+          <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-8 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-300 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="group relative px-8 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-700 hover:via-purple-700 hover:to-blue-700 text-white font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            >
+              <span className="relative z-10">
+                {message ? 'Update Message' : 'Create Message'}
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+          </div>
         </div>
       </form>
     </div>

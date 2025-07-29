@@ -1,14 +1,35 @@
 import mongoose from 'mongoose';
 
 const BroadcastSchema = new mongoose.Schema({
-  title: String,
-  listName: String,
-  channel: String,
-  tags: [String],
-  scheduledTime: Date
-}, { timestamps: true }); // 👈 THIS IS REQUIRED
+  title: { 
+    type: String, 
+    required: true 
+  },
+  listName: { 
+    type: String, 
+    required: true 
+  },
+  channel: { 
+    type: String, 
+    enum: ['email', 'sms', 'whatsapp'], 
+    required: true,
+    set: (val) => val.toLowerCase() // Automatically convert the channel to lowercase
+  },
+  recipients: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Contact'
+  }],
+  whatsappContacts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WhatsappContact',
+    default: []
+  }],
+  tags: [{
+    type: String
+  }],
+  scheduledTime: { 
+    type: Date 
+  }
+}, { timestamps: true });
 
-
-const Broadcast = mongoose.model('Broadcast', BroadcastSchema);
-
-export default Broadcast;
+export default mongoose.model('Broadcast', BroadcastSchema);

@@ -6,10 +6,13 @@ import {
   Lock,
   Bell,
   Calendar,
-  User,
   Home,
   Users,
-  BookOpen
+  BookOpen,
+  MessageSquare,
+  Mail,
+  RadioTower,
+  User
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
@@ -67,21 +70,32 @@ const Navbar = () => {
             )}
 
             {isAdmin && (
-              <Link
-                to="/user-home"
-                className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
-              >
-                <User className="mr-1" size={20} />
-                <span className="hidden sm:inline">User View</span>
-              </Link>
+              <>
+                <Link
+                  to="/user-home"
+                  className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
+                >
+                  <User className="mr-1" size={20} />
+                  <span className="hidden sm:inline">User View</span>
+                </Link>
+                <Link
+                  to="/broadcast"
+                  className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
+                >
+                  <RadioTower className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Broadcast</span>
+                </Link>
+              </>
             )}
 
-            <Link
-              to="/contact"
-              className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out"
-            >
-              Contact Us
-            </Link>
+            {!isAdmin && (
+              <Link
+                to="/contact"
+                className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out"
+              >
+                Contact Us
+              </Link>
+            )}
 
             {isAdmin && (
               <>
@@ -91,6 +105,22 @@ const Navbar = () => {
                 >
                   <Lock className="mr-1" size={18} />
                   <span className="hidden sm:inline">Dashboard</span>
+                </Link>
+
+                <Link
+                  to="/admin-contacts"
+                  className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
+                >
+                  <Mail className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Contacts</span>
+                </Link>
+
+                <Link
+                  to="/quick-messages"
+                  className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
+                >
+                  <MessageSquare className="mr-1" size={20} />
+                  <span className="hidden sm:inline">Quick Messages</span>
                 </Link>
 
                 <Link

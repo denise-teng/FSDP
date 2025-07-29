@@ -1,5 +1,5 @@
 import express from 'express';
-import { generateReplySuggestions } from '../controllers/replySuggestionAi.controller.js';
+import generateReplySuggestions from '../controllers/replySuggestionAi.controller.js';
 
 const router = express.Router();
 

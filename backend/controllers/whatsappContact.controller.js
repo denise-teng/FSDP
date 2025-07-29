@@ -2,24 +2,48 @@ import WhatsappContact from '../models/whatsappContact.model.js';
 
 export const createWhatsappContact = async (req, res) => {
   try {
-    const { firstName, lastName, phone, company, eventName, eventDate } = req.body;
+    console.log('📝 Received request body:', req.body); // Debug log
+    const { firstName, lastName, phone, email, company, eventName, eventDate } = req.body;
 
-    if (!firstName || !lastName || !phone || !company || !eventName || !eventDate) {
+    // Check each field individually for debugging
+    console.log('📋 Fields check:', {
+      firstName: !!firstName,
+      lastName: !!lastName,
+      phone: !!phone,
+      email: !!email,
+      company: !!company,
+      eventName: !!eventName,
+      eventDate: !!eventDate
+    });
+
+    if (!firstName || !lastName || !phone || !email || !company || !eventName || !eventDate) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
-    const newContact = await WhatsappContact.create({
+    console.log('✅ Creating contact with data:', {
       firstName,
       lastName,
       phone,
+      email,
       company,
       eventName,
       eventDate
     });
 
+    const newContact = await WhatsappContact.create({
+      firstName,
+      lastName,
+      phone,
+      email,
+      company,
+      eventName,
+      eventDate
+    });
+
+    console.log('🎉 Contact created successfully:', newContact);
     res.status(201).json(newContact);
   } catch (error) {
-    console.error('Error creating WhatsApp contact:', error);
+    console.error('❌ Error creating WhatsApp contact:', error);
     res.status(500).json({ error: 'Failed to create contact' });
   }
 };

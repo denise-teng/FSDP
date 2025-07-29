@@ -1,5 +1,11 @@
 import Contact from '../models/Contact.model.js';
 import PotentialClient from '../models/PotentialClient.model.js';
+import { createContactHistory } from './contacthistory.controller.js';  // Adjust path if needed
+import ContactHistory from '../models/contacthistory.model.js';  // Import ContactHistory
+
+
+// Define flagged keywords
+const flaggedKeywords = ['schedule', 'meeting', 'help', 'urgent'];
 
 export const submitContact = async (req, res) => {
   try {
@@ -13,6 +19,15 @@ export const submitContact = async (req, res) => {
     const latest = await Contact.findOne().sort({ contactId: -1 });
     const nextId = latest ? latest.contactId + 1 : 1;
 
+    // Check for flagged keywords in the message
+    const flaggedKeywordsFound = flaggedKeywords.filter(keyword => message.toLowerCase().includes(keyword));
+    
+    // If any flagged keywords are found, flag as potential client
+    let potentialClientReason = flaggedKeywordsFound.length > 0 
+      ? `${flaggedKeywordsFound.join(', ')}`
+      : '';
+
+    // Save the contact details
     const newContact = new Contact({
       contactId: nextId,
       firstName,
@@ -23,15 +38,35 @@ export const submitContact = async (req, res) => {
       message,
     });
 
+    // Save to the database
     await newContact.save();
 
+    // If flagged as a potential client, save to PotentialClient collection
+    if (flaggedKeywordsFound.length > 0) {
+      const newPotentialClient = new PotentialClient({
+        contactId: nextId,
+        firstName,
+        lastName,
+        phone,
+        email,
+        subject,
+        message,
+        reason: potentialClientReason
+      });
+
+      await newPotentialClient.save();
+    }
+
     console.log('Contact saved:', newContact);
-    res.status(200).json({ message: 'Contact submitted successfully' });
+    res.status(200).json({ 
+      message: 'Contact submitted successfully',
+      flaggedKeywords: potentialClientReason // Return the flagged keywords reason
+    });
   } catch (error) {
+    console.error('Error submitting contact:', error);
     res.status(500).json({ error: 'Failed to submit contact' });
   }
 };
-
 
 export const getContacts = async (req, res) => {
   try {
@@ -55,19 +90,58 @@ export const updateContact = async (req, res) => {
   }
 };
 
+// contact.controller.js - Delete contact (backend)
 export const deleteContact = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // The ID of the contact to delete
 
-    const deleted = await Contact.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ error: 'Contact not found' });
+    // 1. Find the contact to delete
+    const contact = await Contact.findById(id);
+    if (!contact) {
+      return res.status(404).json({ success: false, error: 'Contact not found' });
+    }
 
-    // Step 3: Also delete the matching potential client using contactId
-    await PotentialClient.findOneAndDelete({ contactId: deleted.contactId });
+    // 2. Check if the contact already exists in the ContactHistory collection
+    const existingHistory = await ContactHistory.findOne({ contactId: contact.contactId });
 
-    res.status(200).json({ message: 'Contact and matching potential client deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting contact:', error);
-    res.status(500).json({ error: 'Failed to delete contact' });
+    // If it already exists in the history, return early
+    if (existingHistory) {
+      return res.status(400).json({ success: false, error: 'Contact already archived in history' });
+    }
+
+    // 3. Archive the contact in history
+    const historyRecord = {
+      contactId: contact.contactId, // Preserve the original contactId
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      phone: contact.phone,
+      email: contact.email,
+      subject: contact.subject,
+      message: contact.message,
+      originalContactId: contact._id,  // MongoDB ID as originalContactId
+      action: 'deleted',  // Archive action as 'deleted'
+      deletedAt: new Date(),  // Archive the time of deletion
+    };
+
+    // Save the contact history record
+    await ContactHistory.create(historyRecord);
+
+    // 4. Delete the contact from the main collection
+    await Contact.findByIdAndDelete(id);
+
+    // 5. Send success response after both operations are completed
+    return res.status(200).json({
+      success: true,
+      message: 'Contact archived and deleted successfully',
+      data: { contactId: contact.contactId, originalContactId: contact._id }
+    });
+
+  } catch (err) {
+    console.error('Error deleting contact:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to archive contact',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };

@@ -4,8 +4,8 @@ import User from '../models/user.model.js';  // Assuming you have a User model
 // Middleware to protect routes by verifying JWT token
 export const protectRoute = async (req, res, next) => {
     try {
-        // Extract the token from cookies
-        const accessToken = req.cookies.accessToken;
+        // Extract the token from cookies or headers
+        const accessToken = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
 
         if (!accessToken) {
             return res.status(401).json({ message: 'Unauthorized - No access token found' });
