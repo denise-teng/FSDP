@@ -1,30 +1,58 @@
-// backend/routes/generate.genAI.route.js
-import express from "express";
-import dotenv from "dotenv";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-dotenv.config();
+import express from 'express';
+import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
 const router = express.Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const bedrockClient = new BedrockRuntimeClient({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
-// ✅ Use available model from your list
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
-
-router.post("/", async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
-
+router.post('/', async (req, res) => {
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const { prompt, model = 'titan-text-express' } = req.body;
+    console.log("Received request with body:", req.body); 
+    
+    if (!prompt) {
+      console.log("Error: No prompt provided");
+      return res.status(400).json({ message: 'Prompt is required' });
+    }
 
-    res.json({ generatedText: text });
+    console.log("Received prompt:", prompt);
+
+    const input = {
+      modelId: 'amazon.titan-text-express-v1',
+      contentType: 'application/json',
+      body: JSON.stringify({
+        inputText: prompt,
+        textGenerationConfig: {
+          maxTokenCount: 2048,
+          temperature: 0.7,
+          topP: 0.9
+        }
+      })
+    };
+
+    console.log("Preparing to send request to AWS Bedrock with input:", input);
+
+    const command = new InvokeModelCommand(input);
+    const response = await bedrockClient.send(command);
+    const result = JSON.parse(Buffer.from(response.body).toString('utf-8'));
+    
+    console.log("Received response from AWS Bedrock:", result);
+
+    res.json({
+      generatedText: result.results?.[0]?.outputText || 'No content generated'
+    });
+    
   } catch (error) {
-    console.error("Gemini API error:", error);
-    res.status(500).json({ error: "Failed to generate message" });
+    console.error('Generation error:', error);
+    res.status(500).json({ 
+      message: error.message || 'Failed to generate content'
+    });
   }
 });
 

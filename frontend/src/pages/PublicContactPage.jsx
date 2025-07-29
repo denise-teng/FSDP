@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "../lib/axios";  // Corrected relative import path
+import axios from "../lib/axios";
 import { toast } from "react-hot-toast";
 import { Check, X, Mail, Phone, MapPin, Clock } from "lucide-react"; // Importing icons
 
@@ -14,6 +14,9 @@ const PublicContactPage = () => {
   });
 
   const [errors, setErrors] = useState({});
+  
+  // Define the flagged keywords
+  const flaggedKeywords = ['schedule', 'meeting', 'help', 'urgent'];
 
   const validate = (field, value) => {
     switch (field) {
@@ -23,7 +26,6 @@ const PublicContactPage = () => {
       case "email":
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Invalid email format.";
       case "phone":
-        // Regular expression to ensure phone number includes a country code with no space between country code and number
         const phoneRegex = /^\+(\d{1,3})\d{7,15}$/; // Matches: +6512345678, +11234567890
         return phoneRegex.test(value) ? "" : "Phone number must include a valid country code without spaces (e.g. +6512345678).";
       case "message":
@@ -35,11 +37,16 @@ const PublicContactPage = () => {
     }
   };
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: validate(name, value) }));
+  };
+
+  // Function to check for flagged keywords in the message
+  const checkForFlaggedKeywords = (message) => {
+    const foundKeywords = flaggedKeywords.filter(keyword => message.toLowerCase().includes(keyword.toLowerCase()));
+    return foundKeywords.length > 0 ? foundKeywords : null;
   };
 
   const handleSubmit = async (e) => {
@@ -52,8 +59,16 @@ const PublicContactPage = () => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
+    // Check if the message contains any flagged keywords
+    const flaggedKeywordsFound = checkForFlaggedKeywords(formData.message);
+
     try {
-      await axios.post("/contacts/public", formData);
+      // Send the form data along with any flagged keywords
+      await axios.post("/contacts/public", {
+        ...formData,
+        flaggedKeywords: flaggedKeywordsFound // Add flagged keywords to the submission
+      });
+      
       toast.success("Message sent! Thank you.");
       setFormData({ firstName: "", lastName: "", phone: "", email: "", subject: "", message: "" });
       setErrors({});
@@ -69,29 +84,22 @@ const PublicContactPage = () => {
 
   return (
     <div className="min-h-screen bg-neutral-100 text-black p-6 pt-24">
-      {/* Contact Me Heading */}
       <h1 className="text-6xl font-bold text-center text-black mb-4 uppercase">
         CONTACT ME
       </h1>
 
-      {/* Subtitle */}
       <p className="text-2xl text-center text-gray-600 mb-8">
         Let’s discuss your financial goals over coffee or a call.
       </p>
 
-      {/* Form and Contact Information Container */}
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-8 justify-center">
-
-        {/* Contact Information Box */}
         <div className="flex-1 bg-black p-6 rounded-lg shadow-md text-white flex flex-col items-center">
           <h2 className="text-3xl font-bold text-white mb-4">Contact Information</h2>
           
-          {/* "Start the chat" message */}
           <p className="text-center text-gray-300 text-xl mb-12">
             <em>Start the chat to begin planning your financial future wisely.</em>
           </p>
 
-          {/* Contact Information List - Left aligned */}
           <div className="flex flex-col items-start gap-6 w-full">
             <div className="flex items-center gap-3 text-2xl w-full">
               <Mail className="text-emerald-500" />
@@ -112,7 +120,6 @@ const PublicContactPage = () => {
           </div>
         </div>
 
-        {/* Contact Form */}
         <div className="flex-1 bg-white rounded-lg p-6 shadow-md">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {["firstName", "lastName", "email", "phone"].map((field) => (
@@ -144,7 +151,6 @@ const PublicContactPage = () => {
               </div>
             ))}
 
-            {/* Subject */}
             <div className="col-span-2">
               <label className="text-lg font-semibold mb-1 text-black block">
                 Select Subject <span className="text-red-500">*</span>
@@ -176,7 +182,6 @@ const PublicContactPage = () => {
               </div>
             </div>
 
-            {/* Message */}
             <div className="col-span-2">
               <div className="flex justify-between items-center">
                 <label className="text-lg text-black">

@@ -44,20 +44,18 @@ const EditEventForm = ({ event, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!validateForm()) return
 
     const updated = {
-  name: formData.name,
-  date: new Date(formData.date).toISOString(),
-  description: formData.description,
-  type: formData.type,
-  location: formData.location?.trim() || '',
-  startTime: formData.startTime || '',
-  endTime: formData.endTime || '',
-  isPermanent: formData.isPermanent
-}
-
+      name: formData.name,
+      date: new Date(formData.date).toISOString(),
+      description: formData.description,
+      type: formData.type,
+      location: formData.location?.trim() || '',
+      startTime: formData.startTime || '',
+      endTime: formData.endTime || '',
+      isPermanent: formData.isPermanent
+    }
 
     await updateEvent(event._id, updated)
     toast.success('Event updated')
@@ -65,12 +63,17 @@ const EditEventForm = ({ event, onClose }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mt-3 max-h-[75vh] overflow-y-auto pr-2">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl space-y-6 overflow-y-auto max-h-[90vh] border border-gray-200"
+    >
+      <h2 className="text-xl font-semibold text-blue-600">Edit Event</h2>
+
       <input
         name="name"
         value={formData.name}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Event Name"
         required
       />
@@ -80,7 +83,7 @@ const EditEventForm = ({ event, onClose }) => {
         name="date"
         value={formData.date}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         required
       />
 
@@ -88,7 +91,7 @@ const EditEventForm = ({ event, onClose }) => {
         name="description"
         value={formData.description}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Description (max 200 words)"
         rows={4}
       />
@@ -97,7 +100,7 @@ const EditEventForm = ({ event, onClose }) => {
         name="type"
         value={formData.type}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         required
       >
         <option value="">Select Event Type</option>
@@ -111,7 +114,7 @@ const EditEventForm = ({ event, onClose }) => {
         name="startTime"
         value={formData.startTime}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Start Time (optional)"
       />
 
@@ -120,40 +123,54 @@ const EditEventForm = ({ event, onClose }) => {
         name="endTime"
         value={formData.endTime}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="End Time (optional)"
       />
 
-      <label className="flex items-center space-x-2 text-white">
+      <label className="flex items-center space-x-2 text-gray-700">
         <input
           type="checkbox"
           name="isPermanent"
           checked={formData.isPermanent}
           onChange={handleChange}
+          className="accent-blue-500"
         />
         <span>Is Permanent</span>
       </label>
 
-      <LocationPicker
-        onLocationSelect={(coords) =>
-          setFormData((prev) => ({
-            ...prev,
-            location: coords.name
-          }))
-        }
-      />
+      <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+        <LocationPicker
+          onLocationSelect={(coords) =>
+            setFormData((prev) => ({
+              ...prev,
+              location: coords.name
+            }))
+          }
+        />
+      </div>
 
       <input
         name="location"
         value={formData.location}
         onChange={handleChange}
-        className="w-full bg-gray-700 text-white px-3 py-2 rounded"
+        className="w-full mt-2 px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
         placeholder="Location (optional)"
       />
 
-      <div className="flex gap-2">
-        <button type="submit" className="bg-green-600 px-4 py-2 rounded">Save</button>
-        <button onClick={onClose} type="button" className="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+      <div className="flex justify-end gap-4 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-4 py-2 rounded-lg shadow"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg shadow"
+        >
+          Save Changes
+        </button>
       </div>
     </form>
   )

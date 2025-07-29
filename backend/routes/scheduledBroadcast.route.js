@@ -1,6 +1,6 @@
 // backend/routes/scheduledBroadcast.route.js
 import express from 'express';
-import ScheduledBroadcast from '../models/scheduledBroadcast.model.js'; // Import the model
+import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js'; // Import the model
 
 const router = express.Router();
 

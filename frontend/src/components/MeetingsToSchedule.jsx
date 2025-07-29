@@ -20,15 +20,20 @@ const MeetingsToSchedule = () => {
 
   return (
     <div className="bg-gray-800 text-white p-6 rounded-xl shadow-md max-w-3xl mx-auto mt-6">
-      <h2 className="text-2xl font-semibold mb-6 text-center">Meetings to Schedule</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-sky-400">Meetings to Schedule</h2>
+      </div>
 
       {meetings.map((m, i) => (
-        <div key={i} className="bg-gray-700 rounded-lg p-4 mb-4 border border-gray-600 shadow-sm">
-          <div className="font-bold text-lg">{m.name}</div>
-          <div className="text-gray-300">{m.phone}</div>
+        <div
+          key={i}
+          className="bg-gray-700 rounded-xl p-5 mb-6 border border-gray-600 shadow transition hover:shadow-md"
+        >
+          <div className="font-semibold text-lg text-white">{m.name}</div>
+          <div className="text-sm text-gray-300">{m.phone}</div>
 
-          <div className="mt-2 text-sm flex items-center">
-            <span className="mr-2 text-gray-400">Rec timing: 1:00PM - 6:00PM</span>
+          <div className="mt-2 text-sm flex items-center gap-2">
+            <span className="text-sky-400">Rec timing: 1:00PM - 6:00PM</span>
             <div className="relative group inline-block cursor-pointer">
               <Info className="w-4 h-4 text-gray-400" />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow">
@@ -37,15 +42,16 @@ const MeetingsToSchedule = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-3">
+          <div className="flex flex-wrap gap-3 mt-4">
             <button
-              className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm"
+              className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1.5 rounded-full text-sm"
               onClick={() => setActiveMessage(i)}
             >
               View Message
             </button>
+
             <button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-sm"
+              className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-1.5 rounded-full text-sm"
               onClick={() => {
                 setShowSendPopup(i);
                 setSendText(`Hi ${m.name}, just checking when you'd be available to meet?`);
@@ -56,7 +62,7 @@ const MeetingsToSchedule = () => {
           </div>
 
           {activeMessage === i && (
-            <div className="bg-gray-900 border border-gray-700 mt-3 p-3 rounded relative text-gray-200">
+            <div className="bg-gray-900 border border-gray-700 mt-4 p-4 rounded relative text-gray-200">
               <p className="mb-2 italic">“Yeah sure I'd love to meet up to discuss this further!”</p>
               <button
                 className="absolute top-1 right-2 text-xs text-gray-500 hover:text-white"
@@ -68,15 +74,16 @@ const MeetingsToSchedule = () => {
           )}
 
           {showSendPopup === i && (
-            <div className="bg-gray-900 border border-gray-700 mt-3 p-3 rounded relative">
+            <div className="bg-gray-900 border border-gray-700 mt-4 p-4 rounded relative">
               <textarea
-                className="w-full bg-gray-800 text-white p-2 border border-gray-600 rounded mb-2"
+                className="w-full bg-gray-800 text-white p-3 border border-gray-600 rounded mb-3 text-sm"
                 value={sendText}
                 onChange={(e) => setSendText(e.target.value)}
+                rows={3}
               />
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded flex items-center gap-1 text-sm"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-1.5 rounded-full text-sm flex items-center gap-1"
                   onClick={() => handleSend(m.name)}
                 >
                   <Send className="w-4 h-4" />

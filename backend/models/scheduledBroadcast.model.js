@@ -1,16 +1,47 @@
+// models/scheduledBroadcast.model.js
 import mongoose from 'mongoose';
 
 const scheduledBroadcastSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    listName: { type: String, required: true },
-    channel: { type: String, required: true, enum: ['Email', 'WhatsApp', 'SMS'] },
-    tags: { type: [String] },
-    scheduledTime: { type: Date, required: true }, // When it should be sent
-    status: { type: String, enum: ['Pending', 'Sent'], default: 'Pending' },
-    recipients: { type: Number, required: true }, // e.g. the number of recipients
-    syncCalendar: { type: Boolean, default: false },
-}, { timestamps: true });
+  title: { type: String, required: true }, // Added title field
+  broadcast: { type: mongoose.Schema.Types.ObjectId, ref: 'Broadcast', required: true },
+  message: { type: String, required: true },
+  scheduledTime: { type: Date, required: true },
+  channel: { 
+    type: String, 
+    enum: ['Email', 'SMS', 'Push', 'WhatsApp'], 
+    required: true 
+  },
+  recipients: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Recipient' 
+  }],
+  status: { 
+    type: String, 
+    enum: ['Scheduled', 'Processing', 'Sent', 'Failed', 'Cancelled'], 
+    default: 'Scheduled' 
+  },
+  sentAt: Date,
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  // Added additional tracking fields
+  recipientCount: { type: Number, default: 0 },
+  successCount: { type: Number, default: 0 },
+  failureCount: { type: Number, default: 0 }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true } 
+});
 
-const ScheduledBroadcast = mongoose.model('ScheduledBroadcast', scheduledBroadcastSchema);
+// Virtual for formatted scheduled time
+scheduledBroadcastSchema.virtual('formattedTime').get(function() {
+  return this.scheduledTime.toLocaleString();
+});
 
-export default ScheduledBroadcast;
+// Pre-save hook to update recipient count
+scheduledBroadcastSchema.pre('save', function(next) {
+  if (this.isModified('recipients')) {
+    this.recipientCount = this.recipients.length;
+  }
+  next();
+});
+
+export const ScheduledBroadcast = mongoose.model('ScheduledBroadcast', scheduledBroadcastSchema);
