@@ -39,7 +39,7 @@ const ConsultationBooking = () => {
   try {
     await axios.post('/consultations/consultation-request', {
       name: formData.topic,
-      description: `Requested consultation on ${formData.topic}`,
+      description: `Requested consultation on ${formData.topic} with email ${user.email}`,
       date: formData.preferredDate,
       startTime: formData.preferredTime,
       endTime: null,
@@ -54,6 +54,7 @@ const ConsultationBooking = () => {
     toast.error(error.response?.data?.message || 'Failed to submit consultation request');
   }
 };
+
 
 
   const minDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)

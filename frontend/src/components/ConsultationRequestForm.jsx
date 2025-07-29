@@ -24,37 +24,41 @@ export default function ConsultationRequestForm({ user }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const selectedDate = new Date(formData.date);
-    const oneWeekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const selectedDate = new Date(formData.date);
+  const oneWeekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    if (selectedDate < oneWeekFromNow) {
-      toast.error('Please select a date at least 7 days from today.');
-      return;
-    }
+  if (selectedDate < oneWeekFromNow) {
+    toast.error('Please select a date at least 7 days from today.');
+    return;
+  }
 
-    try {
-      await axios.post('/api/consultation-request', {
-        ...formData,
-        userId: user._id,
-      });
+  try {
+    const finalDescription = `${formData.description} (with ${user.email})`;
 
-      toast.success('Consultation request submitted!');
-      setFormData({
-        name: '',
-        description: '',
-        date: '',
-        startTime: '',
-        endTime: '',
-        location: '',
-        email: user.email,
-      });
-    } catch (err) {
-      console.error('Request failed:', err);
-      toast.error('Failed to submit consultation request.');
-    }
-  };
+    await axios.post('/api/consultation-request', {
+      ...formData,
+      description: finalDescription,
+      userId: user._id,
+    });
+
+    toast.success('Consultation request submitted!');
+    setFormData({
+      name: '',
+      description: '',
+      date: '',
+      startTime: '',
+      endTime: '',
+      location: '',
+      email: user.email,
+    });
+  } catch (err) {
+    console.error('Request failed:', err);
+    toast.error('Failed to submit consultation request.');
+  }
+};
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-white rounded-2xl shadow-md w-full max-w-2xl mx-auto border border-gray-200">
