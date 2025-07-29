@@ -8,7 +8,8 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
 
   const msg = {
     to,
-    from: 'densie.t2910@gmail.com', // ✅ must be verified in SendGrid
+    from: 'brandieco2025@gmail.com', // ✅ this one is verified
+
     subject: 'Verify Your Email',
     html: `
       <!DOCTYPE html>

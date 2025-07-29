@@ -5,8 +5,11 @@ import fs from 'fs';
 import {
   createDraft,
   getDrafts,
-  deleteDraft,
-  editDraft
+  deleteDraft, 
+  editDraft,
+  getDeletedDrafts,
+  restoreDraft,
+  permanentlyDeleteDraft
 } from '../controllers/draft.controller.js';
 
 // Ensure uploads directory exists (this is crucial for multer to work properly)

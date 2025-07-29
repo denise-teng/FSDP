@@ -4,6 +4,25 @@ dotenv.config();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
 
+console.log('Using SendGrid API Key:', process.env.SENDGRID_API_KEY_2 ? 
+  `${process.env.SENDGRID_API_KEY_2.substring(0, 4)}...${process.env.SENDGRID_API_KEY_2.slice(-4)}` : 
+  'NOT SET');
+
+// Test the API key and get verified senders
+sgMail.send({
+    to: 'test@example.com',
+    from: 'brandieco2025@gmail.com',
+    subject: 'API Test',
+    text: 'Testing SendGrid API',
+}).catch(error => {
+    console.log('SendGrid API Key Test Results:', {
+        error: error.response?.body?.errors || error.message,
+        fullError: error.response?.body || error
+    });
+});
+
+const VERIFIED_SENDER = process.env.SENDGRID_VERIFIED_SENDER || 'brandieco2025@gmail.com';
+
 class EmailService {
     // For immediate sending (your existing function)
     static async sendEmail(to, subject, text, html) {
@@ -14,19 +33,34 @@ class EmailService {
 
         const msg = {
             to,
-            from: 'Brandieco2025@gmail.com',
+            from: {
+                email: VERIFIED_SENDER,
+                name: 'Brandie Co'  // Adding a display name might help
+            },
             subject: subject || 'No Subject',
             text: text || 'No content',
-            html: html || '<p>No content</p>'
+            html: html || '<p>No content</p>',
+            trackingSettings: {
+                clickTracking: {
+                    enable: true
+                }
+            }
         };
 
         try {
+            console.log('Attempting to send email with config:', {
+                to,
+                from: VERIFIED_SENDER,
+                subject: msg.subject
+            });
             await sgMail.send(msg);
             console.log(`✅ Sent to ${to}`);
             return { success: true };
         } catch (error) {
             console.error('Send failed to', to, {
-                error: error.response?.body?.errors || error.message
+                error: error.response?.body?.errors || error.message,
+                fullError: error.response?.body || error,
+                fromEmail: VERIFIED_SENDER
             });
             throw error;
         }
@@ -49,7 +83,10 @@ class EmailService {
 
         const msg = {
             to: validRecipients,
-            from: 'Brandieco2025@gmail.com',
+            from: {
+                email: VERIFIED_SENDER,
+                name: 'Brandie Co'
+            },
             subject: subject || 'No Subject',
             html: html || '<p>No content</p>',
             batchId: `batch_${Date.now()}`,
@@ -79,7 +116,10 @@ class EmailService {
 
         const msg = {
             to: validRecipients,
-            from: 'Brandieco2025@gmail.com',
+            from: {
+                email: VERIFIED_SENDER,
+                name: 'Brandie Co'
+            },
             subject: subject || 'No Subject',
             html: html || '<p>No content</p>',
             sendAt: Math.floor(new Date(sendAt).getTime() / 1000), // Unix timestamp

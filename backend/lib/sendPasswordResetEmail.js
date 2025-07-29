@@ -12,7 +12,7 @@ export const sendPasswordResetEmail = async ({ to, resetLink }) => {
 
   await sgMail.send({
     to,
-    from: 'densie.t2910@gmail.com',
+    from: 'brandieco2025@gmail.com', // ✅ this one is verified
     subject: 'Reset Your Brandie Password',
     html
   });

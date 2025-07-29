@@ -5,12 +5,12 @@ import EditNewsletterPage from './EditNewsletterPage';  // Assuming this is the 
 import UploadNewsletter from './UploadNewsletter';  // Assuming this is the page for uploading newsletters
 import DraftPage from './DraftsPage';  // Assuming this is the page for drafts
 import EditHomeSlotPage from './EditHomeSlotPage';  // Assuming this is the page for editing the homepage slot
+import EnhanceNewsletterPage from "../components/EnhanceNewsletterPage";
 
 const ContentGenerationPage = () => {
   const [activeSubTab, setActiveSubTab] = useState('generate'); // Default to 'generate'
 
-  // Function to render the sub-tab content
-  const renderSubTab = () => {
+const renderSubTab = () => {
     switch (activeSubTab) {
       case 'generate':
         return <GenerateMessagePage />;
@@ -20,6 +20,8 @@ const ContentGenerationPage = () => {
         return <DraftPage />;
       case 'editHomeSlot':
         return <EditHomeSlotPage />;
+      case 'enhanceNewsletter': 
+        return <EnhanceNewsletterPage />;
       default:
         return <GenerateMessagePage />;
     }
@@ -64,6 +66,17 @@ const ContentGenerationPage = () => {
           whileHover={{ scale: 1.1 }}
         >
           Upload Newsletter
+        </motion.button>
+                <motion.button
+          onClick={() => setActiveSubTab('enhanceNewsletter')}  // New button for enhancement
+          className={`px-4 py-2 rounded transition-all duration-300 ease-in-out ${
+            activeSubTab === 'enhanceNewsletter'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-emerald-600 hover:text-white'
+          }`}
+          whileHover={{ scale: 1.1 }}
+        >
+          Enhance Newsletter
         </motion.button>
         <motion.button
           onClick={() => setActiveSubTab('drafts')}
