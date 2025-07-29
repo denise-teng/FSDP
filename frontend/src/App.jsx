@@ -69,12 +69,19 @@ function App() {
         replies: 0
       };
 
+      // Add the token in the request headers
+      const token = localStorage.getItem('authToken'); // Assuming token is stored in localStorage
       axios.post("http://localhost:5000/api/engagements/log", body, {
+        headers: {
+          Authorization: `Bearer ${token}`, // Include the token here
+        },
         withCredentials: true
       }).catch(err => {
         console.error("❌ Error logging click:", err);
       });
     };
+
+
 
     const handleBeforeUnload = () => {
       const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
@@ -105,87 +112,87 @@ function App() {
 
 
 
-if (checkingAuth) return <LoadingSpinner />;
+  if (checkingAuth) return <LoadingSpinner />;
 
-return (
-  <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
-    <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0">
-        <div className='absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top, rgba(16,185,129,0.3)_0%, rgba(10,80,60,0.2)_45%, rgba(0,0,0,0.1)_100%)]' />
+  return (
+    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0">
+          <div className='absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top, rgba(16,185,129,0.3)_0%, rgba(10,80,60,0.2)_45%, rgba(0,0,0,0.1)_100%)]' />
+        </div>
       </div>
-    </div>
 
-    <div className='relative z-50 pt-20'>
-      <Navbar />
-      <Routes>
-        <Route path="/admin-home" element={
-          user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />
-        } />
-        <Route path="/" element={<HomeRouter />} />
-        <Route path="/user-home" element={<HomePage />} />
-        <Route path='/signup' element={!user ? <SignUpPage /> : <Navigate to='/' />} />
-        <Route path='/login' element={!user ? <LoginPage /> : <Navigate to='/' />} />
-        <Route path='/secret-dashboard' element={
-          user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
-        } />
-        <Route path='/category/:category' element={<CategoryPage />} />
-        <Route path='/add-contact' element={
-          user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />
-        } />
-        <Route path='/cart' element={user ? <CartPage /> : <Navigate to='/login' />} />
-        <Route path='/purchase-success' element={user ? <PurchaseSuccessPage /> : <Navigate to='/login' />} />
-        <Route path='/purchase-cancel' element={user ? <PurchaseCancelPage /> : <Navigate to='/login' />} />
-        <Route path='/secret-calendar' element={
-          user?.role === "admin" ? <CalendarPage /> : <Navigate to='/login' />
-        } />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path='/reset-password' element={<ResetPasswordPage />} />
-        <Route path='/forgot-password' element={<ForgotPasswordPage />} />
-        <Route path='/contact' element={
-          user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
-        } />
+      <div className='relative z-50 pt-20'>
+        <Navbar />
+        <Routes>
+          <Route path="/admin-home" element={
+            user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />
+          } />
+          <Route path="/" element={<HomeRouter />} />
+          <Route path="/user-home" element={<HomePage />} />
+          <Route path='/signup' element={!user ? <SignUpPage /> : <Navigate to='/' />} />
+          <Route path='/login' element={!user ? <LoginPage /> : <Navigate to='/' />} />
+          <Route path='/secret-dashboard' element={
+            user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
+          } />
+          <Route path='/category/:category' element={<CategoryPage />} />
+          <Route path='/add-contact' element={
+            user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />
+          } />
+          <Route path='/cart' element={user ? <CartPage /> : <Navigate to='/login' />} />
+          <Route path='/purchase-success' element={user ? <PurchaseSuccessPage /> : <Navigate to='/login' />} />
+          <Route path='/purchase-cancel' element={user ? <PurchaseCancelPage /> : <Navigate to='/login' />} />
+          <Route path='/secret-calendar' element={
+            user?.role === "admin" ? <CalendarPage /> : <Navigate to='/login' />
+          } />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path='/reset-password' element={<ResetPasswordPage />} />
+          <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+          <Route path='/contact' element={
+            user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
+          } />
 
-        <Route path="/broadcasts" element={<BroadcastPage />} />
-        <Route path="/drafts" element={user ? <DraftsPage /> : <Navigate to="/login" />} />
-        <Route path="/edit-draft/:id" element={user ? <EditNewsletterPage isDraft={true} /> : <Navigate to="/login" />} />
+          <Route path="/broadcasts" element={<BroadcastPage />} />
+          <Route path="/drafts" element={user ? <DraftsPage /> : <Navigate to="/login" />} />
+          <Route path="/edit-draft/:id" element={user ? <EditNewsletterPage isDraft={true} /> : <Navigate to="/login" />} />
 
-        {/* Admin Routes */}
-        <Route path='/secret-dashboard' element={user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />} />
-        <Route path="/upload-newsletter" element={user?.role === "admin" ? <UploadNewsletterPage /> : <Navigate to="/login" />} />
-        <Route path="/edit-newsletter/:id" element={user?.role === "admin" ? <EditNewsletterPage isDraft={false} /> : <Navigate to="/login" />} />
-        <Route path="/content-generation" element={<ContentGenerationPage />} />
+          {/* Admin Routes */}
+          <Route path='/secret-dashboard' element={user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />} />
+          <Route path="/upload-newsletter" element={user?.role === "admin" ? <UploadNewsletterPage /> : <Navigate to="/login" />} />
+          <Route path="/edit-newsletter/:id" element={user?.role === "admin" ? <EditNewsletterPage isDraft={false} /> : <Navigate to="/login" />} />
+          <Route path="/content-generation" element={<ContentGenerationPage />} />
 
 
-      </Routes>
-    </div>
-<Toaster
-  position="top-center"
-  toastOptions={{
-    duration: 4000,
-    style: {
-      background: '#ffffff',
-      color: '#000000',
-      border: '1px solid #e5e7eb', // optional light gray border
-      borderRadius: '8px',
-      padding: '12px 16px',
-    },
-    success: {
-      iconTheme: {
-        primary: '#10b981', // green icon
-        secondary: '#d1fae5',
-      },
-    },
-    error: {
-      iconTheme: {
-        primary: '#ef4444', // red icon
-        secondary: '#fee2e2',
-      },
-    },
-  }}
-/>
+        </Routes>
+      </div>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#ffffff',
+            color: '#000000',
+            border: '1px solid #e5e7eb', // optional light gray border
+            borderRadius: '8px',
+            padding: '12px 16px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981', // green icon
+              secondary: '#d1fae5',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444', // red icon
+              secondary: '#fee2e2',
+            },
+          },
+        }}
+      />
 
-  </div >
-);
+    </div >
+  );
 
 }
 
