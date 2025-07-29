@@ -14,7 +14,68 @@ const tabs = [
 ];
 
 const AdminHomePage = () => {
-  const [activeTab, setActiveTab] = useState('contacts');
+  const [currentUpdate, setCurrentUpdate] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Sample updates data
+  const updates = [
+    {
+      id: 1,
+      title: "New Client Onboarding",
+      description: "5 new clients completed onboarding this week",
+      date: "Today, 10:30 AM",
+      icon: <Users className="h-6 w-6 text-indigo-600" />,
+      color: "bg-indigo-100"
+    },
+    {
+      id: 2,
+      title: "Quarterly Reports",
+      description: "Q2 financial reports are now available for review",
+      date: "Yesterday, 3:45 PM",
+      icon: <BarChart2 className="h-6 w-6 text-blue-600" />,
+      color: "bg-blue-100"
+    },
+    {
+      id: 3,
+      title: "System Maintenance",
+      description: "Scheduled maintenance this Saturday from 2-4 AM",
+      date: "Jul 10, 2025",
+      icon: <LayoutDashboard className="h-6 w-6 text-green-600" />,
+      color: "bg-green-100"
+    }
+  ];
+
+  // Auto-rotate updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isHovering) {
+        setCurrentUpdate((prev) => (prev === updates.length - 1 ? 0 : prev + 1));
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isHovering]);
+
+  const nextUpdate = () => {
+    setCurrentUpdate((prev) => (prev === updates.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevUpdate = () => {
+    setCurrentUpdate((prev) => (prev === 0 ? updates.length - 1 : prev - 1));
+  };
+
+  // Engagement chart data
+  const engagementData = [
+    { month: 'Jan', value: 65 },
+    { month: 'Feb', value: 59 },
+    { month: 'Mar', value: 80 },
+    { month: 'Apr', value: 81 },
+    { month: 'May', value: 56 },
+    { month: 'Jun', value: 55 },
+    { month: 'Jul', value: 40 }
+  ];
+
+  const maxValue = Math.max(...engagementData.map(item => item.value));
 
   return (
     <div className="bg-neutral-50 min-h-screen text-black font-sans px-8 pt-24 pb-12">
