@@ -26,8 +26,8 @@ function RecentMessages() {
             setLoading(true);
             setError(null);
             
-            // Get messages from recent broadcasts endpoint
-            const response = await axios.get('broadcasts/recent');
+            // Get messages from message history endpoint
+            const response = await axios.get('broadcasts/message-history');
             console.log('API Response:', response.data); // Debug log
             
             let responseData = Array.isArray(response.data) ? 
@@ -36,7 +36,7 @@ function RecentMessages() {
 
             // Ensure we have all the required fields
             const processedMessages = responseData.map(msg => ({
-                _id: msg._id,
+                _id: msg.id || msg._id, // Try both id and _id
                 title: msg.title || 'Untitled Message',
                 content: msg.content || msg.message || '', // Try both content and message fields
                 channel: msg.channel || 'Unknown',
@@ -119,12 +119,37 @@ function RecentMessages() {
         }
         if (window.confirm('Are you sure you want to delete this message?')) {
             try {
-                await axios.delete(`broadcasts/recent/${messageId}`);
-                toast.success('Message deleted successfully');
-                fetchMessages(); // Refresh the list
+                // Debug logging for ID verification
+                console.log('Message to delete:', messageId);
+                
+                // Check if the messageId is a valid format
+                if (typeof messageId !== 'string' && !messageId.toString) {
+                    throw new Error('Invalid message ID format');
+                }
+                
+                // Convert ObjectId to string if needed
+                const id = messageId.toString();
+                
+                console.log('Deleting message with ID:', id); // Debug log
+                
+                // Using the message history delete endpoint
+                const response = await axios.delete(`broadcasts/message-history/${id}`);
+                console.log('Delete response:', response); // Debug log
+                
+                if (response.status === 200) {
+                    toast.success('Message deleted successfully');
+                    fetchMessages(); // Refresh the list
+                } else {
+                    throw new Error('Failed to delete message');
+                }
             } catch (err) {
                 console.error('Error deleting message:', err);
-                toast.error(err.response?.data?.message || 'Failed to delete message');
+                // More detailed error message
+                const errorMessage = err.response?.data?.message || 
+                                  err.response?.data?.error || 
+                                  err.message || 
+                                  'Failed to delete message. Please try again.';
+                toast.error(errorMessage);
             }
         }
     };

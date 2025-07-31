@@ -27,6 +27,20 @@ const router = express.Router();
 // ==================== PUBLIC ROUTES ====================
 router.get('/recent', getRecentBroadcasts);
 
+// Delete a message from history
+router.delete('/message-history/:id', async (req, res) => {
+    try {
+        const message = await RecentMessage.findByIdAndDelete(req.params.id);
+        if (!message) {
+            return res.status(404).json({ message: 'Message not found' });
+        }
+        res.json({ message: 'Message deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        res.status(500).json({ message: 'Error deleting message' });
+    }
+});
+
 // ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);
 

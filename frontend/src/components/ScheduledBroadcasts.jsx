@@ -175,17 +175,17 @@ export default function ScheduledBroadcasts() {
             <tbody>
               {filteredBroadcasts.map((broadcast) => (
                 <tr key={broadcast._id} className="border-t border-gray-700 hover:bg-gray-700/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-emerald-300">
-                    {broadcast.title}
+                  <td className="px-6 py-4">
+                    <span className="font-semibold text-gray-800">{broadcast.title}</span>
                   </td>
-                  <td className="px-6 py-4 text-gray-300">
+                  <td className="px-6 py-4 text-gray-600">
                     {new Date(broadcast.scheduledTime).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     {getChannelBadge(broadcast.channel)}
                   </td>
-                  <td className="px-6 py-4 text-gray-300">
-                    {broadcast.recipients?.length || 0} recipients
+                  <td className="px-6 py-4 text-gray-600">
+                    <span className="font-medium">{broadcast.recipients?.length || 0}</span> recipients
                   </td>
                   <td className="px-6 py-4">
                     {getStatusBadge(broadcast.status)}
@@ -194,13 +194,13 @@ export default function ScheduledBroadcasts() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleView(broadcast)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                        className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-1.5 rounded-xl text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-1"
                       >
                         View
                       </button>
                       <button
                         onClick={() => handleCancelBroadcast(broadcast._id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-150 flex items-center gap-1"
+                        className="bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-1.5 rounded-xl text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-1"
                       >
                         Cancel
                       </button>

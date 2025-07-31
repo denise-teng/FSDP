@@ -1,12 +1,13 @@
 axios.defaults.withCredentials = true;
-import { useEffect, useRef, useCallback } from 'react'; 
+
+import { useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Navigate, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/Navbar";
-import './index.css'; 
+import './index.css';
 import { Toaster } from 'react-hot-toast';
 import { useUserStore } from "./stores/useUserStore";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -35,9 +36,14 @@ import AdminContactPage from "./pages/AdminContactPage";
 import { throttle } from 'lodash';
 import ConsultationBooking from './pages/ConsultationBookingPage';
 
+// ✅ Set token globally for all Axios requests
+const token = localStorage.getItem('authToken');
+if (token) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
+
 function HomeRouter() {
   const { user } = useUserStore();
-  const { getCartItems } = useCartStore();
   return user?.role === 'admin' ? <Navigate to="/admin-home" /> : <HomePage />;
 }
 
@@ -54,14 +60,12 @@ function App() {
     }
   }, [checkAuth]);
 
-useEffect(() => {
-  if (!authChecked.current) {
-    authChecked.current = true;
-    stableCheckAuth().finally(() => {
-      // Any cleanup or state updates
-    });
-  }
-}, [stableCheckAuth]);
+  useEffect(() => {
+    if (!authChecked.current) {
+      authChecked.current = true;
+      stableCheckAuth();
+    }
+  }, [stableCheckAuth]);
 
   useEffect(() => {
     if (user) {
@@ -69,75 +73,38 @@ useEffect(() => {
     }
   }, [user, getCartItems]);
 
-  // Engagement tracking
+  // ✅ Engagement tracking (clicks and session duration)
   useEffect(() => {
-  if (!user || !user._id || !user.role) return;
+    if (!user || !user._id || !user.role) return;
 
-  const userId = user._id;
-  const userType = user.role;
-  const sessionStart = Date.now();
+    const userId = user._id;
+    const userType = user.role;
+    const sessionStart = Date.now();
 
-  // Throttled click handler
-  const handleClick = throttle(() => {
-    const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
-    
-    axios.post("http://localhost:5000/api/engagements/log", {
-      userId,
-      userType,
-      engagementType: "click",
-      clicks: 1,
-      engagingTime,
-      replies: 0
-    }).catch(console.error);
-  }, 1000); // Throttle to 1 second
-
-  const handleBeforeUnload = () => {
-    const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
-    
-    // Use sendBeacon for reliability during page unload
-    navigator.sendBeacon("http://localhost:5000/api/engagements/log", JSON.stringify({
-      userId,
-      userType,
-      engagementType: "session",
-      clicks: 0,
-      engagingTime,
-      replies: 0
-    }));
-  };
-
-<<<<<<< HEAD
-      // Add the token in the request headers
-      const token = localStorage.getItem('authToken'); // Assuming token is stored in localStorage
-      axios.post("http://localhost:5000/api/engagements/log", body, {
-        headers: {
-          Authorization: `Bearer ${token}`, // Include the token here
-        },
-        withCredentials: true
-      }).catch(err => {
-        console.error("❌ Error logging click:", err);
-      });
-    };
-
-
+    const handleClick = throttle(() => {
+      const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
+      axios.post("http://localhost:5000/api/engagements/log", {
+        userId,
+        userType,
+        engagementType: "click",
+        clicks: 1,
+        engagingTime,
+        replies: 0
+      }).catch(console.error);
+    }, 1000);
 
     const handleBeforeUnload = () => {
       const engagingTime = Math.floor((Date.now() - sessionStart) / 1000);
-
-      axios.post("http://localhost:5000/api/engagements/log", {
+      navigator.sendBeacon("http://localhost:5000/api/engagements/log", JSON.stringify({
         userId,
         userType,
         engagementType: "session",
         clicks: 0,
         engagingTime,
         replies: 0
-      }, {
-        withCredentials: true
-      }).catch(err => {
-        console.error("❌ Error logging session:", err);
-      });
+      }));
     };
 
-    // ✅ Add + cleanup
     document.addEventListener("click", handleClick);
     window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -147,19 +114,6 @@ useEffect(() => {
     };
   }, [user]);
 
-
-
-=======
-  document.addEventListener("click", handleClick);
-  window.addEventListener("beforeunload", handleBeforeUnload);
-
-  return () => {
-    document.removeEventListener("click", handleClick);
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-  };
-}, [user]);
-
->>>>>>> 1aa1e4036c5799e6d945d76f50d7d007ea15afeb
   if (checkingAuth) return <LoadingSpinner />;
 
   return (
@@ -170,98 +124,43 @@ useEffect(() => {
         </div>
       </div>
 
-<<<<<<< HEAD
       <div className='relative z-50 pt-20'>
         <Navbar />
         <Routes>
-          <Route path="/admin-home" element={
-            user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />
-          } />
           <Route path="/" element={<HomeRouter />} />
           <Route path="/user-home" element={<HomePage />} />
           <Route path='/signup' element={!user ? <SignUpPage /> : <Navigate to='/' />} />
           <Route path='/login' element={!user ? <LoginPage /> : <Navigate to='/' />} />
-          <Route path='/secret-dashboard' element={
-            user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
-          } />
+
+          {/* Admin routes */}
+          <Route path='/admin-home' element={user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />} />
+          <Route path='/secret-dashboard' element={user?.role === "admin" ? <AdminPage /> : <Navigate to="/login" />} />
+          <Route path='/admin-contacts' element={user?.role === "admin" ? <AdminContactPage /> : <Navigate to="/login" />} />
+          <Route path='/quick-messages' element={user?.role === "admin" ? <QuickMessagesPage /> : <Navigate to="/login" />} />
+          <Route path='/add-contact' element={user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />} />
+          <Route path='/upload-newsletter' element={user?.role === "admin" ? <UploadNewsletterPage /> : <Navigate to="/login" />} />
+          <Route path='/edit-newsletter/:id' element={user?.role === "admin" ? <EditNewsletterPage isDraft={false} /> : <Navigate to="/login" />} />
+          <Route path='/users' element={user?.role === "admin" ? <UserPage /> : <Navigate to="/login" />} />
+
+          {/* Shared/User routes */}
           <Route path='/category/:category' element={<CategoryPage />} />
-          <Route path='/add-contact' element={
-            user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />
-          } />
+          <Route path='/booking' element={<ConsultationBooking />} />
           <Route path='/cart' element={user ? <CartPage /> : <Navigate to='/login' />} />
           <Route path='/purchase-success' element={user ? <PurchaseSuccessPage /> : <Navigate to='/login' />} />
           <Route path='/purchase-cancel' element={user ? <PurchaseCancelPage /> : <Navigate to='/login' />} />
-          <Route path='/secret-calendar' element={
-            user?.role === "admin" ? <CalendarPage /> : <Navigate to='/login' />
-          } />
+          <Route path='/secret-calendar' element={user?.role === "admin" ? <CalendarPage /> : <Navigate to='/login' />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path='/reset-password' element={<ResetPasswordPage />} />
           <Route path='/forgot-password' element={<ForgotPasswordPage />} />
-          <Route path='/contact' element={
-            user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
-          } />
-
-          <Route path="/broadcasts" element={<BroadcastPage />} />
-          <Route path="/drafts" element={user ? <DraftsPage /> : <Navigate to="/login" />} />
-          <Route path="/edit-draft/:id" element={user ? <EditNewsletterPage isDraft={true} /> : <Navigate to="/login" />} />
-=======
-    <div className='relative z-50 pt-20'>
-      <Navbar />
-      <Routes>
-        <Route path="/admin-home" element={
-          user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />
-        } />
-        <Route path="/" element={<HomeRouter />} />
-        <Route path="/user-home" element={<HomePage />} />
-        <Route path='/signup' element={!user ? <SignUpPage /> : <Navigate to='/' />} />
-        <Route path='/login' element={!user ? <LoginPage /> : <Navigate to='/' />} />
-        <Route path='/secret-dashboard' element={
-          user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />
-        } />
-        <Route path='/admin-contacts' element={
-          user?.role === "admin" ? <AdminContactPage /> : <Navigate to='/login' />
-        } />
-        <Route path='/quick-messages' element={
-          user?.role === "admin" ? <QuickMessagesPage /> : <Navigate to='/login' />
-        } />
-        <Route path='/category/:category' element={<CategoryPage />} />
-        <Route path='/booking' element={<ConsultationBooking />} />
-        <Route path='/add-contact' element={
-          user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />
-        } />
-        <Route path='/broadcast' element={
-          user?.role === "admin" ? <BroadcastPage /> : <Navigate to='/' />
-        } />
-        <Route path='/cart' element={user ? <CartPage /> : <Navigate to='/login' />} />
-        <Route path='/purchase-success' element={user ? <PurchaseSuccessPage /> : <Navigate to='/login' />} />
-        <Route path='/purchase-cancel' element={user ? <PurchaseCancelPage /> : <Navigate to='/login' />} />
-        <Route path='/secret-calendar' element={
-          user?.role === "admin" ? <CalendarPage /> : <Navigate to='/login' />
-        } />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path='/reset-password' element={<ResetPasswordPage />} />
-        <Route path='/forgot-password' element={<ForgotPasswordPage />} />
-        <Route path='/contact' element={
-          user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />
-        } />
-        <Route
-  path="/users"
-  element={user?.role === "admin" ? <UserPage /> : <Navigate to="/login" />}
-/>
-
-        <Route path="/drafts" element={user ? <DraftsPage /> : <Navigate to="/login" />} />
-        <Route path="/edit-draft/:id" element={user ? <EditNewsletterPage isDraft={true} /> : <Navigate to="/login" />} />
->>>>>>> 1aa1e4036c5799e6d945d76f50d7d007ea15afeb
-
-          {/* Admin Routes */}
-          <Route path='/secret-dashboard' element={user?.role === "admin" ? <AdminPage /> : <Navigate to='/login' />} />
-          <Route path="/upload-newsletter" element={user?.role === "admin" ? <UploadNewsletterPage /> : <Navigate to="/login" />} />
-          <Route path="/edit-newsletter/:id" element={user?.role === "admin" ? <EditNewsletterPage isDraft={false} /> : <Navigate to="/login" />} />
-          <Route path="/content-generation" element={<ContentGenerationPage />} />
-
-
+          <Route path='/drafts' element={user ? <DraftsPage /> : <Navigate to="/login" />} />
+          <Route path='/edit-draft/:id' element={user ? <EditNewsletterPage isDraft={true} /> : <Navigate to="/login" />} />
+          <Route path='/contact' element={user?.role === 'admin' ? <ContactPage /> : <PublicContactPage />} />
+          <Route path='/broadcasts' element={user?.role === 'admin' ? <BroadcastPage /> : <Navigate to="/" />} />
+          <Route path='/broadcast' element={user?.role === 'admin' ? <BroadcastPage /> : <Navigate to="/" />} />
+          <Route path='/content-generation' element={<ContentGenerationPage />} />
         </Routes>
       </div>
+
       <Toaster
         position="top-center"
         toastOptions={{
@@ -269,28 +168,26 @@ useEffect(() => {
           style: {
             background: '#ffffff',
             color: '#000000',
-            border: '1px solid #e5e7eb', // optional light gray border
+            border: '1px solid #e5e7eb',
             borderRadius: '8px',
             padding: '12px 16px',
           },
           success: {
             iconTheme: {
-              primary: '#10b981', // green icon
+              primary: '#10b981',
               secondary: '#d1fae5',
             },
           },
           error: {
             iconTheme: {
-              primary: '#ef4444', // red icon
+              primary: '#ef4444',
               secondary: '#fee2e2',
             },
           },
         }}
       />
-
-    </div >
+    </div>
   );
-
 }
 
 export default App;

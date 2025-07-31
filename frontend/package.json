@@ -11,14 +11,10 @@
     "start": "vite"
   },
   "dependencies": {
-<<<<<<< HEAD
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@headlessui/react": "^2.2.6",
     "@mui/material": "^7.2.0",
-=======
-    "@headlessui/react": "^2.2.6",
->>>>>>> aee79d2 (Isaac's Commit Impleted Broadcast Sending, Implemented AI to generate broadcast list)
     "@stripe/stripe-js": "^5.10.0",
     "@tailwindcss/vite": "^4.0.12",
     "axios": "^1.8.2",
