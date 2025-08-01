@@ -5,14 +5,14 @@ import { ArrowRight, ChevronDown, X, Check, MapPin, Phone, Mail } from 'lucide-r
 import { Link } from 'react-router-dom';
 import ConsultationBooking from './ConsultationBookingPage';
 
-  const handleTags = (tags) => {
-    if (Array.isArray(tags)) {
-      return tags.map(tag => tag.trim()); // If it's an array, map and trim the values
-    } else if (typeof tags === 'string') {
-      return tags.split(',').map(tag => tag.trim()); // If it's a string, split by commas
-    }
-    return []; // Return an empty array if neither condition is met
-  };
+const handleTags = (tags) => {
+  if (Array.isArray(tags)) {
+    return tags.map(tag => tag.trim()); // If it's an array, map and trim the values
+  } else if (typeof tags === 'string') {
+    return tags.split(',').map(tag => tag.trim()); // If it's a string, split by commas
+  }
+  return []; // Return an empty array if neither condition is met
+};
 
 const testimonials = [
   {
@@ -265,10 +265,10 @@ const ServicesSection = () => {
                     </ul>
                   </div>
                   <Link to="/booking">
-  <button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition">
-    Schedule Consultation
-  </button>
-</Link>
+                    <button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition">
+                      Schedule Consultation
+                    </button>
+                  </Link>
 
                 </div>
               </motion.div>
@@ -286,37 +286,40 @@ const Footer = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState(null);
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(null);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setSubscriptionError(null);
+    setSubscriptionSuccess(null);
 
-  try {
-    const response = await fetch('http://localhost:5000/api/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      const response = await fetch('http://localhost:5000/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Subscription failed');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Subscription failed');
+      }
+
+      setSubscriptionSuccess(data.message || 'Subscription successful! Please check your email.');
+      setSubscribed(true);
+      setEmail('');
+    } catch (error) {
+      setSubscriptionError(error.message || 'Failed to process subscription. Please try again later.');
+      console.error('Subscription error:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    console.log('Success:', data);
-    setSubscribed(true);
-    setEmail(''); // Reset email field
-  } catch (error) {
-    console.error('Error:', error);
-    setError(error.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   // Handle navigation - works with or without React Router
   const navigateTo = (path) => {
@@ -368,62 +371,62 @@ const handleSubmit = async (e) => {
             </p>
 
             {/* Contact Info */}
-{/* Contact Info */}
-{/* Contact Info */}
-<div className="space-y-2 text-sm text-gray-400">
-  <a 
-    href="https://maps.google.com/?q=123+Financial+Ave,+Singapore+123456" 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="flex items-center hover:text-white transition-colors"
-  >
-    <MapPin className="w-4 h-4 mr-2" />
-    123 Financial Ave, Singapore 123456
-  </a>
-  
-  <a 
-    href="tel:+6588058250" 
-    className="flex items-center hover:text-white transition-colors"
-  >
-    <Phone className="w-4 h-4 mr-2" />
-    +65 88058250
-  </a>
-  
-  <a 
-    href="mailto:yipchuefong@gmail.com" 
-    className="flex items-center hover:text-white transition-colors"
-  >
-    <Mail className="w-4 h-4 mr-2" />
-    yipchuefong@gmail.com
-  </a>
-  <br></br>
+            {/* Contact Info */}
+            {/* Contact Info */}
+            <div className="space-y-2 text-sm text-gray-400">
+              <a
+                href="https://maps.google.com/?q=123+Financial+Ave,+Singapore+123456"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center hover:text-white transition-colors"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                123 Financial Ave, Singapore 123456
+              </a>
 
-  {/* Social Media Links */}
-  <div className="flex space-x-4 pt-2">
-    <a 
-      href="https://www.linkedin.com/in/yipcheufong/" 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="text-gray-400 hover:text-white transition-colors"
-      aria-label="LinkedIn"
-    >
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-      </svg>
-    </a>
-    <a 
-      href="https://www.instagram.com/cheufong" 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="text-gray-400 hover:text-white transition-colors"
-      aria-label="Instagram"
-    >
-      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-      </svg>
-    </a>
-  </div>
-</div>
+              <a
+                href="tel:+6588058250"
+                className="flex items-center hover:text-white transition-colors"
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                +65 88058250
+              </a>
+
+              <a
+                href="mailto:yipchuefong@gmail.com"
+                className="flex items-center hover:text-white transition-colors"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                yipchuefong@gmail.com
+              </a>
+              <br></br>
+
+              {/* Social Media Links */}
+              <div className="flex space-x-4 pt-2">
+                <a
+                  href="https://www.linkedin.com/in/yipcheufong/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://www.instagram.com/cheufong"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="Instagram"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
           </motion.div>
 
           {/* Quick Links Column */}
@@ -519,39 +522,67 @@ const handleSubmit = async (e) => {
                 Subscribe to our newsletter for financial tips, market updates, and exclusive insights.
               </p>
 
-              {subscribed ? (
-  <motion.div
-    initial={{ scale: 0.9, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1 }}
-    className="bg-green-100 border border-green-500 text-green-800 px-4 py-3 rounded-lg text-sm shadow-lg"
-  >
-    <div className="flex items-center justify-center">
-      <Check className="w-5 h-5 mr-2" />
-      Thank you for subscribing!
-    </div>
-  </motion.div>
-) : (
-  <form onSubmit={handleSubmit} className="space-y-4">
-    <div className="relative">
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Your email address"
-        className="w-full px-4 py-3 rounded-lg bg-white border border-indigo-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        required
-      />
-    </div>
-    <button
-      type="submit"
-      className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-lg text-white font-medium transition-all text-sm shadow-lg hover:shadow-xl flex items-center justify-center"
-    >
-      Subscribe Now
-      <ArrowRight className="ml-2 h-4 w-4" />
-    </button>
-  </form>
-)}
-
+              {/* Show success message if subscribed */}
+              {subscribed || subscriptionSuccess ? (
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm"
+                >
+                  <div className="flex items-center">
+                    <Check className="h-5 w-5 text-green-600 mr-2" />
+                    <div>
+                      <h3 className="font-medium text-green-800">Success!</h3>
+                      <p className="text-sm text-green-700">
+                        {subscriptionSuccess || 'Thank you for subscribing!'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Your email address"
+                      className="w-full px-4 py-3 rounded-lg bg-white border border-indigo-200 text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      required
+                    />
+                    {/* Error message display */}
+                    {subscriptionError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+                      >
+                        {subscriptionError}
+                      </motion.div>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-lg text-white font-medium transition-all text-sm shadow-lg hover:shadow-xl flex items-center justify-center"
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Subscribe Now
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
           </motion.div>
         </div>
@@ -603,7 +634,9 @@ const HomePage = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [subscriptionError, setSubscriptionError] = useState(null);
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(null);
+
 
   const visibleTestimonials = showAll
     ? testimonials
@@ -613,41 +646,48 @@ const HomePage = () => {
     fetchNewsletters();
   }, [fetchNewsletters]);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+    setSubscriptionError(null); // Clear previous subscription errors
 
-  try {
-    const response = await fetch('http://localhost:5000/api/subscribe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      const response = await fetch('http://localhost:5000/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Subscription failed');
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle 409 Conflict specifically
+        if (response.status === 409) {
+          setSubscriptionError(data.message || 'This email is already subscribed');
+        } else {
+          setError(data.message || 'Subscription failed');
+        }
+      } else {
+        setSuccess(data.message || 'Subscription successful! Please check your email.');
+        setSubscribed(true);
+        setEmail('');
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to process subscription');
+      console.error('Subscription error:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    console.log('Success:', data);
-    setSubscribed(true);
-    setEmail(''); // Reset email field
-  } catch (error) {
-    console.error('Error:', error);
-    setError(error.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
   return (
     <div className="bg-white text-gray-900 font-sans">
-    
+
       {/* Hero Section */}
       <section id="hero" className="relative bg-gradient-to-br from-indigo-50 to-blue-50 py-24 px-4">
         <div className="max-w-6xl mx-auto text-center">
@@ -731,60 +771,60 @@ const handleSubmit = async (e) => {
 
       <ServicesSection />
 
-{/* Testimonials */}
-{/* Testimonials */}
-<section id="testimonials" className="py-20 px-4 bg-gradient-to-br from-gray-50 to-white">
-  <div className="max-w-6xl mx-auto">
-    <motion.h2
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      viewport={{ once: true }}
-      className="text-4xl font-bold text-center mb-16 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600"
-    >
-      What Clients Say
-    </motion.h2>
+      {/* Testimonials */}
+      {/* Testimonials */}
+      <section id="testimonials" className="py-20 px-4 bg-gradient-to-br from-gray-50 to-white">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="text-4xl font-bold text-center mb-16 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600"
+          >
+            What Clients Say
+          </motion.h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {visibleTestimonials.map((t, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: i * 0.1 }}
-          viewport={{ once: true }}
-          className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden transform hover:-translate-y-2"
-        >
-          <div className="p-8">
-            <div className="flex items-center mb-6">
-              <img
-                src={t.avatar}
-                alt={t.name}
-                className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-indigo-100 shadow-sm"
-              />
-              <div>
-                <h3 className="font-bold text-lg text-gray-900">{t.name}</h3>
-                <p className="text-sm text-indigo-600">{t.title}</p>
-              </div>
-            </div>
-            <p className="text-gray-700 mb-6 italic text-lg leading-relaxed">&quot;{t.message}&quot;</p>
-            <p className="text-xs text-gray-500 font-medium">{t.time}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {visibleTestimonials.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden transform hover:-translate-y-2"
+              >
+                <div className="p-8">
+                  <div className="flex items-center mb-6">
+                    <img
+                      src={t.avatar}
+                      alt={t.name}
+                      className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-indigo-100 shadow-sm"
+                    />
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900">{t.name}</h3>
+                      <p className="text-sm text-indigo-600">{t.title}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-700 mb-6 italic text-lg leading-relaxed">&quot;{t.message}&quot;</p>
+                  <p className="text-xs text-gray-500 font-medium">{t.time}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </motion.div>
-      ))}
-    </div>
 
-    <div className="text-center mt-16">
-      <button
-        onClick={() => setShowAll(!showAll)}
-        className="px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-full hover:bg-indigo-600 hover:text-white transition-all duration-300 font-semibold flex items-center mx-auto shadow-md hover:shadow-lg"
-      >
-        {showAll ? 'Show Less' : 'View More Testimonials'} 
-        <ChevronDown className={`ml-2 h-5 w-5 transition-transform duration-300 ${showAll ? 'rotate-180' : ''}`} />
-      </button>
-    </div>
-  </div>
-</section>
+          <div className="text-center mt-16">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-full hover:bg-indigo-600 hover:text-white transition-all duration-300 font-semibold flex items-center mx-auto shadow-md hover:shadow-lg"
+            >
+              {showAll ? 'Show Less' : 'View More Testimonials'}
+              <ChevronDown className={`ml-2 h-5 w-5 transition-transform duration-300 ${showAll ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Newsletter Section */}
       <section className="py-20 px-4 bg-gray-50">
@@ -860,130 +900,140 @@ const handleSubmit = async (e) => {
       </section>
 
       {/* CTA Section */}
-{/* Enhanced CTA Section */}
-<section className="py-12 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
-  <div className="max-w-4xl mx-auto text-center">
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      viewport={{ once: true }}
-    >
-      <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Secure Your Financial Future?</h2>
-      <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
-        Take the first step toward financial freedom with our expert guidance.
-      </p>
-    </motion.div>
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.2 }}
-      viewport={{ once: true }}
-      className="flex flex-col sm:flex-row gap-4 justify-center"
-    >
-      <Link to="/booking">
-  <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-3 rounded-lg shadow-md transition">
-    Book Free Consultation
-  </button>
-</Link>
-
-
-      <a
-  href="files/Dollars and Sense Ebook.pdf"
-  download="Financial-Planning-Guide.pdf"
-        className="px-8 py-3 border-2 border-white/80 text-white rounded-full font-semibold hover:bg-white/10 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-        Download Planning Guide
-      </a>
-    </motion.div>
-
-    <motion.p 
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      transition={{ duration: 0.6, delay: 0.4 }}
-      viewport={{ once: true }}
-      className="text-sm text-indigo-200 mt-8"
-    >
-      No obligations. No commitments. Just expert advice.
-    </motion.p>
-  </div>
-</section>
-
-{/* Newsletter Section */}
-<section className="py-16 bg-indigo-50">
-  <div className="max-w-4xl mx-auto px-4 text-center">
-    <h2 className="text-3xl font-bold text-indigo-900 mb-4">
-      Get Financial Insights
-    </h2>
-    <p className="text-gray-600 mb-8">
-      Join our newsletter for exclusive tips and market updates
-    </p>
-
-    {subscribed ? (
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm max-w-md mx-auto"
-      >
-        <div className="flex items-center justify-center space-x-2">
-          <div className="flex-shrink-0">
-            <Check className="h-5 w-5 text-green-600" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-green-800">
-              Thank you for subscribing! Please check your email to confirm.
-            </p>
-          </div>
-        </div>
-      </motion.div>
-    ) : (
-      <div className="max-w-md mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Your email address"
-              className="w-full px-4 py-3 rounded-lg bg-white border border-indigo-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-lg text-white font-medium transition-all text-sm shadow-lg hover:shadow-xl flex items-center justify-center ${
-              isLoading ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
+      {/* Enhanced CTA Section */}
+      <section className="py-12 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </>
-            ) : (
-              <>
-                Subscribe Now
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    )}
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Secure Your Financial Future?</h2>
+            <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
+              Take the first step toward financial freedom with our expert guidance.
+            </p>
+          </motion.div>
 
-    <p className="text-xs text-gray-500 mt-4">
-      We respect your privacy. Unsubscribe at any time.
-    </p>
-  </div>
-</section>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Link to="/booking">
+              <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-3 rounded-lg shadow-md transition">
+                Book Free Consultation
+              </button>
+            </Link>
+
+
+            <a
+              href="files/Dollars and Sense Ebook.pdf"
+              download="Financial-Planning-Guide.pdf"
+              className="px-8 py-3 border-2 border-white/80 text-white rounded-full font-semibold hover:bg-white/10 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Download Planning Guide
+            </a>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="text-sm text-indigo-200 mt-8"
+          >
+            No obligations. No commitments. Just expert advice.
+          </motion.p>
+        </div>
+      </section>
+
+      {/* Newsletter Section */}
+      <section className="py-16 bg-indigo-50">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold text-indigo-900 mb-4">
+            Get Financial Insights
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Join our newsletter for exclusive tips and market updates
+          </p>
+
+          {subscribed || subscriptionSuccess ? (
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm max-w-md mx-auto"
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <div className="flex-shrink-0">
+                  <Check className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-green-800">
+                    {subscriptionSuccess || 'Thank you for subscribing!'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="max-w-md mx-auto">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Your email address"
+                    className="w-full px-4 py-3 rounded-lg bg-white border border-indigo-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* Error message display */}
+                {subscriptionError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+                  >
+                    {subscriptionError}
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-lg text-white font-medium transition-all text-sm shadow-lg hover:shadow-xl flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Subscribe Now
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-500 mt-4">
+            We respect your privacy. Unsubscribe at any time.
+          </p>
+        </div>
+      </section>
 
 
 

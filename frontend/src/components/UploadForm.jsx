@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Loader, PlusCircle, Save, Upload, Sparkles } from "lucide-react";
+import { Loader, PlusCircle, Save, Upload, Sparkles, FileText, X } from "lucide-react";
 import { useNewsletterStore } from "../stores/useNewsletterStore";
 import axios from '../lib/axios';
 import toast from "react-hot-toast";
@@ -25,6 +25,8 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   const thumbnailInputRef = useRef(null);
   const { fetchDrafts } = useDraftStore();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -155,8 +157,14 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
       }
       setForm({ ...form, [field]: file });
       setErrors(prev => ({ ...prev, [field]: null }));
+
+      // Set the uploaded file name
+      if (field === 'newsletterFile') {
+        setUploadedFileName(file.name);
+      }
     }
   };
+
 
   const handleSendToChange = (channel) => {
     setForm((prev) => {
@@ -231,21 +239,21 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     resetForm();
   };
 
-  const handleCustomThumbnailChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const thumbnailUrl = URL.createObjectURL(file);
-      setSelectedThumbnail(thumbnailUrl);
-      setForm(prev => ({ ...prev, thumbnail: file }));
-      setErrors(prev => ({ ...prev, thumbnail: null }));
-    }
-  };
-
-  const handleThumbnailSelect = (thumbnail) => {
-    setSelectedThumbnail(thumbnail);
-    setForm(prev => ({ ...prev, thumbnail: null })); // Reset file upload if selecting a preset
+const handleCustomThumbnailChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const thumbnailUrl = URL.createObjectURL(file);
+    setSelectedThumbnail(thumbnailUrl);
+    setForm(prev => ({ ...prev, thumbnail: file }));
     setErrors(prev => ({ ...prev, thumbnail: null }));
-  };
+  }
+};
+
+const handleThumbnailSelect = (thumbnail) => {
+  setSelectedThumbnail(thumbnail);
+  setForm(prev => ({ ...prev, thumbnail: null })); // Reset file upload if selecting a preset
+  setErrors(prev => ({ ...prev, thumbnail: null }));
+};
 
   const handleSaveDraft = async () => {
     if (editMode && !newsletterId) {
@@ -332,77 +340,92 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
 
 
   const handlePublish = async () => {
-    try {
-      console.log('Submitting with:', {
-        title: form.title,
-        category: form.category,
-        isDraft,
-        editMode,
-        newsletterId
-      });
+  try {
+    console.log('Submitting with:', {
+      title: form.title,
+      category: form.category,
+      isDraft,
+      editMode,
+      newsletterId
+    });
 
-      if (!validateForm()) {
-        toast.error("Please fix validation errors before publishing");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("status", "published");
-      formData.append("type", "newsletter");
-      formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
-      formData.append("sendTo", JSON.stringify(form.sendTo));
-      formData.append("audience", JSON.stringify(form.audience));
-      formData.append("content", JSON.stringify([form.content]));
-
-      if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-      if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
-
-      let response;
-      if (isDraft) {
-        // Publish from draft
-        response = await axios.post('/newsletters', formData);
-        await axios.delete(`/drafts/${newsletterId}`);
-        console.log("API Response (publishing draft):", response.data);
-      } else if (editMode) {
-        // Update existing
-        response = await axios.put(`/newsletters/${newsletterId}`, formData);
-        console.log("API Response (updating):", response.data);
-      } else {
-        // Create new
-        response = await axios.post('/newsletters', formData);
-        console.log("API Response (creating new):", response.data);
-      }
-
-      // Refresh data
-      await Promise.all([
-        useNewsletterStore.getState().fetchNewsletters(),
-        isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
-      ]);
-
-      // Navigate to uploads list instead of detail view
-      navigate('/uploads');
-      toast.success(
-        isDraft ? "Published successfully!" :
-          editMode ? "Updated successfully!" :
-            "Created successfully!"
-      );
-
-    } catch (err) {
-      console.error("Publish error details:", {
-        error: err,
-        response: err.response?.data,
-      });
-
-      const errorMessage = err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to publish newsletter";
-
-      toast.error(errorMessage);
+    if (!validateForm()) {
+      toast.error("Please fix validation errors before publishing");
+      return;
     }
-  };
+
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("category", form.category);
+    formData.append("status", "published");
+    formData.append("type", "newsletter");
+    formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
+    formData.append("sendTo", JSON.stringify(form.sendTo));
+    formData.append("audience", JSON.stringify(form.audience));
+    formData.append("content", JSON.stringify([form.content]));
+
+    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
+
+    let response;
+    if (isDraft) {
+      // Publish from draft
+      response = await axios.post('/newsletters', formData);
+      await axios.delete(`/drafts/${newsletterId}`);
+      console.log("API Response (publishing draft):", response.data);
+    } else if (editMode) {
+      // Update existing
+      response = await axios.put(`/newsletters/${newsletterId}`, formData);
+      console.log("API Response (updating):", response.data);
+    } else {
+      // Create new
+      response = await axios.post('/newsletters', formData);
+      console.log("API Response (creating new):", response.data);
+    }
+
+    // NEW: Send newsletter to subscribers if "Email" is selected
+    if (form.sendTo.includes("Email")) {
+      try {
+        await axios.post('/newsletters/send', {
+          newsletterId: response.data._id,
+          title: form.title,
+          content: form.content
+        });
+        toast.success("Newsletter sent to subscribers!");
+      } catch (sendError) {
+        console.error("Error sending newsletter:", sendError);
+        toast.error("Newsletter published but failed to send to some subscribers");
+      }
+    }
+
+    // Refresh data
+    await Promise.all([
+      useNewsletterStore.getState().fetchNewsletters(),
+      isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
+    ]);
+
+    // Navigate to uploads list instead of detail view
+    navigate('/uploads');
+    toast.success(
+      isDraft ? "Published successfully!" :
+        editMode ? "Updated successfully!" :
+          "Created successfully!"
+    );
+
+  } catch (err) {
+    console.error("Publish error details:", {
+      error: err,
+      response: err.response?.data,
+    });
+
+    const errorMessage = err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to publish newsletter";
+
+    toast.error(errorMessage);
+  }
+};
 
 
   // Helper function to create FormData
@@ -425,60 +448,60 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   };
 
 
-// Update the generateContent function in UploadForm component
-const generateContent = async () => {
-  if (!form.title.trim() && !form.newsletterFile) {
-    toast.error("Please enter a title or upload a file first");
-    return;
-  }
-
-  try {
-    setIsGenerating(true);
-    toast.loading("Analyzing content and generating newsletter...");
-    
-let base64File = null;
-if (form.newsletterFile) {
-  const fileBuffer = await form.newsletterFile.arrayBuffer();
-  base64File = btoa(
-    new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-  );
-}
-
-
-const response = await axios.post('/content/generate-content', {
-  title: form.title,
-  tags: form.tags,
-  category: form.category,
-  audience: form.audience,
-  fileName: form.newsletterFile?.name,
-  fileData: base64File
-});
-
-
-    if (!response.data?.content) {
-      throw new Error('Invalid response format from server');
+  // Update the generateContent function in UploadForm component
+  const generateContent = async () => {
+    if (!form.title.trim() && !form.newsletterFile) {
+      toast.error("Please enter a title or upload a file first");
+      return;
     }
 
-    setForm(prev => ({ 
-      ...prev, 
-      content: response.data.content 
-    }));
-    
-    toast.dismiss();
-    toast.success(response.data.documentUsed 
-      ? "Content generated from your document!" 
-      : "Content generated based on your title!");
-  } catch (error) {
-    console.error("Content generation failed:", {
-      error: error.response?.data || error.message,
-      config: error.config
-    });
-    toast.dismiss();
-    toast.error(error.response?.data?.error || "Failed to generate content");
-  } finally {
-    setIsGenerating(false);
-  }
-};
+    try {
+      setIsGenerating(true);
+      toast.loading("Analyzing content and generating newsletter...");
+
+      let base64File = null;
+      if (form.newsletterFile) {
+        const fileBuffer = await form.newsletterFile.arrayBuffer();
+        base64File = btoa(
+          new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+      }
+
+
+      const response = await axios.post('/content/generate-content', {
+        title: form.title,
+        tags: form.tags,
+        category: form.category,
+        audience: form.audience,
+        fileName: form.newsletterFile?.name,
+        fileData: base64File
+      });
+
+
+      if (!response.data?.content) {
+        throw new Error('Invalid response format from server');
+      }
+
+      setForm(prev => ({
+        ...prev,
+        content: response.data.content
+      }));
+
+      toast.dismiss();
+      toast.success(response.data.documentUsed
+        ? "Content generated from your document!"
+        : "Content generated based on your title!");
+    } catch (error) {
+      console.error("Content generation failed:", {
+        error: error.response?.data || error.message,
+        config: error.config
+      });
+      toast.dismiss();
+      toast.error(error.response?.data?.error || "Failed to generate content");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
 
 
@@ -582,6 +605,7 @@ const response = await axios.post('/content/generate-content', {
               <label className="block text-gray-700 text-sm font-medium mb-2">
                 Thumbnail {form.sendTo.includes("Homepage") && "*"}
               </label>
+
               <div className="flex gap-4 overflow-x-auto py-2">
                 {["/images/GenAI-Image01.webp", "/images/GenAI-Image02.jpg", "/images/GenAI-Image03.avif"].map((thumbnail, index) => (
                   <div
@@ -594,29 +618,49 @@ const response = await axios.post('/content/generate-content', {
                       alt={`Generated Thumbnail ${index + 1}`}
                       className="w-full h-full object-cover rounded-lg"
                     />
-                    <div className="absolute top-2 right-2 text-white bg-black/50 p-1 rounded-full">
-                      <PlusCircle className="w-5 h-5" />
-                    </div>
+                    {selectedThumbnail === thumbnail && (
+                      <div className="absolute top-2 right-2 text-white bg-black/50 p-1 rounded-full">
+                        <PlusCircle className="w-5 h-5" />
+                      </div>
+                    )}
                   </div>
                 ))}
 
-                <label className="flex-shrink-0 relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleCustomThumbnailChange}
-                    ref={thumbnailInputRef}
-                  />
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600">
-                    <PlusCircle className="w-8 h-8 mb-2" />
-                    <span className="text-sm">Upload Custom</span>
+                {selectedThumbnail && selectedThumbnail.startsWith('blob:') ? (
+                  <div className="relative flex-shrink-0 w-32 h-32 rounded-xl border-2 border-indigo-500 ring-2 ring-indigo-200 overflow-hidden">
+                    <img
+                      src={selectedThumbnail}
+                      alt="Selected thumbnail"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={() => {
+                        setSelectedThumbnail(null);
+                        if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+                      }}
+                      className="absolute top-2 right-2 bg-white/80 p-1 rounded-full hover:bg-white"
+                    >
+                      <X className="w-4 h-4 text-gray-700" />
+                    </button>
                   </div>
-                </label>
+                ) : (
+                  <label className="flex-shrink-0 relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCustomThumbnailChange}
+                      ref={thumbnailInputRef}
+                    />
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600">
+                      <PlusCircle className="w-8 h-8 mb-2" />
+                      <span className="text-sm">Upload Custom</span>
+                    </div>
+                  </label>
+                )}
               </div>
               {errors.thumbnail && <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>}
             </div>
-
             {/* Newsletter File Upload */}
             <div>
               <label className="block text-gray-700 text-sm font-medium mb-2">
@@ -625,40 +669,62 @@ const response = await axios.post('/content/generate-content', {
               <label className="block">
                 <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed ${errors.newsletterFile ? 'border-red-500' : 'border-gray-300'} rounded-xl hover:border-indigo-400 transition-colors`}>
                   <div className="space-y-1 text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <div className="flex text-sm text-gray-600">
-                      <label
-                        htmlFor="file-upload"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
-                      >
-                        <span>Upload a file</span>
-                        <input
-                          id="file-upload"
-                          type="file"
-                          accept=".pdf,.docx"
-                          onChange={(e) => handleFileChange(e, 'newsletterFile')}
-                          className="sr-only"
-                          ref={fileInputRef}
-                        />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      PDF or DOCX up to 10MB
-                    </p>
+                    {uploadedFileName || existingFile ? (
+                      <div className="text-center">
+                        <FileText className="mx-auto h-12 w-12 text-indigo-500" />
+                        <p className="mt-2 text-sm text-gray-900">
+                          {uploadedFileName || (existingFile && "Current file: " + existingFile.split('/').pop())}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadedFileName("");
+                            setForm(prev => ({ ...prev, newsletterFile: null }));
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+                        >
+                          Change file
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="flex text-sm text-gray-600">
+                          <label
+                            htmlFor="file-upload"
+                            className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
+                          >
+                            <span>Upload a file</span>
+                            <input
+                              id="file-upload"
+                              type="file"
+                              accept=".pdf,.docx"
+                              onChange={(e) => handleFileChange(e, 'newsletterFile')}
+                              className="sr-only"
+                              ref={fileInputRef}
+                            />
+                          </label>
+                          <p className="pl-1">or drag and drop</p>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          PDF or DOCX up to 10MB
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </label>
@@ -673,37 +739,36 @@ const response = await axios.post('/content/generate-content', {
             </div>
 
             {/* Content Field with Auto-Generate Button */}
-                    <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-gray-700 text-sm font-medium">Content*</label>
-            <button
-              type="button"
-              onClick={generateContent}
-              disabled={isGenerating}
-              className={`flex items-center gap-2 text-sm ${
-                isGenerating 
-                  ? 'bg-gray-200 cursor-not-allowed' 
-                  : 'bg-indigo-100 hover:bg-indigo-200'
-              } text-indigo-700 px-3 py-1 rounded-lg transition-colors`}
-            >
-              {isGenerating ? (
-                <Loader className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {isGenerating ? "Generating..." : "Auto-generate"}
-            </button>
-          </div>
-          <textarea
-            name="content"
-            value={form.content}
-            onChange={handleChange}
-            rows={6}
-            className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="Write your content or click 'Auto-generate'..."
-            required
-          />
-        </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-gray-700 text-sm font-medium">Content*</label>
+                <button
+                  type="button"
+                  onClick={generateContent}
+                  disabled={isGenerating}
+                  className={`flex items-center gap-2 text-sm ${isGenerating
+                    ? 'bg-gray-200 cursor-not-allowed'
+                    : 'bg-indigo-100 hover:bg-indigo-200'
+                    } text-indigo-700 px-3 py-1 rounded-lg transition-colors`}
+                >
+                  {isGenerating ? (
+                    <Loader className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isGenerating ? "Generating..." : "Auto-generate"}
+                </button>
+              </div>
+              <textarea
+                name="content"
+                value={form.content}
+                onChange={handleChange}
+                rows={6}
+                className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Write your content or click 'Auto-generate'..."
+                required
+              />
+            </div>
 
             {/* Buttons */}
             <div className="flex gap-4 pt-4">

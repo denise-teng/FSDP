@@ -2,7 +2,14 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { createNewsletter, getNewsletters, deleteNewsletter, updateNewsletter } from '../controllers/newsletter.controller.js';
+import { 
+  createNewsletter,
+  getNewsletters,
+  deleteNewsletter,
+  updateNewsletter,
+  createOrUpdateHomepageSlot,
+  sendNewsletterToSubscribers // Add this
+} from '../controllers/newsletter.controller.js';
 import mongoose from 'mongoose'; 
 import Newsletter from '../models/newsletter.model.js';
 
@@ -182,3 +189,6 @@ router.post('/slots', async (req, res) => {
 
 
 export default router;
+
+
+router.post('/:id/send', sendNewsletterToSubscribers);
