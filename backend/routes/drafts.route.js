@@ -44,11 +44,20 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Create multer instance with the defined storage and file filter
 const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }  // Max size 10MB for files
+  storage: multer.diskStorage({
+    destination: 'uploads/',
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    }
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'thumbnail' && !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only images are allowed for thumbnails'), false);
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
 const router = express.Router();

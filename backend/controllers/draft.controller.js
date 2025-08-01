@@ -27,53 +27,67 @@ const ensureArray = (data) => {
   return [data];  // Convert single values into an array
 };
 
-// Create a new draft
 export const createDraft = async (req, res) => {
   console.log('RAW REQUEST BODY:', req.body);
+  console.log('FILES:', req.files);
 
   try {
-    // Validate category field
-    const validCategories = ['Financial Planning', 'Insurance', 'Estate Planning', 'Tax Relief'];
-    const category = String(req.body.category || '').trim();
+    // Enhanced ensureArray function that handles both FormData and JSON
+    const ensureArray = (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data.map(String);
+      
+      // Handle JSON strings
+      if (typeof data === 'string') {
+        try {
+          const parsed = JSON.parse(data);
+          return Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+        } catch {
+          return data.split(',').map(item => item.trim()).filter(item => item);
+        }
+      }
+      return [String(data)];
+    };
 
-    if (!validCategories.includes(category)) {
-      return res.status(400).json({
-        error: `Invalid category. Must be one of: ${validCategories.join(', ')}`
-      });
-    }
-
-    // Process fields using the ensureArray function for tags, sendTo, audience, and content
+    // Process all fields
     const draftData = {
       title: String(req.body.title || ''),
+      content: ensureArray(req.body.content),
       tags: ensureArray(req.body.tags),
       sendTo: ensureArray(req.body.sendTo),
       audience: ensureArray(req.body.audience),
-      content: ensureArray(req.body.content),
-      category, // Use the validated category
-      status: "draft", // Default to 'draft' status
-      type: "newsletter", // Default to 'newsletter' type
+      category: req.body.category || 'General',
+      status: "draft",
+      type: req.body.type || "generated",
       newsletterFilePath: req.files?.newsletterFile?.[0]?.path?.replace(/\\/g, '/'),
-      thumbnailPath: req.files?.thumbnail?.[0]?.path?.replace(/\\/g, '/'),
+      thumbnailPath: req.files?.thumbnail?.[0]?.path?.replace(/\\/g, '/')
     };
 
-    console.log('PROCESSED DATA:', draftData);  // Check processed data before inserting into DB
+    console.log('PROCESSED DRAFT DATA:', draftData);
 
     // Validate required fields
     if (!draftData.title.trim()) {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    // Create the draft in the database
+    // Create the draft
     const draft = await Draft.create(draftData);
+    
     res.status(201).json({
       message: 'Draft created successfully!',
       draft
     });
+
   } catch (error) {
-    console.error('FULL ERROR:', error);
+    console.error('Create draft error:', {
+      message: error.message,
+      stack: error.stack,
+      errors: error.errors
+    });
+    
     res.status(400).json({
       error: "Validation failed",
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

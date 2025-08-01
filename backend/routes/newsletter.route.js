@@ -179,4 +179,6 @@ router.post('/slots', async (req, res) => {
     });
   }
 });
+
+
 export default router;

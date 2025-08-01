@@ -43,6 +43,8 @@ import deletedDraftRoutes from './routes/deleted_draft.route.js';
 import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
 import consultationRoutes from './routes/consultation.routes.js';
 import articlesRoutes from './routes/articles.route.js';
+import summariseContentRoutes from './routes/summarise_content.route.js';
+
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
 import { analyzeMessagesWithBedrock } from './ai/awsBedrockAnalysis.js';
@@ -146,6 +148,8 @@ app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscr
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use('/api/articles', articlesRoutes);
+app.use('/api/content', summariseContentRoutes);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

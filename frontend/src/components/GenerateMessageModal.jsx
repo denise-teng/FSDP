@@ -2,13 +2,19 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../lib/client_backup';
 import { FiCopy, FiRadio, FiCheck, FiFileText } from 'react-icons/fi';
+import { useDraftStore } from '../stores/useDraftsStore';
+import axios from 'axios';
 
 const GenerateMessageModal = ({ onClose }) => {
   const [prompt, setPrompt] = useState("");
   const [generatedMessage, setGeneratedMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  // Get the addDraft function from your store
+  const { addDraft } = useDraftStore();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -72,7 +78,7 @@ const GenerateMessageModal = ({ onClose }) => {
         document.body.removeChild(textarea);
         if (!success) throw new Error('Copy failed');
       }
-      
+
       setCopied(true);
       toast.success(
         <div className="flex items-center">
@@ -86,7 +92,7 @@ const GenerateMessageModal = ({ onClose }) => {
           className: 'bg-green-50 text-green-800 font-medium'
         }
       );
-      
+
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       toast.error(
@@ -101,23 +107,85 @@ const GenerateMessageModal = ({ onClose }) => {
     }
   };
 
-  const handleSaveToDraft = () => {
+  const handleSaveToDraft = async () => {
     if (!generatedMessage) {
-      toast.error("No message to save as draft", {
-        className: 'bg-red-50 text-red-800 font-medium'
-      });
+      toast.error("No message to save as draft");
       return;
     }
-    
-    // Here you would typically save to your database
-    toast.success("Saved to drafts!", {
-      className: 'bg-green-50 text-green-800 font-medium'
-    });
+
+    setSaving(true);
+    try {
+      const formData = new FormData();
+
+      const validCategories = ['Financial Planning', 'Insurance', 'Estate Planning', 'Tax Relief'];
+      const defaultCategory = validCategories[0];
+
+      const draftTitle = `Generated Email - ${new Date().toLocaleString()}`;
+
+      formData.append('title', draftTitle);
+      formData.append('content', JSON.stringify([generatedMessage]));
+      formData.append('type', 'generated');
+      formData.append('status', 'draft');
+      formData.append('tags', JSON.stringify(['ai-generated']));
+      formData.append('sendTo', JSON.stringify([]));
+      formData.append('audience', JSON.stringify([]));
+      formData.append('category', defaultCategory);
+
+      const response = await axios.post('/api/drafts', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      // Show success toast
+      toast.success(
+        <div className="flex items-center">
+          <FiCheck className="text-green-500 mr-2" />
+          <span>Saved "{draftTitle}" to drafts!</span>
+        </div>,
+        {
+          duration: 2000,
+          position: 'top-center',
+          style: {
+            background: '#f0fdf4',
+            color: '#166534',
+            fontWeight: 500,
+          },
+          iconTheme: {
+            primary: '#16a34a',
+            secondary: '#fff',
+          },
+        }
+      );
+
+      // Refresh after toast disappears
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+      return response.data;
+    } catch (error) {
+      console.error('Save error:', error.response?.data || error.message);
+      toast.error(
+        error.response?.data?.message || "Failed to save draft",
+        {
+          duration: 4000,
+          position: 'top-center',
+          style: {
+            background: '#fef2f2',
+            color: '#991b1b',
+            fontWeight: 500,
+          },
+        }
+      );
+      throw error;
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDone = () => {
-    window.location.reload(); // Refresh the page
-    onClose(); // Close the modal if needed
+    onClose();
   };
 
   return (
@@ -142,11 +210,10 @@ const GenerateMessageModal = ({ onClose }) => {
             <button
               onClick={handleGenerate}
               disabled={loading || !prompt.trim()}
-              className={`font-semibold py-2 px-6 rounded-xl hover:scale-105 transition-transform shadow ${
-                loading || !prompt.trim()
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
-              }`}
+              className={`font-semibold py-2 px-6 rounded-xl hover:scale-105 transition-transform shadow ${loading || !prompt.trim()
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
+                }`}
             >
               {loading ? (
                 <span className="flex items-center">
@@ -185,10 +252,22 @@ const GenerateMessageModal = ({ onClose }) => {
               <div className="relative group">
                 <button
                   onClick={handleSaveToDraft}
-                  className="p-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 shadow flex items-center"
+                  disabled={saving}
+                  className={`p-2 rounded-xl shadow flex items-center ${saving
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-600'
+                    }`}
                   aria-label="Save to draft"
                 >
-                  <FiFileText className="h-5 w-5 text-indigo-600" />
+                  {saving ? (
+                    <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <FiFileText className="h-5 w-5" />
+                  )}
+                  <span className="ml-1 text-sm">{saving ? 'Saving...' : 'Save'}</span>
                 </button>
                 <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                   Save to Draft
@@ -198,13 +277,14 @@ const GenerateMessageModal = ({ onClose }) => {
               {/* Broadcast button with tooltip */}
               <div className="relative group">
                 <button
-                  className="p-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 shadow"
+                  className="p-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 shadow flex items-center"
                   aria-label="Broadcast"
                 >
                   <FiRadio className="h-5 w-5 text-indigo-600" />
+                  <span className="ml-1 text-sm">Send</span>
                 </button>
                 <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  Broadcast
+                  Broadcast Message
                 </span>
               </div>
 
@@ -212,11 +292,10 @@ const GenerateMessageModal = ({ onClose }) => {
               <div className="relative group">
                 <button
                   onClick={() => handleCopy(generatedMessage)}
-                  className={`p-2 rounded-xl shadow transition-colors flex items-center ${
-                    copied 
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-blue-100 hover:bg-blue-200 text-blue-600'
-                  }`}
+                  className={`p-2 rounded-xl shadow transition-colors flex items-center ${copied
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-blue-100 hover:bg-blue-200 text-blue-600'
+                    }`}
                   aria-label="Copy"
                 >
                   {copied ? (
@@ -225,7 +304,10 @@ const GenerateMessageModal = ({ onClose }) => {
                       <span className="text-sm">Copied!</span>
                     </>
                   ) : (
-                    <FiCopy className="h-5 w-5" />
+                    <>
+                      <FiCopy className="h-5 w-5 mr-1" />
+                      <span className="text-sm">Copy</span>
+                    </>
                   )}
                 </button>
                 {!copied && (
