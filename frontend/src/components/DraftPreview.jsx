@@ -14,20 +14,14 @@ const DraftPreview = ({ draft, onClose }) => {
   } = draft;
 
   const getFileUrl = (path) => {
-    if (!path) {
-      console.warn("No path provided");
-      return null;
-    }
+    if (!path) return null;
 
-    // Clean the file path and prepend with the correct backend base URL
     const cleanPath = String(path)
       .replace(/^[\\/]+/, '')
       .replace(/\\/g, '/')
       .replace(/^uploads\//, '');
 
-    // Ensure the URL points to your backend (e.g., http://localhost:5000)
-    const baseUrl = 'http://localhost:5000';  // Replace with your backend URL if different
-
+    const baseUrl = 'http://localhost:5000';
     return `${baseUrl}/uploads/${cleanPath}`;
   };
 
@@ -48,55 +42,61 @@ const DraftPreview = ({ draft, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg max-w-lg w-full relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full relative border border-gray-200">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-white hover:text-red-500 text-2xl font-bold"
+          className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl font-bold"
         >
           <X />
         </button>
 
         {/* Title */}
-        <h3 className="text-2xl font-semibold text-emerald-400 mb-4 text-center">{title || "Untitled"}</h3>
+        <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+          {title || "Untitled"}
+        </h3>
 
-        {/* Information (Send To, Audience, Category) */}
+        {/* Info */}
         <div className="grid grid-cols-1 gap-4 mb-4">
           <div>
-            <p className="text-sm text-gray-300">Send To:</p>
-            <p className="text-gray-200">{formatList(sendTo)}</p>
+            <p className="text-sm text-gray-500 font-medium">Send To:</p>
+            <p className="text-gray-700">{formatList(sendTo)}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-300">Audience:</p>
-            <p className="text-gray-200">{formatList(audience)}</p>
+            <p className="text-sm text-gray-500 font-medium">Audience:</p>
+            <p className="text-gray-700">{formatList(audience)}</p>
           </div>
+          {category && (
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Category:</p>
+              <p className="text-gray-700">{category}</p>
+            </div>
+          )}
         </div>
-
-        {/* Category */}
-        {category && <p className="text-sm text-gray-300 mb-4">Category: {category}</p>}
 
         {/* Thumbnail */}
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}
             alt="Thumbnail"
-            className="w-full max-h-48 object-cover rounded-lg mb-4 border-4 border-gray-700"
+            className="w-full max-h-48 object-cover rounded-xl mb-4 border border-gray-300"
             onError={(e) => {
               e.target.onerror = null;
               e.target.src = "/placeholder-thumbnail.jpg";
-              e.target.className = "w-full h-48 bg-gray-700 object-contain p-4 rounded-lg mb-4";
+              e.target.className =
+                "w-full h-48 bg-gray-100 object-contain p-4 rounded-xl mb-4";
             }}
           />
         ) : (
-          <div className="w-full h-48 bg-gray-700 flex items-center justify-center mb-4 rounded-lg">
+          <div className="w-full h-48 bg-gray-100 flex items-center justify-center mb-4 rounded-xl">
             <span className="text-gray-400">No thumbnail available</span>
           </div>
         )}
 
-        {/* Content Section */}
+        {/* Content */}
         {content && (
-          <div className="text-gray-200 whitespace-pre-wrap mb-4">
+          <div className="text-gray-700 whitespace-pre-wrap mb-4 text-sm border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-60 overflow-y-auto">
             {Array.isArray(content) ? content.join('\n') : content}
           </div>
         )}
@@ -107,12 +107,12 @@ const DraftPreview = ({ draft, onClose }) => {
             href={fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="block w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-600 text-white text-center rounded-lg transition-all duration-200"
+            className="block w-full py-2 px-4 bg-indigo-500 hover:bg-indigo-600 text-white text-center rounded-xl transition-all duration-200"
           >
-            View Draft File
+            Download Draft File
           </a>
         ) : (
-          <div className="text-red-400 italic text-center py-2">
+          <div className="text-red-500 italic text-center py-2">
             Draft file not available.
           </div>
         )}
@@ -122,3 +122,4 @@ const DraftPreview = ({ draft, onClose }) => {
 };
 
 export default DraftPreview;
+

@@ -423,208 +423,246 @@ useEffect(() => {
       return formData;
     };
     return (
-      <motion.div
-        className="bg-gray-800 shadow-lg rounded-lg p-8 mb-8 max-w-xl mx-auto"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-      >
-        <h2 className="text-2xl font-semibold mb-6 text-emerald-300">
-          {editMode ? "Edit Newsletter" : "Upload Newsletter"}
-        </h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-800 p-6">
+      <div className="max-w-4xl mx-auto">
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-          {/* Title Field */}
-          <div>
-            <label className="text-gray-300 block mb-1">Title*</label>
-            <input
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              className={`w-full bg-gray-700 border ${errors.title ? 'border-red-500' : 'border-gray-600'} text-white px-3 py-2 rounded`}
-              required
-            />
-            {errors.title && <p className="text-red-400 text-sm mt-1">{errors.title}</p>}
-          </div>
-
-          {/* Tags Field */}
-          <div>
-            <label className="text-gray-300 block mb-1">Tags*</label>
-            <input
-              name="tags"
-              value={form.tags}
-              onChange={handleChange}
-              className={`w-full bg-gray-700 border ${errors.tags ? 'border-red-500' : 'border-gray-600'} text-white px-3 py-2 rounded`}
-              required
-            />
-            {errors.tags && <p className="text-red-400 text-sm mt-1">{errors.tags}</p>}
-          </div>
-
-          {/* Category Field */}
-          <div>
-            <label className="text-gray-300 block mb-1">Category*</label>
-            <select
-              name="category"
-              value={form.category}
-              onChange={handleChange}
-              className="w-full bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded"
-              required
-            >
-              <option value="">Select a category</option>
-              <option value="Financial Planning">Financial Planning</option>
-              <option value="Insurance">Insurance</option>
-              <option value="Estate Planning">Estate Planning</option>
-              <option value="Tax Relief">Tax Relief</option>
-            </select>
-            {!form.category && <p className="text-red-400 text-sm mt-1">Please select a category</p>}
-          </div>
-
-          {/* Send To Channels */}
-          <div>
-            <label className="text-gray-300 block mb-1">Send To Channels*</label>
-            <div className="flex flex-wrap gap-2">
-              {sendToOptions.map((option) => (
-                <label key={option} className="flex items-center text-gray-200">
-                  <input
-                    type="checkbox"
-                    checked={form.sendTo.includes(option)}
-                    onChange={() => handleSendToChange(option)}
-                    className="mr-2"
-                  />
-                  {option}
-                </label>
-              ))}
+        {/* Main Form Card */}
+        <motion.div
+          className="bg-white/90 rounded-2xl shadow-xl border border-gray-100/50 p-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+            {/* Title Field */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Title*</label>
+              <input
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                className={`w-full bg-gray-50 border ${errors.title ? 'border-red-500' : 'border-gray-300'} text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                required
+              />
+              {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
             </div>
-            {errors.sendTo && <p className="text-red-400 text-sm mt-1">{errors.sendTo}</p>}
-          </div>
 
-          {/* Audience Segments */}
-          <div>
-            <label className="text-gray-300 block mb-1">Audience Segments*</label>
-            <div className="flex flex-wrap gap-2">
-              {audienceSegments.map((segment) => (
-                <label key={segment} className="flex items-center text-gray-200">
-                  <input
-                    type="checkbox"
-                    checked={form.audience.includes(segment)}
-                    onChange={() => handleCheckboxChange(segment)}
-                    className="mr-2"
-                  />
-                  {segment}
-                </label>
-              ))}
+            {/* Tags Field */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Tags*</label>
+              <input
+                name="tags"
+                value={form.tags}
+                onChange={handleChange}
+                className={`w-full bg-gray-50 border ${errors.tags ? 'border-red-500' : 'border-gray-300'} text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
+                required
+              />
+              {errors.tags && <p className="text-red-500 text-sm mt-1">{errors.tags}</p>}
             </div>
-            {errors.audience && <p className="text-red-400 text-sm mt-1">{errors.audience}</p>}
-          </div>
 
-          {/* Thumbnail Selection */}
-          <div>
-            <label className="block text-gray-300 mb-1">
-              Thumbnail {form.sendTo.includes("Homepage") && "*"}
-            </label>
-            <div className="flex gap-4 overflow-x-auto">
-              {["/images/GenAI-Image01.webp", "/images/GenAI-Image02.jpg", "/images/GenAI-Image03.avif"].map((thumbnail, index) => (
-                <div
-                  key={index}
-                  className={`relative w-32 h-32 rounded-lg border ${selectedThumbnail === thumbnail ? "border-emerald-500" : "border-gray-600"}`}
-                  onClick={() => handleThumbnailSelect(thumbnail)}
-                >
-                  <img
-                    src={thumbnail}
-                    alt={`Generated Thumbnail ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
+            {/* Category Field */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Category*</label>
+              <select
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+                className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              >
+                <option value="">Select a category</option>
+                <option value="Financial Planning">Financial Planning</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Estate Planning">Estate Planning</option>
+                <option value="Tax Relief">Tax Relief</option>
+              </select>
+              {!form.category && <p className="text-red-500 text-sm mt-1">Please select a category</p>}
+            </div>
+
+            {/* Send To Channels */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Send To Channels*</label>
+              <div className="flex flex-wrap gap-3">
+                {sendToOptions.map((option) => (
+                  <label key={option} className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={form.sendTo.includes(option)}
+                      onChange={() => handleSendToChange(option)}
+                      className="h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-gray-700">{option}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.sendTo && <p className="text-red-500 text-sm mt-1">{errors.sendTo}</p>}
+            </div>
+
+            {/* Audience Segments */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Audience Segments*</label>
+              <div className="flex flex-wrap gap-3">
+                {audienceSegments.map((segment) => (
+                  <label key={segment} className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={form.audience.includes(segment)}
+                      onChange={() => handleCheckboxChange(segment)}
+                      className="h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-gray-700">{segment}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.audience && <p className="text-red-500 text-sm mt-1">{errors.audience}</p>}
+            </div>
+
+            {/* Thumbnail Selection */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">
+                Thumbnail {form.sendTo.includes("Homepage") && "*"}
+              </label>
+              <div className="flex gap-4 overflow-x-auto py-2">
+                {["/images/GenAI-Image01.webp", "/images/GenAI-Image02.jpg", "/images/GenAI-Image03.avif"].map((thumbnail, index) => (
+                  <div
+                    key={index}
+                    className={`relative flex-shrink-0 w-32 h-32 rounded-xl border-2 ${selectedThumbnail === thumbnail ? "border-indigo-500 ring-2 ring-indigo-200" : "border-gray-200"} cursor-pointer transition-all`}
+                    onClick={() => handleThumbnailSelect(thumbnail)}
+                  >
+                    <img
+                      src={thumbnail}
+                      alt={`Generated Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <div className="absolute top-2 right-2 text-white bg-black/50 p-1 rounded-full">
+                      <PlusCircle className="w-5 h-5" />
+                    </div>
+                  </div>
+                ))}
+
+                <label className="flex-shrink-0 relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCustomThumbnailChange}
+                    ref={thumbnailInputRef}
                   />
-                  <div className="absolute top-2 right-2 text-white bg-black bg-opacity-50 p-1 rounded-full">
-                    <PlusCircle className="w-6 h-6" />
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600">
+                    <PlusCircle className="w-8 h-8 mb-2" />
+                    <span className="text-sm">Upload Custom</span>
+                  </div>
+                </label>
+              </div>
+              {errors.thumbnail && <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>}
+            </div>
+
+            {/* Newsletter File Upload */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">
+                Newsletter File* {!editMode && "(PDF or DOCX)"}
+              </label>
+              <label className="block">
+                <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed ${errors.newsletterFile ? 'border-red-500' : 'border-gray-300'} rounded-xl hover:border-indigo-400 transition-colors`}>
+                  <div className="space-y-1 text-center">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <div className="flex text-sm text-gray-600">
+                      <label
+                        htmlFor="file-upload"
+                        className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
+                      >
+                        <span>Upload a file</span>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          accept=".pdf,.docx"
+                          onChange={(e) => handleFileChange(e, 'newsletterFile')}
+                          className="sr-only"
+                          ref={fileInputRef}
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      PDF or DOCX up to 10MB
+                    </p>
                   </div>
                 </div>
-              ))}
-
-              <div className="relative w-32 h-32 border border-gray-600 rounded-lg">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                  onChange={handleCustomThumbnailChange}  // This is where it's used
-                  ref={thumbnailInputRef}
-                />
-                <div className="w-full h-full flex items-center justify-center bg-gray-700 rounded-lg">
-                  <span className="text-white">+ Upload Custom</span>
-                </div>
-              </div>
+              </label>
+              {errors.newsletterFile && <p className="text-red-500 text-sm mt-1">{errors.newsletterFile}</p>}
+              {editMode && (
+                <p className="text-sm text-gray-500 mt-2">
+                  {form.newsletterFile
+                    ? "New file selected (will replace current file)"
+                    : "Leave blank to keep the existing file unchanged"}
+                </p>
+              )}
             </div>
-            {errors.thumbnail && <p className="text-red-400 text-sm mt-1">{errors.thumbnail}</p>}
-          </div>
 
-          <div>
-            <label className="block text-gray-300 mb-1">
-              Newsletter File* {!editMode && "(PDF or DOCX)"}
-            </label>
-            <input
-              type="file"
-              accept=".pdf,.docx"
-              onChange={(e) => handleFileChange(e, 'newsletterFile')}
-              className={`w-full text-gray-200 ${errors.newsletterFile ? 'border-red-500' : ''}`}
-              ref={fileInputRef}
-            />
-            {errors.newsletterFile && <p className="text-red-400 text-sm mt-1">{errors.newsletterFile}</p>}
-            {editMode && (
-              <p className="text-sm text-gray-400 mt-2">
-                {form.newsletterFile
-                  ? "New file selected (will replace current file)"
-                  : "Leave blank to keep the existing file unchanged"}
-              </p>
-            )}
-          </div>
+            {/* Content Field */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">Content*</label>
+              <textarea
+                name="content"
+                value={form.content}
+                onChange={handleChange}
+                rows={6}
+                className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              />
+            </div>
 
-          {/* Content Field */}
-          <div>
-            <label className="text-gray-300 block mb-1">Content*</label>
-            <textarea
-              name="content"
-              value={form.content}
-              onChange={handleChange}
-              className="w-full bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded"
-              required
-            />
-          </div>
+            {/* Buttons */}
+            <div className="flex gap-4 pt-4">
+              {/* Save Button */}
+              <button
+                type="button"
+                onClick={isDraft ? handleSaveDraft : handleSaveToDrafts}
+                disabled={loading}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'}`}
+              >
+                <Save className="h-5 w-5" />
+                <span className="font-medium">
+                  {isDraft ? "Save Changes" : "Save to Drafts"}
+                </span>
+              </button>
 
-        </form>
+              {/* Publish Button */}
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={loading}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'}`}
+              >
+                <Upload className="h-5 w-5" />
+                <span className="font-medium">Publish</span>
+              </button>
+            </div>
+          </form>
 
-        <div className="flex gap-4 pt-4">
-          {/* Save Button - behaves differently based on context */}
-          <button
-            type="button"
-            onClick={isDraft ? handleSaveDraft : handleSaveToDrafts}
-            disabled={loading}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
-            <Save className="h-5 w-5" />
-            <span className="font-medium">
-              {isDraft ? "Save Changes" : "Save to Drafts"}
-            </span>
-          </button>
+          {newNewsletter && (
+            <div className="mt-10">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Recently Uploaded Newsletter</h2>
+              <UploadCard upload={newNewsletter} />
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+};
 
-          {/* Publish Button - always publishes */}
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={loading}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'}`}
-          >
-            <Upload className="h-5 w-5" />
-            <span className="font-medium">Publish</span>
-          </button>
-        </div>
-
-        {newNewsletter && (
-          <div className="mt-10">
-            <h2 className="text-lg font-semibold text-white mb-2">Recently Uploaded Newsletter</h2>
-            <UploadCard upload={newNewsletter} />
-          </div>
-        )}
-      </motion.div>
-    );
-  };
-
-  export default UploadForm;
+export default UploadForm;

@@ -12,7 +12,8 @@ import {
   MessageSquare,
   Mail,
   RadioTower,
-  User
+  User,
+  Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
@@ -68,6 +69,17 @@ const Navbar = () => {
                 <span className="hidden sm:inline">Manage Calendar</span>
               </Link>
             )}
+
+            {isAdmin && (
+              <Link
+                to="/content-generation"
+                className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center"
+              >
+                <Bot className="mr-1" size={20} />
+                <span className="hidden sm:inline">Content Generation</span>
+              </Link>
+            )}
+
 
             {isAdmin && (
               <>
@@ -183,3 +195,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

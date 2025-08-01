@@ -6,7 +6,6 @@ import ContentGenerationPage from './ContentGenerationPage';
 
 const tabs = [
   { id: "analytics", label: "Analytics", icon: BarChart },
-  { id: "content", label: "Content Generation", icon: Newspaper },
 ];
 
 const AdminPage = () => {
@@ -41,10 +40,10 @@ const AdminPage = () => {
         </div>
 
         {activeTab === "analytics" && <AnalyticsTab />}
-        {activeTab === "content" && <ContentGenerationPage />}
       </div>
     </div>
   );
 };
 
 export default AdminPage;
+

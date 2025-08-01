@@ -1,7 +1,6 @@
 import { Eye, Trash2 } from "lucide-react";
 import { useNewsletterStore } from "../stores/useNewsletterStore";
 
-// Helper function to handle and format lists
 const formatList = (val) => {
   if (Array.isArray(val)) return val.join(", ");
   if (typeof val === "string" && val.startsWith("[")) {
@@ -15,7 +14,6 @@ const formatList = (val) => {
   return val || "N/A";
 };
 
-// Force URL to use port 5000
 const getFileUrl = (path) => {
   if (!path) return null;
 
@@ -24,22 +22,19 @@ const getFileUrl = (path) => {
     .replace(/\\/g, "/")
     .replace(/^uploads\//, "");
 
-  const baseUrl = "http://localhost:5000"; // Hardcoded to 5000
+  const baseUrl = "http://localhost:5000";
 
   return `${baseUrl}/uploads/${cleanPath}`;
 };
 
 const UploadCard = ({ upload, onPreview }) => {
   const { deleteNewsletter, loading } = useNewsletterStore();
-
-  // Get the thumbnail URL using the helper function
-  const thumbnailUrl = getFileUrl(upload.thumbnailPath); // Corrected this line to use `thumbnailPath`
+  const thumbnailUrl = getFileUrl(upload.thumbnailPath);
 
   return (
-    <div className="bg-gray-700 p-4 rounded-md shadow-md mb-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        {/* Thumbnail image */}
-        <div className="w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-gray-600">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-md p-4 flex flex-col sm:flex-row sm:items-center justify-between transition-all hover:shadow-lg">
+      <div className="flex items-center gap-5 w-full">
+        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
@@ -47,38 +42,41 @@ const UploadCard = ({ upload, onPreview }) => {
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = "/placeholder-thumbnail.jpg"; // Fallback image
-                e.target.className = "w-full h-full object-contain p-4 bg-gray-700"; // Style for fallback
+                e.target.src = "/placeholder-thumbnail.jpg";
+                e.target.className = "w-full h-full object-contain p-4 bg-gray-100";
               }}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-gray-300">
+            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
               No Image
             </div>
           )}
         </div>
 
-        {/* Title, SendTo, Audience */}
-        <div>
-          <h3 className="text-lg text-emerald-300 font-semibold">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-800 truncate">
             {upload.title || "Untitled"}
           </h3>
-          <p className="text-sm text-gray-400">To: {formatList(upload.sendTo)}</p>
-          <p className="text-sm text-gray-400">Audience: {formatList(upload.audience)}</p>
+          <p className="text-sm text-gray-500 truncate">To: {formatList(upload.sendTo)}</p>
+          <p className="text-sm text-gray-500 truncate">Audience: {formatList(upload.audience)}</p>
         </div>
       </div>
 
-      {/* Preview & Delete actions */}
-      <div className="flex gap-3">
-        <button onClick={() => onPreview(upload)} title="Preview">
-          <Eye className="w-5 h-5 text-blue-400 hover:text-blue-600" />
+      <div className="flex gap-3 mt-4 sm:mt-0 sm:ml-4">
+        <button
+          onClick={() => onPreview(upload)}
+          title="Preview"
+          className="text-indigo-500 hover:text-indigo-700 transition"
+        >
+          <Eye className="w-5 h-5" />
         </button>
         <button
           onClick={() => deleteNewsletter(upload._id)}
           title="Delete"
           disabled={loading}
+          className="text-red-400 hover:text-red-600 transition"
         >
-          <Trash2 className="w-5 h-5 text-red-400 hover:text-red-600" />
+          <Trash2 className="w-5 h-5" />
         </button>
       </div>
     </div>
