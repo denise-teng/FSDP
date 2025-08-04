@@ -27,6 +27,7 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -239,21 +240,21 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     resetForm();
   };
 
-const handleCustomThumbnailChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const thumbnailUrl = URL.createObjectURL(file);
-    setSelectedThumbnail(thumbnailUrl);
-    setForm(prev => ({ ...prev, thumbnail: file }));
-    setErrors(prev => ({ ...prev, thumbnail: null }));
-  }
-};
+  const handleCustomThumbnailChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const thumbnailUrl = URL.createObjectURL(file);
+      setSelectedThumbnail(thumbnailUrl);
+      setForm(prev => ({ ...prev, thumbnail: file }));
+      setErrors(prev => ({ ...prev, thumbnail: null }));
+    }
+  };
 
-const handleThumbnailSelect = (thumbnail) => {
-  setSelectedThumbnail(thumbnail);
-  setForm(prev => ({ ...prev, thumbnail: null })); // Reset file upload if selecting a preset
-  setErrors(prev => ({ ...prev, thumbnail: null }));
-};
+  const handleThumbnailSelect = (thumbnail) => {
+    setSelectedThumbnail(thumbnail);
+    setForm(prev => ({ ...prev, thumbnail: null })); // Reset file upload if selecting a preset
+    setErrors(prev => ({ ...prev, thumbnail: null }));
+  };
 
   const handleSaveDraft = async () => {
     if (editMode && !newsletterId) {
@@ -341,14 +342,6 @@ const handleThumbnailSelect = (thumbnail) => {
 
   const handlePublish = async () => {
   try {
-    console.log('Submitting with:', {
-      title: form.title,
-      category: form.category,
-      isDraft,
-      editMode,
-      newsletterId
-    });
-
     if (!validateForm()) {
       toast.error("Please fix validation errors before publishing");
       return;
@@ -369,42 +362,33 @@ const handleThumbnailSelect = (thumbnail) => {
 
     let response;
     if (isDraft) {
-      // Publish from draft
       response = await axios.post('/newsletters', formData);
       await axios.delete(`/drafts/${newsletterId}`);
-      console.log("API Response (publishing draft):", response.data);
     } else if (editMode) {
-      // Update existing
       response = await axios.put(`/newsletters/${newsletterId}`, formData);
-      console.log("API Response (updating):", response.data);
     } else {
-      // Create new
       response = await axios.post('/newsletters', formData);
-      console.log("API Response (creating new):", response.data);
     }
 
-    // NEW: Send newsletter to subscribers if "Email" is selected
+    // NEW: Send to subscribers if Email is selected
     if (form.sendTo.includes("Email")) {
+      setIsSending(true);
       try {
-        await axios.post('/newsletters/send', {
-          newsletterId: response.data._id,
-          title: form.title,
-          content: form.content
-        });
+        await axios.post(`/newsletters/${response.data._id}/send`);
         toast.success("Newsletter sent to subscribers!");
       } catch (sendError) {
-        console.error("Error sending newsletter:", sendError);
-        toast.error("Newsletter published but failed to send to some subscribers");
+        console.error("Sending failed but newsletter was published", sendError);
+        toast.error("Published but failed to send to subscribers");
+      } finally {
+        setIsSending(false);
       }
     }
 
-    // Refresh data
     await Promise.all([
       useNewsletterStore.getState().fetchNewsletters(),
       isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
     ]);
 
-    // Navigate to uploads list instead of detail view
     navigate('/uploads');
     toast.success(
       isDraft ? "Published successfully!" :
@@ -413,17 +397,13 @@ const handleThumbnailSelect = (thumbnail) => {
     );
 
   } catch (err) {
-    console.error("Publish error details:", {
-      error: err,
-      response: err.response?.data,
-    });
-
-    const errorMessage = err.response?.data?.error ||
+    console.error("Publish error:", err);
+    toast.error(
+      err.response?.data?.error ||
       err.response?.data?.message ||
       err.message ||
-      "Failed to publish newsletter";
-
-    toast.error(errorMessage);
+      "Failed to publish newsletter"
+    );
   }
 };
 
@@ -789,11 +769,19 @@ const handleThumbnailSelect = (thumbnail) => {
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={loading}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'}`}
+                disabled={loading || isSending}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading || isSending ? 'bg-gray-400 cursor-not-allowed' :
+                    'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'
+                  }`}
               >
-                <Upload className="h-5 w-5" />
-                <span className="font-medium">Publish</span>
+                {isSending ? (
+                  <Loader className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Upload className="h-5 w-5" />
+                )}
+                <span className="font-medium">
+                  {isSending ? "Sending..." : "Publish"}
+                </span>
               </button>
             </div>
           </form>

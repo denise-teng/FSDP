@@ -8,12 +8,12 @@ import {
   deleteNewsletter,
   updateNewsletter,
   createOrUpdateHomepageSlot,
-  sendNewsletterToSubscribers // Add this
 } from '../controllers/newsletter.controller.js';
 import mongoose from 'mongoose'; 
 import Newsletter from '../models/newsletter.model.js';
-
-
+import { 
+  sendNewsletterToSubscribers
+} from '../controllers/publishnewsletter.controller.js';
 
 const router = express.Router();
 
@@ -187,8 +187,6 @@ router.post('/slots', async (req, res) => {
   }
 });
 
+router.post('/:id/send', sendNewsletterToSubscribers);
 
 export default router;
-
-
-router.post('/:id/send', sendNewsletterToSubscribers);

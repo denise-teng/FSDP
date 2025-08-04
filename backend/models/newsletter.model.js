@@ -49,6 +49,11 @@ const newsletterSchema = new mongoose.Schema({
     default: null
     },
 
+    sentAt: Date,
+sentToCount: Number,
+failedToCount: Number,
+publishedAt: Date,
+publishedBy: mongoose.Schema.Types.ObjectId
     
 });
 

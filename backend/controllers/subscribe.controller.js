@@ -4,134 +4,99 @@ import Subscriber from '../models/subscribe.model.js';
 sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
 
 export const subscribe = async (req, res) => {
+  const { email, firstName, lastName, source } = req.body;
+
+  // 1. Validate input
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      code: 'MISSING_EMAIL',
+      message: 'Email address is required'
+    });
+  }
+
+  // 2. Check existing subscriber
   try {
-    const { email, firstName, lastName, source } = req.body;
-
-    // Enhanced email validation
-    const emailRegex = /^[^\s@]+@(?!example\.com|test\.com|mailinator\.com)[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email address from a non-test domain',
-        code: 'INVALID_EMAIL'
-      });
-    }
-
-    // Check if subscriber already exists
-    const existingSubscriber = await Subscriber.findOne({ email });
-    if (existingSubscriber) {
-      return res.status(409).json({  // Changed back to 409 Conflict status
-        success: false,
-        message: 'This email address is already subscribed to our newsletter',
+    const existing = await Subscriber.findOne({ email }).lean();
+    
+    if (existing) {
+      return res.status(200).json({ // 200 OK since this isn't really an error
+        success: true,
         code: 'ALREADY_SUBSCRIBED',
-        details: {
-          email: existingSubscriber.email,
-          subscribedSince: existingSubscriber.subscribedAt,
-          suggestion: 'If you want to update your preferences, please contact us'
+        message: 'You are already subscribed',
+        data: {
+          email: existing.email,
+          isActive: existing.isActive,
+          subscribedAt: existing.subscribedAt
         }
       });
     }
 
-    // Create and save new subscriber
-    const newSubscriber = await Subscriber.create({
-      email,
+    // 3. Create new subscriber
+    const subscriber = await Subscriber.create({
+      email: email.toLowerCase().trim(),
       firstName,
       lastName,
-      source: source || 'website'
+      source: source || 'website',
+      isActive: true
     });
 
-    // Send welcome email
-    const msg = {
-      to: email,
-      from: {
-        email: process.env.SENDGRID_TRANSACTIONAL_FROM.trim(),
-        name: 'Yip Cheu Fong - Financial Freedom'
-      },
-      templateId: 'd-f20170e597324e86ab504d7a77e0bb98',
-      dynamicTemplateData: {
-        subject: 'Welcome to Our Financial Newsletter!',
-        preheader: 'Get ready for valuable financial insights',
-        firstName: firstName || 'Subscriber',
-        signupDate: new Date().toLocaleDateString('en-SG', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        }),
-        unsubscribeLink: `${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`
-      },
-      mail_settings: {
-        sandbox_mode: {
-          enable: process.env.NODE_ENV === 'test'
+    // 4. Send welcome email
+    try {
+      await sgMail.send({
+        to: email,
+        from: {
+          email: process.env.SENDGRID_TRANSACTIONAL_FROM,
+          name: 'Your Brand Name'
+        },
+        subject: 'Welcome to our newsletter!',
+        html: `
+          <h1>Welcome ${firstName || 'Subscriber'}!</h1>
+          <p>Thank you for subscribing to our newsletter.</p>
+          <p><small>
+            <a href="${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}">
+              Unsubscribe
+            </a>
+          </small></p>
+        `,
+        trackingSettings: {
+          clickTracking: { enable: true },
+          openTracking: { enable: true }
         }
-      },
-      headers: {
-        'X-SMTPAPI': JSON.stringify({
-          unique_args: {
-            campaign: 'newsletter_signup',
-            source: 'website_form'
-          }
-        })
-      }
-    };
+      });
+    } catch (emailError) {
+      console.error('Welcome email failed:', emailError);
+      // Continue even if email fails - we'll retry later
+    }
 
-    await sgMail.send(msg);
-
+    // 5. Return success
     return res.status(201).json({
       success: true,
-      message: 'Subscription successful! Please check your email for confirmation.',
       code: 'SUBSCRIBED',
+      message: 'Subscription successful',
       data: {
-        email,
-        firstName,
-        subscribedAt: newSubscriber.subscribedAt
+        email: subscriber.email,
+        subscribedAt: subscriber.subscribedAt
       }
     });
 
   } catch (error) {
-    console.error('Subscription Error:', error);
-
-    // Handle MongoDB duplicate key error (fallback in case findOne check fails)
+    console.error('Subscription error:', error);
+    
+    // Handle duplicate email (race condition)
     if (error.code === 11000) {
-      const existing = await Subscriber.findOne({ email: req.body.email });
-      return res.status(409).json({
-        success: false,
-        message: 'This email address is already subscribed',
-        code: 'DUPLICATE_SUBSCRIPTION',
-        details: {
-          email: existing?.email,
-          subscribedSince: existing?.subscribedAt,
-          suggestion: existing?.isActive 
-            ? 'You are already receiving our newsletters' 
-            : 'Contact us to reactivate your subscription'
-        }
-      });
-    }
-
-    // Handle SendGrid errors
-    if (error.response?.body?.errors) {
-      return res.status(500).json({
-        success: false,
-        message: 'Subscription recorded, but we couldn\'t send the welcome email',
-        code: 'EMAIL_FAILED',
-        systemError: process.env.NODE_ENV === 'development' ? {
-          service: 'SendGrid',
-          error: error.response.body.errors[0].message
-        } : undefined,
-        action: 'Please check your spam folder or contact support'
+      return res.status(200).json({
+        success: true,
+        code: 'ALREADY_SUBSCRIBED',
+        message: 'You were already subscribed'
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: 'We encountered an error processing your subscription',
-      code: 'SUBSCRIPTION_ERROR',
-      systemError: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        stack: error.stack
-      } : undefined,
-      action: 'Please try again later or contact support'
+      code: 'SERVER_ERROR',
+      message: 'Subscription failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
-
-

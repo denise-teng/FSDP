@@ -51,6 +51,7 @@ ${pdfContent ? pdfContent.slice(0, 3000) + (pdfContent.length > 3000 ? '... [doc
 3. Use clear headings
 4. Add stats if applicable
 5. Include a call-to-action
+6. summarise everything within 1-2 paragraphs
 
 **Tags**: ${tags || "Not specified"}
 **Category**: ${category || "General"}

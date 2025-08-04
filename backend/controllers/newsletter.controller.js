@@ -1,9 +1,5 @@
 import Newsletter from '../models/newsletter.model.js';
-import Subscriber from '../models/subscribe.model.js';
-import sgMail from '@sendgrid/mail';
 import path from 'path';
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
 
 // Helper function to convert various formats to arrays
 function convertToArray(data) {
@@ -65,9 +61,9 @@ export const createOrUpdateHomepageSlot = async (req, res) => {
     const newNewsletter = await Newsletter.create(newsletterData);
     res.status(201).json(newNewsletter);
   } catch (error) {
-    res.status(400).json({ 
+    res.status(400).json({
       error: "Failed to create or update homepage slot",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -88,9 +84,9 @@ export const createNewsletter = async (req, res) => {
     });
     res.status(201).json(newsletter);
   } catch (error) {
-    res.status(400).json({ 
+    res.status(400).json({
       error: "Failed to create newsletter",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -123,147 +119,56 @@ export const updateNewsletter = async (req, res) => {
       content: convertToArray(req.body.content),
       category: req.body.category,
       status: req.body.status || 'published',
-      ...(req.files?.newsletterFile?.[0] && { 
+      ...(req.files?.newsletterFile?.[0] && {
         newsletterFilePath: normalizePath(req.files.newsletterFile[0].path)
       }),
-      ...(req.files?.thumbnail?.[0] && { 
+      ...(req.files?.thumbnail?.[0] && {
         thumbnailPath: normalizePath(req.files.thumbnail[0].path)
       })
     };
 
     const updated = await Newsletter.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
+      req.params.id,
+      updateData,
       { new: true, runValidators: true }
     );
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Update failed",
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-export const sendNewsletterToSubscribers = async (req, res) => {
-  try {
-    // Verify SendGrid API key is set
-    if (!process.env.SENDGRID_API_KEY_2) {
-      throw new Error('SendGrid API key not configured');
-    }
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
 
-    const newsletter = await Newsletter.findById(req.params.id);
+// Add this to your newsletter.controller.js
+export const getNewsletterById = async (req, res) => {
+  try {
+    const newsletter = await Newsletter.findById(req.params.id)
+      .select('-__v')
+      .lean();
+    
     if (!newsletter) {
       return res.status(404).json({ 
         success: false,
-        code: 'NEWSLETTER_NOT_FOUND'
+        message: 'Newsletter not found' 
       });
     }
 
-    // Debug: Log subscriber query
-    console.log('Fetching active subscribers...');
-    const subscribers = await Subscriber.find({ isActive: true });
-    console.log(`Found ${subscribers.length} active subscribers`);
-
-    if (subscribers.length === 0) {
-      return res.status(200).json({ 
-        success: true,
-        code: 'NO_ACTIVE_SUBSCRIBERS',
-        message: 'No active subscribers found'
-      });
+    if (newsletter.newsletterFilePath) {
+      newsletter.downloadUrl = generateFileUrl(newsletter.newsletterFilePath);
     }
 
-    // Generate file URLs
-    const thumbnailUrl = generateFileUrl(newsletter.thumbnailPath);
-    const fileUrl = generateFileUrl(newsletter.newsletterFilePath);
-    const fileExtension = getFileExtension(newsletter.newsletterFilePath);
-
-    // Prepare template data
-    const templateData = {
-      subject: newsletter.title,
-      title: newsletter.title,
-      category: newsletter.category,
-      content: convertToArray(newsletter.content).join('<br><br>'),
-      tags: newsletter.tags,
-      thumbnailUrl,
-      fileUrl,
-      fileExtension,
-      currentYear: new Date().getFullYear(),
-      sendDate: new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      headerImage: thumbnailUrl
-    };
-
-    // Send emails in smaller batches (100 per batch)
-    const batchSize = 100;
-    let successfulSends = 0;
-    let failedSends = 0;
-
-    for (let i = 0; i < subscribers.length; i += batchSize) {
-      const batch = subscribers.slice(i, i + batchSize);
-      
-      try {
-        const messages = batch.map(subscriber => ({
-          to: subscriber.email,
-          from: {
-            email: process.env.SENDGRID_FROM_EMAIL,
-            name: process.env.SENDGRID_FROM_NAME || 'Financial Newsletter'
-          },
-          templateId: 'd-2534187eb2f646a795c59081b017b635',
-          dynamicTemplateData: {
-            ...templateData,
-            firstName: subscriber.firstName || 'Subscriber',
-            unsubscribeLink: `${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(subscriber.email)}`
-          },
-          mail_settings: {
-            sandbox_mode: {
-              enable: false // Ensure this is false in production
-            }
-          }
-        }));
-
-        await sgMail.send(messages);
-        successfulSends += batch.length;
-        console.log(`Sent batch ${i/batchSize + 1} successfully`);
-      } catch (batchError) {
-        failedSends += batch.length;
-        console.error(`Error sending batch ${i/batchSize + 1}:`, batchError.response?.body || batchError.message);
-      }
-    }
-
-    // Update newsletter status
-    newsletter.sentAt = new Date();
-    newsletter.sentToCount = successfulSends;
-    await newsletter.save();
-
-    res.status(200).json({
+    res.json({
       success: true,
-      sentCount: successfulSends,
-      failedCount: failedSends,
-      newsletterId: newsletter._id,
-      message: `Newsletter sent to ${successfulSends} subscribers${failedSends > 0 ? ` (${failedSends} failed)` : ''}`
+      data: newsletter
     });
-
   } catch (error) {
-    console.error('Full Send Error:', {
-      error: error.message,
-      stack: error.stack,
-      response: error.response?.body
-    });
-
-    res.status(500).json({
+    res.status(500).json({ 
       success: false,
-      code: 'SEND_FAILED',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      details: process.env.NODE_ENV === 'development' ? {
-        response: error.response?.body,
-        stack: error.stack
-      } : undefined
+      message: 'Failed to fetch newsletter',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
