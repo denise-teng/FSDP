@@ -20,10 +20,17 @@ export const logMessage = async (broadcast, content, results, scheduledBroadcast
     const status = allSuccess ? 'complete' : 
                  anySuccess ? 'partial' : 'failed';
 
+    // Convert channel to match RecentMessage enum format
+    const channelMapping = {
+      'email': 'Email',
+      'sms': 'SMS', 
+      'whatsapp': 'WhatsApp'
+    };
+
     const messageData = {
       title: broadcast.title,
       content,
-      channel: broadcast.channel,
+      channel: channelMapping[broadcast.channel] || broadcast.channel,
       recipients: recipientStatuses,
       originalBroadcast: broadcast._id,
       status,

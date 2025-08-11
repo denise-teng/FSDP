@@ -137,7 +137,14 @@ axios.interceptors.response.use(
 
         return axios(originalRequest);
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
         useUserStore.getState().logout();
+        
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        
         return Promise.reject(refreshError);
       }
     }

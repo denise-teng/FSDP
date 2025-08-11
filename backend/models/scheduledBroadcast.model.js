@@ -8,12 +8,13 @@ const scheduledBroadcastSchema = new mongoose.Schema({
   scheduledTime: { type: Date, required: true },
   channel: { 
     type: String, 
-    enum: ['Email', 'SMS', 'Push', 'WhatsApp'], 
-    required: true 
+    enum: ['email', 'sms', 'whatsapp'], 
+    required: true,
+    set: (val) => val.toLowerCase() // Automatically convert to lowercase
   },
   recipients: [{ 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Recipient' 
+    ref: 'Contact' 
   }],
   status: { 
     type: String, 
@@ -39,7 +40,8 @@ scheduledBroadcastSchema.virtual('formattedTime').get(function() {
 // Pre-save hook to update recipient count
 scheduledBroadcastSchema.pre('save', function(next) {
   if (this.isModified('recipients')) {
-    this.recipientCount = this.recipients.length;
+    this.recipientCount = this.recipients?.length || 0;
+    console.log(`Pre-save: Set recipientCount to ${this.recipientCount} for broadcast "${this.title}"`);
   }
   next();
 });

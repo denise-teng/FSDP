@@ -43,6 +43,14 @@ class EmailService {
             trackingSettings: {
                 clickTracking: {
                     enable: true
+                },
+                openTracking: {
+                    enable: true
+                }
+            },
+            mailSettings: {
+                spamCheck: {
+                    enable: false  // Disabled spam check to avoid post_to_url requirement
                 }
             }
         };
@@ -54,16 +62,37 @@ class EmailService {
                 subject: msg.subject
             });
 
-            await sgMail.send(msg);
-            console.log(`✅ Sent to ${to}`);
-            return { success: true };
+            const response = await sgMail.send(msg);
+            console.log(`✅ Email queued for delivery to ${to}`, {
+                messageId: response[0].headers['x-message-id'],
+                statusCode: response[0].statusCode
+            });
+            
+            // Return success with additional info
+            return { 
+                success: true, 
+                messageId: response[0].headers['x-message-id'],
+                statusCode: response[0].statusCode,
+                // Note: This means email was queued, not necessarily delivered
+                status: 'queued_for_delivery'
+            };
         } catch (error) {
             console.error('Send failed to', to, {
                 error: error.response?.body?.errors || error.message,
                 fullError: error.response?.body || error,
                 fromEmail: VERIFIED_SENDER
             });
-            throw error;
+            
+            // Check if it's a temporary failure vs permanent
+            const errorCode = error.code;
+            const isTemporaryFailure = errorCode && ['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND'].includes(errorCode);
+            
+            return { 
+                success: false, 
+                error: error.response?.body?.errors?.[0]?.message || error.message,
+                isTemporary: isTemporaryFailure,
+                errorCode: errorCode
+            };
         }
     }
 

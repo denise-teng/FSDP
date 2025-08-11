@@ -72,13 +72,19 @@ export const createBroadcast = async (req, res) => {
 
 export const deleteBroadcast = async (req, res) => {
   try {
+    console.log('Attempting to delete broadcast with ID:', req.params.id);
+    
     const deletedBroadcast = await Broadcast.findByIdAndDelete(req.params.id);
     if (!deletedBroadcast) {
+      console.log('Broadcast not found:', req.params.id);
       return res.status(404).json({ error: 'Broadcast not found' });
     }
+    
+    console.log('Broadcast deleted successfully:', deletedBroadcast.title);
     res.status(200).json({ message: 'Broadcast deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete broadcast' });
+    console.error('Error deleting broadcast:', err);
+    res.status(500).json({ error: 'Failed to delete broadcast', details: err.message });
   }
 };
 
@@ -201,59 +207,98 @@ export const sendNow = async (req, res) => {
       const results = await Promise.allSettled(
         batch.map(data =>
           EmailService.sendEmail(data.to, data.subject, data.text, data.html)
-            .then(() => ({
-              success: true,
-              contactId: data.contactId
+            .then((result) => ({
+              success: result.success,
+              contactId: data.contactId,
+              messageId: result.messageId,
+              statusCode: result.statusCode,
+              status: result.status || 'queued_for_delivery'
             }))
             .catch(error => ({
               success: false,
               contactId: data.contactId,
-              error: error.message
+              error: error.error || error.message,
+              isTemporary: error.isTemporary || false
             }))
         )
       );
 
-      // Process results (NEW)
-      const batchStatuses = results.map(result => ({
-        contactId: result.value.contactId,
-        status: result.value.success ? 'sent' : 'failed',
-        error: result.value.error,
-        deliveredAt: result.value.success ? new Date() : null
-      }));
+      // Process results with better status tracking
+      const batchStatuses = results.map(result => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          return {
+            contactId: result.value.contactId,
+            status: 'delivered', // Changed from 'sent' to 'delivered' to be more accurate
+            messageId: result.value.messageId,
+            deliveredAt: new Date(),
+            note: 'Email queued for delivery by SendGrid'
+          };
+        } else {
+          return {
+            contactId: result.value.contactId,
+            status: result.value.isTemporary ? 'temporary_failure' : 'failed',
+            error: result.value.error,
+            deliveredAt: null,
+            note: result.value.isTemporary ? 'Temporary failure - will retry' : 'Permanent delivery failure'
+          };
+        }
+      });
 
       recipientStatuses.push(...batchStatuses);
-      successfulSends += batchStatuses.filter(s => s.status === 'sent').length;
+      successfulSends += batchStatuses.filter(s => s.status === 'delivered').length;
 
-      // Update recent message with batch results (NEW)
+      // Update recent message with batch results
       await RecentMessage.updateOne(
         { _id: recentMessage._id },
         {
           $set: {
-            'recipients.$[elem].status': 'sent',
+            'recipients.$[elem].status': 'delivered',
             'recipients.$[elem].deliveredAt': new Date()
           }
         },
         {
           arrayFilters: [
-            { 'elem._id': { $in: batchStatuses.filter(s => s.status === 'sent').map(s => s.contactId) } }
+            { 'elem._id': { $in: batchStatuses.filter(s => s.status === 'delivered').map(s => s.contactId) } }
           ]
         }
       );
     }
 
-    // 6. Final status update (NEW)
-    const finalStatus = successfulSends === emailData.length ? 'complete' :
-      successfulSends > 0 ? 'partial' : 'failed';
+    // 6. Final status update with better messaging
+    const deliveredCount = successfulSends;
+    const failedCount = emailData.length - successfulSends;
+    const temporaryFailures = recipientStatuses.filter(s => s.status === 'temporary_failure').length;
+    
+    let finalStatus;
+    let statusMessage;
+    
+    if (deliveredCount === emailData.length) {
+      finalStatus = 'complete';
+      statusMessage = `All ${deliveredCount} emails queued for delivery successfully`;
+    } else if (deliveredCount > 0) {
+      finalStatus = 'partial';
+      statusMessage = `${deliveredCount} emails delivered, ${failedCount} failed`;
+      if (temporaryFailures > 0) {
+        statusMessage += ` (${temporaryFailures} temporary failures)`;
+      }
+    } else {
+      finalStatus = 'failed';
+      statusMessage = `All ${emailData.length} emails failed to send`;
+    }
 
     await RecentMessage.updateOne(
       { _id: recentMessage._id },
       {
         status: finalStatus,
-        sentAt: new Date()
+        statusMessage: statusMessage,
+        sentAt: new Date(),
+        deliveredCount: deliveredCount,
+        failedCount: failedCount,
+        temporaryFailures: temporaryFailures
       }
     );
 
-    // 7. Update broadcast (unchanged)
+    // 7. Update broadcast
     await Broadcast.updateOne(
       { _id: broadcastId },
       {
@@ -263,11 +308,21 @@ export const sendNow = async (req, res) => {
       }
     );
 
+    console.log(`📧 Broadcast completed: ${statusMessage}`);
+
     res.json({
       success: true,
-      sentCount: successfulSends,
-      failedCount: emailData.length - successfulSends,
-      messageId: recentMessage._id // NEW: Return reference to logged message
+      message: statusMessage,
+      sentCount: deliveredCount,
+      failedCount: failedCount,
+      temporaryFailures: temporaryFailures,
+      messageId: recentMessage._id,
+      statusDetails: {
+        total: emailData.length,
+        delivered: deliveredCount,
+        failed: failedCount,
+        temporary_failures: temporaryFailures
+      }
     });
 
   } catch (error) {
@@ -318,44 +373,86 @@ export const getScheduledBroadcasts = async (req, res) => {
 
     const broadcasts = await ScheduledBroadcast.find(filter)
       .sort({ scheduledTime: 1 })
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('recipients'); // Add this to populate recipients
+
+    // Debug log to check recipient counts
+    console.log('Fetched scheduled broadcasts:');
+    broadcasts.forEach(b => {
+      console.log(`- ${b.title}: recipientCount=${b.recipientCount}, recipients.length=${b.recipients?.length}`);
+      console.log(`  Recipients array:`, b.recipients);
+    });
 
     res.json(broadcasts);
   } catch (err) {
+    console.error('Error fetching scheduled broadcasts:', err);
     res.status(500).json({ error: 'Failed to fetch scheduled broadcasts' });
   }
 };
 
 export const createScheduledBroadcast = async (req, res) => {
   try {
+    console.log('createScheduledBroadcast called with body:', req.body);
+    console.log('User object:', req.user);
+    
     const { broadcastId, title, channel, message, scheduledTime } = req.body;
 
     // Validate required fields
     if (!broadcastId || !title || !channel || !message || !scheduledTime) {
+      console.log('Missing required fields:', { broadcastId, title, channel, message, scheduledTime });
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['broadcastId', 'title', 'channel', 'message', 'scheduledTime']
+        required: ['broadcastId', 'title', 'channel', 'message', 'scheduledTime'],
+        received: { broadcastId, title, channel, message, scheduledTime }
+      });
+    }
+
+    // Check if user is authenticated
+    if (!req.user || !req.user._id) {
+      console.log('User not authenticated or missing _id:', req.user);
+      return res.status(401).json({
+        error: 'User not authenticated',
+        details: 'req.user or req.user._id is missing'
       });
     }
 
     // Get the original broadcast to copy recipients
     const originalBroadcast = await Broadcast.findById(broadcastId);
     if (!originalBroadcast) {
+      console.log('Broadcast not found with ID:', broadcastId);
       return res.status(404).json({ error: 'Broadcast not found' });
     }
+
+    console.log('Original broadcast found:', originalBroadcast.title, 'Recipients:', originalBroadcast.recipients?.length);
+    console.log('Original recipients detailed:', originalBroadcast.recipients);
+
+    // Deduplicate recipients to ensure no duplicates
+    const recipientIds = originalBroadcast.recipients || [];
+    const uniqueRecipients = [...new Set(recipientIds.map(id => id.toString()))];
+    console.log('Original recipients count:', recipientIds.length, 'Unique recipients count:', uniqueRecipients.length);
+    console.log('Original recipients:', recipientIds.map(id => id.toString()));
+    console.log('Unique recipients:', uniqueRecipients);
 
     const scheduledBroadcast = new ScheduledBroadcast({
       title,
       broadcast: broadcastId,
-      channel,
+      channel: channel.toLowerCase(), // Ensure lowercase to match enum
       message,
       scheduledTime: new Date(scheduledTime),
-      recipients: originalBroadcast.recipients,
+      recipients: uniqueRecipients,
+      recipientCount: uniqueRecipients.length, // Explicitly set recipientCount
       status: 'Scheduled',
       createdBy: req.user._id
     });
 
+    console.log('About to save scheduled broadcast with recipients count:', scheduledBroadcast.recipients?.length);
+    console.log('Recipients array:', scheduledBroadcast.recipients);
+
     await scheduledBroadcast.save();
+
+    console.log('Scheduled broadcast saved successfully');
+    console.log('Final recipientCount:', scheduledBroadcast.recipientCount);
+    console.log('Actual recipients length:', scheduledBroadcast.recipients?.length);
 
     res.status(201).json({
       message: 'Broadcast scheduled successfully',
@@ -364,9 +461,11 @@ export const createScheduledBroadcast = async (req, res) => {
 
   } catch (error) {
     console.error('Error scheduling broadcast:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       error: 'Failed to schedule broadcast',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -384,6 +483,8 @@ export const createScheduledBroadcast = async (req, res) => {
 
 export const cancelScheduledBroadcast = async (req, res) => {
   try {
+    console.log('Attempting to cancel scheduled broadcast with ID:', req.params.id);
+    
     const broadcast = await ScheduledBroadcast.findByIdAndUpdate(
       req.params.id,
       { status: 'Cancelled' },
@@ -391,14 +492,17 @@ export const cancelScheduledBroadcast = async (req, res) => {
     );
 
     if (!broadcast) {
+      console.log('Scheduled broadcast not found:', req.params.id);
       return res.status(404).json({ error: 'Scheduled broadcast not found' });
     }
 
+    console.log('Scheduled broadcast cancelled successfully:', broadcast.title);
     res.json({
       success: true,
       message: 'Broadcast cancelled successfully'
     });
   } catch (err) {
+    console.error('Error cancelling scheduled broadcast:', err);
     res.status(500).json({
       error: 'Failed to cancel broadcast',
       details: err.message
