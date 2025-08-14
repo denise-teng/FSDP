@@ -14,6 +14,23 @@ const handleTags = (tags) => {
   return []; // Return an empty array if neither condition is met
 };
 
+const getFileUrl = (path) => {
+  if (!path) return '/placeholder-thumbnail.jpg';
+  
+  // If it's already a full URL or starts with /images/, return as-is
+  if (path.startsWith('http') || path.startsWith('/images/') || path.startsWith('/public/')) {
+    return path;
+  }
+
+  // Clean the path for uploaded files
+  const cleanPath = String(path)
+    .replace(/^[\\/]+/, '')
+    .replace(/\\/g, '/')
+    .replace(/^uploads\//, '');
+
+  return `http://localhost:5000/uploads/${cleanPath}`;
+};
+
 const testimonials = [
   {
     name: 'Shawn Lim',
@@ -642,9 +659,31 @@ const HomePage = () => {
     ? testimonials
     : testimonials.slice(0, 3);
 
-  useEffect(() => {
-    fetchNewsletters();
+useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        await fetchNewsletters();
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+    
+    // Add event listener for beforeunload to potentially save state
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [fetchNewsletters]);
+
+  const handleBeforeUnload = () => {
+    // Optionally save state to localStorage
+    localStorage.setItem('homepageSlots', JSON.stringify(homepageSlots));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -855,11 +894,15 @@ const HomePage = () => {
                 {slot ? (
                   <>
                     <div className="h-48 overflow-hidden">
-                      <img
-                        src={slot.thumbnailUrl || '/placeholder-newsletter.jpg'}
-                        alt={slot.title}
-                        className="w-full h-full object-cover transition-transform hover:scale-105"
-                      />
+<img
+  src={getFileUrl(slot.thumbnailPath)}
+  alt={slot.title}
+  className="w-full h-full object-cover transition-transform hover:scale-105"
+  onError={(e) => {
+    e.target.onerror = null;
+    e.target.src = '/placeholder-newsletter.jpg';
+  }}
+/>
                     </div>
                     <div className="p-6">
                       <div className="flex flex-wrap gap-2 mb-3">

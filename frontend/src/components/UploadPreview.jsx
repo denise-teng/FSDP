@@ -12,19 +12,20 @@ const UploadPreview = ({ upload, onClose }) => {
   } = upload;
 
   const getFileUrl = (path) => {
-    if (!path) {
-      console.warn("No path provided");
-      return null;
-    }
+  if (!path) {
+    console.warn("No path provided");
+    return null;
+  }
 
-    const cleanPath = String(path)
-      .replace(/^[\\/]+/, '')
-      .replace(/\\/g, '/')
-      .replace(/^uploads\//, '');
+  // Convert to string and normalize path
+  const cleanPath = String(path)
+    .replace(/^[\\/]+/, '') // Remove leading slashes/backslashes
+    .replace(/\\/g, '/')    // Convert backslashes to forward slashes
+    .trim();                // Remove any whitespace
 
-    const baseUrl = 'http://localhost:5000';
-    return `${baseUrl}/uploads/${cleanPath}`;
-  };
+  const baseUrl = 'http://localhost:5000';
+  return `${baseUrl}/${cleanPath}`;
+};
 
   const thumbnailUrl = getFileUrl(thumbnailPath);
   const fileUrl = getFileUrl(newsletterFilePath);

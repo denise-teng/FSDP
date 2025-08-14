@@ -12,21 +12,38 @@ const UpdateHomepageModal = () => {
     initializeSlots,
     updateHomepageSlot
   } = useNewsletterStore();
- 
+
   const [viewMode, setViewMode] = useState('slots');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const getFileUrl = (path) => {
-    if (!path) return '/placeholder-thumbnail.jpg';
 
-    const cleanPath = String(path)
-      .replace(/^[\\/]+/, '')
-      .replace(/\\/g, '/')
-      .replace(/^uploads\//, '');
+const getFileUrl = (path) => {
+  if (!path) return '/placeholder-thumbnail.jpg';
 
-    return `http://localhost:5000/uploads/${cleanPath}`;
-  };
+  const cleanPath = String(path)
+    .replace(/^[\\/]+/, '')
+    .replace(/\\/g, '/')
+    .replace(/^uploads\//, '');
+
+  return `http://localhost:5000/uploads/${cleanPath}`;
+};
+
+const getImageUrl = (path) => {
+  if (!path) return '/placeholder-image.jpg';
+  
+  // Handle different path formats
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/images/')) return path;
+  
+  // Handle uploaded files
+  const cleanPath = String(path)
+    .replace(/^[\\/]+/, '')
+    .replace(/\\/g, '/')
+    .replace(/^uploads\//, '');
+    
+  return `http://localhost:5000/uploads/${cleanPath}`;
+};
 
   const handleSlotSelect = async (slotIndex, newsletter) => {
     setIsLoading(true);
@@ -53,7 +70,7 @@ const UpdateHomepageModal = () => {
         setIsLoading(false);
       }
     };
-   
+
     loadData();
   }, [fetchNewsletters, initializeSlots]);
 
@@ -74,16 +91,15 @@ const UpdateHomepageModal = () => {
               Homepage Slots
             </span>
           </h2>
-         
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[0, 1, 2].map((slotIndex) => (
               <motion.div
                 key={slotIndex}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer border-2 ${
-                  homepageSlots[slotIndex] ? 'border-indigo-100' : 'border-dashed border-gray-300'
-                } flex flex-col h-full transition-all duration-300 hover:shadow-md`}
+                className={`bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer border-2 ${homepageSlots[slotIndex] ? 'border-indigo-100' : 'border-dashed border-gray-300'
+                  } flex flex-col h-full transition-all duration-300 hover:shadow-md`}
                 onClick={() => {
                   setSelectedSlot(slotIndex);
                   setViewMode('newsletters');
@@ -136,11 +152,11 @@ const UpdateHomepageModal = () => {
             <ArrowLeft className="w-5 h-5" />
             Back to Slots
           </button>
-         
+
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
             Select Newsletter for <span className="text-indigo-600">Slot {selectedSlot + 1}</span>
           </h2>
-         
+
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
