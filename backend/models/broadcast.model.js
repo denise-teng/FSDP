@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { CHANNEL_ENUM, normalizeChannel } from '../utils/channelNormalizer.js';
 
 const BroadcastSchema = new mongoose.Schema({
   title: { 
@@ -11,9 +12,9 @@ const BroadcastSchema = new mongoose.Schema({
   },
   channel: { 
     type: String, 
-    enum: ['email', 'sms', 'whatsapp'], 
+    enum: CHANNEL_ENUM, 
     required: true,
-    set: (val) => val.toLowerCase() // Automatically convert the channel to lowercase
+    set: (val) => normalizeChannel(val) // Automatically normalize channel values
   },
   recipients: [{
     type: mongoose.Schema.Types.ObjectId,

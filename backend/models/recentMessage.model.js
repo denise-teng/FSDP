@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { CHANNEL_ENUM, normalizeChannel } from '../utils/channelNormalizer.js';
 
 const recentMessageSchema = new mongoose.Schema({
   title: {
@@ -12,8 +13,9 @@ const recentMessageSchema = new mongoose.Schema({
   },
   channel: {
     type: String,
-    enum: ['Email', 'SMS', 'WhatsApp'],
-    required: true
+    enum: CHANNEL_ENUM,
+    required: true,
+    set: (val) => normalizeChannel(val) // Automatically normalize channel values
   },
   recipients: [{
     _id: {

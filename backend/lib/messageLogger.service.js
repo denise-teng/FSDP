@@ -1,5 +1,6 @@
 // services/messageLogger.service.js
 import RecentMessage from '../models/recentMessage.model.js';
+import { normalizeChannel } from '../utils/channelNormalizer.js';
 
 export const logMessage = async (broadcast, content, results, scheduledBroadcastId = null) => {
   try {
@@ -20,17 +21,10 @@ export const logMessage = async (broadcast, content, results, scheduledBroadcast
     const status = allSuccess ? 'complete' : 
                  anySuccess ? 'partial' : 'failed';
 
-    // Convert channel to match RecentMessage enum format
-    const channelMapping = {
-      'email': 'Email',
-      'sms': 'SMS', 
-      'whatsapp': 'WhatsApp'
-    };
-
     const messageData = {
       title: broadcast.title,
       content,
-      channel: channelMapping[broadcast.channel] || broadcast.channel,
+      channel: normalizeChannel(broadcast.channel),
       recipients: recipientStatuses,
       originalBroadcast: broadcast._id,
       status,
