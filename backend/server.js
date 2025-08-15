@@ -1,10 +1,16 @@
 import express from "express";
 import dotenv from "dotenv";
-dotenv.config();
-import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from root directory
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+import cookieParser from "cookie-parser";
 
 import fs from "fs";
 import cors from "cors";
@@ -34,6 +40,7 @@ import engagementRoutes from './routes/engagement.route.js';
 import './lib/scheduleWorker.js';
 import contactHistoryRoute from './routes/contacthistory.route.js';
 import articleRoutes from './routes/articles.route.js';
+import keywordsRoutes from './routes/keywords.route.js';
 
 import draftRoutes from './routes/drafts.route.js';
 import newsletterRoutes from './routes/newsletter.route.js';
@@ -57,8 +64,6 @@ import { connectDB } from './lib/db.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 let globalBrowser;
 let whatsappPage;
@@ -93,6 +98,7 @@ app.use("/api/engagements", engagementRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/contacts", contactRoutes);
+app.use("/api/keywords", keywordsRoutes);
 app.use("/api/whatsapp-contacts", whatsappRoutes);
 app.use("/api/quick-messages", quickMessageRoutes);
 app.use("/api/potential-clients", potentialClientRoutes);
@@ -389,7 +395,13 @@ process.on('SIGINT', async () => {
 });
 
 connectDB().then(() => {
+  console.log('✅ Database connected');
   app.listen(PORT, () => {
     console.log(`✅ Server ready at http://localhost:${PORT}`);
   });
-}).catch(console.error);
+}).catch((error) => {
+  console.log('⚠️ Database connection failed, starting server anyway for testing:', error.message);
+  app.listen(PORT, () => {
+    console.log(`✅ Server ready at http://localhost:${PORT} (without database)`);
+  });
+});

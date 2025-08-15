@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { usePotentialClientStore } from '../stores/usePotentialClientStore';
 import axios from 'axios';
-import { Star } from 'lucide-react';
+import { Star, Settings } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ReplyMethodModal from '../components/ReplyMethodModal';
 import WhatsAppReplyTabsModal from '../components/WhatsAppReplyTabsModal';
 import FinalMessageEditModal from '../components/FinalMessageEditModal';
 import EmailReplyModal from '../components/EmailReplyModal';
+import KeywordsModal from '../components/KeywordsModal';
 
 export default function PotentialClientsPage() {
   const [search, setSearch] = useState('');
@@ -18,6 +19,7 @@ export default function PotentialClientsPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
   const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '', subject: '' });
+  const [showKeywordsModal, setShowKeywordsModal] = useState(false);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -143,6 +145,14 @@ export default function PotentialClientsPage() {
                 <option value="Corporate Financial Seminar Inquiry">🏢 Corporate Financial Seminar Inquiry</option>
                 <option value="Others">📝 Others</option>
               </select>
+              
+              <button
+                onClick={() => setShowKeywordsModal(true)}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2"
+              >
+                <Settings className="h-5 w-5" />
+                🔑 Keywords
+              </button>
             </div>
             
             {/* Enhanced Results Info */}
@@ -477,6 +487,12 @@ export default function PotentialClientsPage() {
           }}
         />
       )}
+
+      {/* Keywords Management Modal */}
+      <KeywordsModal
+        isOpen={showKeywordsModal}
+        onClose={() => setShowKeywordsModal(false)}
+      />
     </div>
   );
 }

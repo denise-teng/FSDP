@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "../lib/axios";
 import { toast } from "react-hot-toast";
-import { Check, X, Mail, Phone, MapPin, Clock } from "lucide-react"; // Importing icons
+import { Check, X, Mail, Phone, MapPin, Clock, Star } from "lucide-react";
 
 const PublicContactPage = () => {
   const [formData, setFormData] = useState({
@@ -14,9 +14,29 @@ const PublicContactPage = () => {
   });
 
   const [errors, setErrors] = useState({});
-  
-  // Define the flagged keywords
-  const flaggedKeywords = ['schedule', 'meeting', 'help', 'urgent'];
+  const [flaggedKeywords, setFlaggedKeywords] = useState([]);
+
+  // Fetch active keywords from database
+  useEffect(() => {
+    const fetchKeywords = async () => {
+      try {
+        const response = await axios.get('/keywords');
+        if (response.data.success) {
+          // Filter only active keywords and extract the keyword strings
+          const activeKeywords = response.data.data
+            .filter(keyword => keyword.isActive)
+            .map(keyword => keyword.keyword);
+          setFlaggedKeywords(activeKeywords);
+        }
+      } catch (error) {
+        console.error('Error fetching keywords:', error);
+        // Fallback to default keywords if API fails
+        setFlaggedKeywords(['schedule', 'meeting', 'help', 'urgent']);
+      }
+    };
+
+    fetchKeywords();
+  }, []);
 
   const validate = (field, value) => {
     switch (field) {
@@ -26,7 +46,7 @@ const PublicContactPage = () => {
       case "email":
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Invalid email format.";
       case "phone":
-        const phoneRegex = /^\+(\d{1,3})\d{7,15}$/; // Matches: +6512345678, +11234567890
+        const phoneRegex = /^\+(\d{1,3})\d{7,15}$/;
         return phoneRegex.test(value) ? "" : "Phone number must include a valid country code without spaces (e.g. +6512345678).";
       case "message":
         return value.trim() === "" ? "This field is required." : "";
@@ -43,7 +63,6 @@ const PublicContactPage = () => {
     setErrors((prev) => ({ ...prev, [name]: validate(name, value) }));
   };
 
-  // Function to check for flagged keywords in the message
   const checkForFlaggedKeywords = (message) => {
     const foundKeywords = flaggedKeywords.filter(keyword => message.toLowerCase().includes(keyword.toLowerCase()));
     return foundKeywords.length > 0 ? foundKeywords : null;
@@ -51,29 +70,40 @@ const PublicContactPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted with data:", formData);
+    
     const newErrors = {};
     Object.entries(formData).forEach(([key, val]) => {
       const error = validate(key, val);
       if (error) newErrors[key] = error;
     });
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) {
+      console.log("Validation errors:", newErrors);
+      return;
+    }
 
-    // Check if the message contains any flagged keywords
     const flaggedKeywordsFound = checkForFlaggedKeywords(formData.message);
+    console.log("Flagged keywords found:", flaggedKeywordsFound);
 
     try {
-      // Send the form data along with any flagged keywords
-      await axios.post("/contacts/public", {
+      console.log("Sending request to /contacts/public");
+      const response = await axios.post("/contacts/public", {
         ...formData,
-        flaggedKeywords: flaggedKeywordsFound // Add flagged keywords to the submission
+        flaggedKeywords: flaggedKeywordsFound
       });
+      console.log("Response received:", response.data);
       
       toast.success("Message sent! Thank you.");
       setFormData({ firstName: "", lastName: "", phone: "", email: "", subject: "", message: "" });
       setErrors({});
     } catch (err) {
-      toast.error("Failed to send message");
+      console.error("Error sending message:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      
+      const errorMessage = err.response?.data?.message || err.message || "Failed to send message";
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
@@ -83,50 +113,99 @@ const PublicContactPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-black p-6 pt-24">
-      <h1 className="text-6xl font-bold text-center text-black mb-4 uppercase">
-        CONTACT ME
-      </h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6 pt-24">
+      {/* Enhanced Header Section */}
+      <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100/50 p-8 mb-8 max-w-7xl mx-auto overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full -translate-y-16 translate-x-16 opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full translate-y-12 -translate-x-12 opacity-40"></div>
+        
+        <div className="relative flex justify-between items-center">
+          <div>
+            <h2 className="text-4xl font-bold mb-3">
+              <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
+                Contact Me
+              </span>
+            </h2>
+            <p className="text-gray-600 text-lg">Let's discuss your financial goals over coffee or a call.</p>
+          </div>
+          <div className="relative">
+            <div className="h-16 w-16 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-transform duration-300">
+              <Mail className="h-8 w-8 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 h-6 w-6 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+      </div>
 
-      <p className="text-2xl text-center text-gray-600 mb-8">
-        Let’s discuss your financial goals over coffee or a call.
-      </p>
-
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-8 justify-center">
-        <div className="flex-1 bg-black p-6 rounded-lg shadow-md text-white flex flex-col items-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Contact Information</h2>
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        {/* Contact Information Card */}
+        <div className="flex-1 bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-2xl shadow-xl border border-gray-800 text-white">
+          <h2 className="text-3xl font-bold text-white mb-6">
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+              Contact Information
+            </span>
+          </h2>
           
-          <p className="text-center text-gray-300 text-xl mb-12">
-            <em>Start the chat to begin planning your financial future wisely.</em>
+          <p className="text-gray-300 text-lg mb-8 italic">
+            Start the chat to begin planning your financial future wisely.
           </p>
 
-          <div className="flex flex-col items-start gap-6 w-full">
-            <div className="flex items-center gap-3 text-2xl w-full">
-              <Mail className="text-emerald-500" />
-              <span>Email: <a href="mailto:someone@example.com" className="text-blue-600">someone@example.com</a></span>
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-300">Email</h3>
+                <a href="mailto:someone@example.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                  someone@example.com
+                </a>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-2xl w-full">
-              <Phone className="text-emerald-500" />
-              <span>Phone: +65 1234 5678</span>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+                <Phone className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-300">Phone</h3>
+                <p className="text-gray-200">+65 1234 5678</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-2xl w-full">
-              <MapPin className="text-emerald-500" />
-              <span>Location: Singapore</span>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+                <MapPin className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-300">Location</h3>
+                <p className="text-gray-200">Singapore</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-2xl w-full">
-              <Clock className="text-emerald-500" />
-              <span>Availability: 9:00 AM - 6:00 PM</span>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+                <Clock className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-300">Availability</h3>
+                <p className="text-gray-200">9:00 AM - 6:00 PM</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 bg-white rounded-lg p-6 shadow-md">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* Contact Form Card */}
+        <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-8">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {["firstName", "lastName", "email", "phone"].map((field) => (
-              <div key={field}>
-                <div className="flex justify-between items-center">
-                  <label className="text-lg capitalize text-black">
-                    {field === "firstName" ? "First Name" : field === "lastName" ? "Last Name" : field === "email" ? "Email" : "Phone Number"} 
+              <div key={field} className="relative">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-sm font-medium text-gray-700">
+                    {field === "firstName" ? "First Name" : 
+                     field === "lastName" ? "Last Name" : 
+                     field === "email" ? "Email" : "Phone Number"}
                     <span className="text-red-500">*</span>
                   </label>
                   {renderIcon(field)}
@@ -138,24 +217,28 @@ const PublicContactPage = () => {
                   onChange={handleChange}
                   placeholder={
                     field === "email"
-                      ? "Email"
+                      ? "your@email.com"
                       : field === "phone"
                       ? "Eg. +6512345678"
-                      : field.charAt(0).toUpperCase() + field.slice(1)
+                      : field === "firstName"
+                      ? "John"
+                      : "Doe"
                   }
-                  className="mt-1 w-full p-3 rounded bg-gray-100 text-black border border-gray-300 text-lg"
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    errors[field] ? "border-red-300" : "border-gray-300"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 bg-white placeholder-gray-500`}
                 />
-                <div className="min-h-[1.25rem]">
-                  {errors[field] && <p className="text-sm text-red-400">{errors[field]}</p>}
-                </div>
+                {errors[field] && (
+                  <p className="mt-1 text-sm text-red-500">{errors[field]}</p>
+                )}
               </div>
             ))}
 
-            <div className="col-span-2">
-              <label className="text-lg font-semibold mb-1 text-black block">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Subject <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   "General Inquiry",
                   "Investment Strategy Discussion",
@@ -164,46 +247,51 @@ const PublicContactPage = () => {
                   "Insurance Policy Review",
                   "Corporate Financial Seminar Inquiry",
                 ].map((s, i) => (
-                  <label key={i} className="flex items-center gap-2 text-black">
+                  <label key={i} className="flex items-center gap-2 p-3 rounded-lg border border-gray-300 hover:border-purple-300 hover:bg-purple-50/50 transition-colors">
                     <input
                       type="radio"
                       name="subject"
                       value={s}
                       checked={formData.subject === s}
                       onChange={handleChange}
-                      className="accent-emerald-500"
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500"
                     />
-                    {s}
+                    <span className="text-sm text-gray-700">{s}</span>
                   </label>
                 ))}
               </div>
-              <div className="min-h-[1.25rem] mt-1">
-                {errors.subject && <p className="text-sm text-red-400">{errors.subject}</p>}
-              </div>
+              {errors.subject && (
+                <p className="mt-1 text-sm text-red-500">{errors.subject}</p>
+              )}
             </div>
 
-            <div className="col-span-2">
-              <div className="flex justify-between items-center">
-                <label className="text-lg text-black">
+            <div className="md:col-span-2">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">
                   Message <span className="text-red-500">*</span>
                 </label>
                 {renderIcon("message")}
               </div>
               <textarea
                 name="message"
-                rows={4}
+                rows={5}
                 value={formData.message}
                 onChange={handleChange}
                 placeholder="Your message..."
-                className="mt-1 w-full p-3 rounded bg-gray-100 text-black border border-gray-300 text-lg"
+                className={`w-full px-4 py-3 rounded-xl border ${
+                  errors.message ? "border-red-300" : "border-gray-300"
+                } focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 bg-white placeholder-gray-500`}
               />
-              <div className="min-h-[1.25rem] mt-1">
-                {errors.message && <p className="text-sm text-red-400">{errors.message}</p>}
-              </div>
+              {errors.message && (
+                <p className="mt-1 text-sm text-red-500">{errors.message}</p>
+              )}
             </div>
 
-            <div className="col-span-2 text-right">
-              <button type="submit" className="bg-emerald-500 px-6 py-2 rounded hover:bg-emerald-600 transition text-lg">
+            <div className="md:col-span-2 flex justify-end">
+              <button
+                type="submit"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
                 Send Message
               </button>
             </div>
