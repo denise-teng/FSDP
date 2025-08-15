@@ -79,7 +79,7 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
     recipient.lastName?.toLowerCase().includes(search.toLowerCase()) ||
     recipient.email?.toLowerCase().includes(search.toLowerCase()) ||
     recipient.phone?.includes(search) ||
-    recipient.subject?.toLowerCase().includes(search.toLowerCase())
+    recipient.broadcastGroup?.toLowerCase().includes(search.toLowerCase())
   );
 
   // Pagination
@@ -107,10 +107,13 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">
-                  {selectedBroadcast ? `${selectedBroadcast.title} Recipients` : 'Broadcast Recipients'}
+                  {selectedBroadcast ? `${selectedBroadcast.title} Recipients` : 'Viewing All Recipients'}
                 </h2>
                 <p className="text-indigo-100 text-sm">
-                  {filteredRecipients.length} total recipients
+                  {selectedBroadcast 
+                    ? `${filteredRecipients.length} recipients in this broadcast` 
+                    : `${filteredRecipients.length} total recipients across all broadcasts`
+                  }
                 </p>
               </div>
             </div>
@@ -134,7 +137,7 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
               </svg>
               <input
                 type="text"
-                placeholder="Search recipients..."
+                placeholder="Search by name, email, phone, or broadcast group..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-500"
@@ -160,23 +163,20 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200 sticky top-0">
                   <tr>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">ID</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">First Name</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Last Name</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Phone No.</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Email</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Subject Type</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Channel</th>
-                    <th className="p-4 text-center text-sm font-semibold text-gray-900">Actions</th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-900">First Name</th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-900">Last Name</th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-900">Phone</th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-900">Email</th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-900">
+                      {selectedBroadcast ? 'Channel' : 'Broadcast Group(s)'}
+                    </th>
+                    {!selectedBroadcast && <th className="p-4 text-center text-sm font-semibold text-gray-900">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {currentRecipients.length > 0 ? (
-                    currentRecipients.map((r) => (
+                    currentRecipients.map((r, index) => (
                       <tr key={r._id} className="hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 transition-all duration-300">
-                        <td className="p-4 text-sm text-gray-900 font-medium text-center">
-                          {r.contactId}
-                        </td>
                         
                         {editingId === r._id ? (
                           <>
@@ -185,6 +185,7 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
                                 value={editedRow.firstName || ''} 
                                 onChange={(e) => setEditedRow({ ...editedRow, firstName: e.target.value })} 
+                                placeholder="First Name"
                               />
                             </td>
                             <td className="p-4">
@@ -192,6 +193,7 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
                                 value={editedRow.lastName || ''} 
                                 onChange={(e) => setEditedRow({ ...editedRow, lastName: e.target.value })} 
+                                placeholder="Last Name"
                               />
                             </td>
                             <td className="p-4">
@@ -199,6 +201,7 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 font-mono"
                                 value={editedRow.phone || ''} 
                                 onChange={(e) => setEditedRow({ ...editedRow, phone: e.target.value })} 
+                                placeholder="Phone Number"
                               />
                             </td>
                             <td className="p-4">
@@ -206,88 +209,113 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
                                 value={editedRow.email || ''} 
                                 onChange={(e) => setEditedRow({ ...editedRow, email: e.target.value })} 
+                                placeholder="Email Address"
                               />
                             </td>
                             <td className="p-4">
-                              <input 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                                value={editedRow.subject || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, subject: e.target.value })} 
-                              />
-                            </td>
-                            <td className="p-4">
-                              <select 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                                value={editedRow.channel || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, channel: e.target.value })}
-                              >
-                                <option value="">Select Channel</option>
-                                <option value="email">Email</option>
-                                <option value="whatsapp">WhatsApp</option>
-                                <option value="sms">SMS</option>
-                              </select>
+                              {selectedBroadcast ? (
+                                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2">
+                                  {editedRow.channel || 'No channel'}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2">
+                                  {editedRow.broadcastGroup || 'No groups assigned'}
+                                </div>
+                              )}
                             </td>
                           </>
                         ) : (
                           <>
-                            <td className="p-4 text-sm text-gray-900">{r.firstName}</td>
-                            <td className="p-4 text-sm text-gray-900">{r.lastName}</td>
-                            <td className="p-4 text-sm text-gray-900 font-mono">{r.phone}</td>
-                            <td className="p-4 text-sm text-gray-600">{r.email}</td>
-                            <td className="p-4 text-sm text-gray-900">{r.subject}</td>
-                            <td className="p-4 text-sm text-gray-900">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                r.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                r.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
-                                r.channel === 'sms' ? 'bg-purple-100 text-purple-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {r.channel || '—'}
-                              </span>
+                            <td className="p-4">
+                              <div className="font-medium text-gray-900">
+                                {r.firstName || '—'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="font-medium text-gray-900">
+                                {r.lastName || '—'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="font-mono text-sm text-gray-700 bg-gray-50 rounded px-2 py-1 inline-block">
+                                {r.phone || 'No phone'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="text-gray-700">
+                                {r.email || 'No email'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              {selectedBroadcast ? (
+                                // Show channel for specific broadcast
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                                  r.channel === 'email' ? 'bg-blue-100 text-blue-800' :
+                                  r.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {r.channel ? r.channel.charAt(0).toUpperCase() + r.channel.slice(1) : 'No channel'}
+                                </span>
+                              ) : (
+                                // Show broadcast groups for "View All"
+                                <div className="flex flex-wrap gap-1">
+                                  {r.broadcastGroup ? (
+                                    r.broadcastGroup.split(', ').map((group, groupIndex) => (
+                                      <span key={groupIndex} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                        {group}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">No groups</span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                           </>
                         )}
                         
-                        <td className="p-4">
-                          <div className="flex items-center justify-center space-x-2">
-                            {editingId === r._id ? (
-                              <>
-                                <button 
-                                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                  onClick={saveEdit}
-                                >
-                                  Save
-                                </button>
-                                <button 
-                                  className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                  onClick={() => setEditingId(null)}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button 
-                                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                  onClick={() => startEdit(r)}
-                                >
-                                  Edit
-                                </button>
-                                <button 
-                                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                  onClick={() => deleteRecipient(r._id)}
-                                >
-                                  Remove
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                        {!selectedBroadcast && (
+                          <td className="p-4">
+                            <div className="flex items-center justify-center space-x-2">
+                              {editingId === r._id ? (
+                                <>
+                                  <button 
+                                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                                    onClick={saveEdit}
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                                    onClick={() => setEditingId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button 
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                                    onClick={() => startEdit(r)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button 
+                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                                    onClick={() => deleteRecipient(r._id)}
+                                  >
+                                    Remove
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" className="text-center py-12">
+                      <td colSpan={selectedBroadcast ? "5" : "6"} className="text-center py-12">
                         <div className="flex flex-col items-center">
                           <svg className="h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />

@@ -1,5 +1,6 @@
 import { ScheduledBroadcast } from '../models/scheduledBroadcast.model.js';
 import EmailService from './emailService.js';
+import { sendScheduledBroadcastEmail } from './sendEmail.js';
 import { logMessage } from './messageLogger.service.js';
 
 const processScheduledBroadcasts = async () => {
@@ -53,20 +54,12 @@ const processScheduledBroadcasts = async () => {
 
                     const batchResults = await Promise.allSettled(
                         batch.map(recipient => {
-                            const emailData = {
+                            return sendScheduledBroadcastEmail({
                                 to: recipient.email,
-                                subject: `Hi ${recipient.firstName}, ${scheduled.broadcast.title || 'Important Update'}`,
-                                text: `Dear ${recipient.firstName},\n\n${scheduled.broadcast.content || scheduled.message}`,
-                                html: `
-                                    <p>Dear ${recipient.firstName},</p>
-                                    <p>${scheduled.broadcast.content || scheduled.message}</p>
-                                    <p>Best regards,</p>
-                                    <p>Your Team</p>
-                                `,
-                                contactId: recipient._id
-                            };
-
-                            return EmailService.sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html)
+                                subject: scheduled.broadcast.title || 'Important Update',
+                                message: scheduled.broadcast.content || scheduled.message,
+                                firstName: recipient.firstName
+                            })
                                 .then(() => ({ 
                                     success: true, 
                                     recipientId: recipient._id,

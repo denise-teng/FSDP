@@ -440,11 +440,11 @@ export default function AnalyticsTab() {
               {/* Filters and Controls */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">User Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">User Type</label>
                   <select
                     value={filters.userType}
                     onChange={(e) => setFilters(prev => ({ ...prev, userType: e.target.value }))}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="">All Types</option>
                     <option value="admin">Admin</option>
@@ -452,11 +452,11 @@ export default function AnalyticsTab() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">Sort By</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                   <select
                     value={sorting}
                     onChange={(e) => setSorting(e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="clicks">Clicks</option>
                     <option value="engagingTime">Engaging Time</option>
@@ -464,17 +464,17 @@ export default function AnalyticsTab() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">Table Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Table Name</label>
                   <input
                     type="text"
                     value={tableName}
                     onChange={(e) => setTableName(e.target.value)}
                     placeholder="Enter table name"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">Actions</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Actions</label>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -490,7 +490,7 @@ export default function AnalyticsTab() {
 
               {/* Column Selection */}
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Show Columns</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Show Columns</h3>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center">
                     <input
@@ -499,7 +499,7 @@ export default function AnalyticsTab() {
                       onChange={() => setSelectedColumns(prev => ({ ...prev, clicks: !prev.clicks }))}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="ml-2 text-sm font-semibold text-gray-900">Clicks</span>
+                    <span className="ml-2 text-sm text-gray-700">Clicks</span>
                   </label>
                   <label className="flex items-center">
                     <input
@@ -508,7 +508,7 @@ export default function AnalyticsTab() {
                       onChange={() => setSelectedColumns(prev => ({ ...prev, engagingTime: !prev.engagingTime }))}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="ml-2 text-sm font-semibold text-gray-900">Engaging Time</span>
+                    <span className="ml-2 text-sm text-gray-700">Engaging Time</span>
                   </label>
                   <label className="flex items-center">
                     <input
@@ -517,7 +517,7 @@ export default function AnalyticsTab() {
                       onChange={() => setSelectedColumns(prev => ({ ...prev, replies: !prev.replies }))}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="ml-2 text-sm font-semibold text-gray-900">Replies</span>
+                    <span className="ml-2 text-sm text-gray-700">Replies</span>
                   </label>
                 </div>
               </div>
@@ -651,7 +651,7 @@ export default function AnalyticsTab() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {recommendations.map((rec, index) => (
                     <motion.div 
-                      key={rec.id || index}
+                      key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -662,7 +662,7 @@ export default function AnalyticsTab() {
                           <TrendingUp className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                          <p className="text-gray-700 leading-relaxed">{rec.text || rec}</p>
+                          <p className="text-gray-700 leading-relaxed">{rec}</p>
                         </div>
                       </div>
                     </motion.div>
@@ -706,22 +706,22 @@ export default function AnalyticsTab() {
                 {/* Content */}
                 <div className="p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">Chart Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chart Title</label>
                     <input
                       type="text"
                       value={newChartConfig.title}
                       onChange={(e) => setNewChartConfig({ ...newChartConfig, title: e.target.value })}
-                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       placeholder="Enter chart title"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">Chart Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chart Type</label>
                     <select
                       value={newChartConfig.type}
                       onChange={(e) => setNewChartConfig({ ...newChartConfig, type: e.target.value })}
-                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="line">Line Chart</option>
                       <option value="bar">Bar Chart</option>
@@ -730,11 +730,11 @@ export default function AnalyticsTab() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">Metric</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Metric</label>
                     <select
                       value={newChartConfig.metric}
                       onChange={(e) => setNewChartConfig({ ...newChartConfig, metric: e.target.value })}
-                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="clicks">Clicks</option>
                       <option value="engagingTime">Engaging Time</option>

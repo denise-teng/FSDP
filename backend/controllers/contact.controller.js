@@ -2,10 +2,8 @@ import Contact from '../models/Contact.model.js';
 import PotentialClient from '../models/PotentialClient.model.js';
 import { createContactHistory } from './contacthistory.controller.js';  // Adjust path if needed
 import ContactHistory from '../models/contacthistory.model.js';  // Import ContactHistory
+import Keywords from '../models/Keywords.model.js';  // Import Keywords model
 
-
-// Define flagged keywords
-const flaggedKeywords = ['schedule', 'meeting', 'help', 'urgent'];
 
 export const submitContact = async (req, res) => {
   try {
@@ -19,8 +17,21 @@ export const submitContact = async (req, res) => {
     const latest = await Contact.findOne().sort({ contactId: -1 });
     const nextId = latest ? latest.contactId + 1 : 1;
 
+    // Fetch active keywords from database
+    let flaggedKeywords = ['schedule', 'meeting', 'help', 'urgent']; // fallback
+    try {
+      const activeKeywords = await Keywords.find({ isActive: true });
+      if (activeKeywords.length > 0) {
+        flaggedKeywords = activeKeywords.map(k => k.keyword);
+      }
+    } catch (keywordError) {
+      console.error('Error fetching keywords, using fallback:', keywordError);
+    }
+
     // Check for flagged keywords in the message
-    const flaggedKeywordsFound = flaggedKeywords.filter(keyword => message.toLowerCase().includes(keyword));
+    const flaggedKeywordsFound = flaggedKeywords.filter(keyword => 
+      message.toLowerCase().includes(keyword.toLowerCase())
+    );
     
     // If any flagged keywords are found, flag as potential client
     let potentialClientReason = flaggedKeywordsFound.length > 0 

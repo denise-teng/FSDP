@@ -11,7 +11,6 @@ import './index.css';
 import { Toaster } from 'react-hot-toast';
 import { useUserStore } from "./stores/useUserStore";
 import LoadingSpinner from "./components/LoadingSpinner";
-import AdminPage from "./pages/AdminPage";
 import CartPage from "./pages/CartPage";
 import PurchaseSuccessPage from "./pages/PurchaseSuccessPage";
 import PurchaseCancelPage from "./pages/PurchaseCancelPage";
@@ -35,6 +34,7 @@ import QuickMessagesPage from "./pages/QuickMessagesPage";
 import AdminContactPage from "./pages/AdminContactPage";
 import { throttle } from 'lodash';
 import ConsultationBooking from './pages/ConsultationBookingPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 // ✅ Set token globally for all Axios requests
 const token = localStorage.getItem('authToken');
@@ -134,7 +134,8 @@ function App() {
 
           {/* Admin routes */}
           <Route path='/admin-home' element={user?.role === "admin" ? <AdminHomePage /> : <Navigate to="/" />} />
-          <Route path='/secret-dashboard' element={user?.role === "admin" ? <AdminPage /> : <Navigate to="/login" />} />
+          <Route path='/secret-dashboard' element={user?.role === "admin" ? <AnalyticsPage /> : <Navigate to="/login" />} />
+          <Route path='/analytics' element={user?.role === "admin" ? <AnalyticsPage /> : <Navigate to="/login" />} />
           <Route path='/admin-contacts' element={user?.role === "admin" ? <AdminContactPage /> : <Navigate to="/login" />} />
           <Route path='/quick-messages' element={user?.role === "admin" ? <QuickMessagesPage /> : <Navigate to="/login" />} />
           <Route path='/add-contact' element={user?.role === "admin" ? <AddContactForm /> : <Navigate to='/' />} />
