@@ -158,6 +158,7 @@ export default function BroadcastList() {
         try {
             const res = await axios.get('/broadcasts/recipients');
             setRecipients(res.data);
+            setSelectedBroadcast(null); // Clear selected broadcast for "View All"
             setShowRecipientsModal(true);
         } catch (error) {
             toast.error('Failed to load recipients');
@@ -186,12 +187,20 @@ export default function BroadcastList() {
         .filter(b => b.status === 'Scheduled' || b.status === 'Processing' || b.status === 'Sent' || b.status === 'Failed')
         .filter((b) => b.title.toLowerCase().includes(search.toLowerCase()))
         .filter((b) => (filterChannel === 'all' ? true : b.channel?.toLowerCase() === filterChannel.toLowerCase()))
-        .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+        .sort((a, b) => {
+            const timeA = new Date(a.scheduledTime).getTime();
+            const timeB = new Date(b.scheduledTime).getTime();
+            return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+        });
 
     const filteredMessageHistory = messageHistory
         .filter((m) => m.title.toLowerCase().includes(search.toLowerCase()))
         .filter((m) => (filterChannel === 'all' ? true : m.channel?.toLowerCase() === filterChannel.toLowerCase()))
-        .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+        .sort((a, b) => {
+            const timeA = new Date(a.sentAt).getTime();
+            const timeB = new Date(b.sentAt).getTime();
+            return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+        });
 
     const clearFilters = () => {
         setSearch('');
@@ -266,8 +275,11 @@ export default function BroadcastList() {
             toast.dismiss(loadingToast);
             toast.success(
                 sendNow
-                    ? `Sent to ${response.data.data?.recipients?.length || 0} recipients`
-                    : `Scheduled for ${new Date(scheduledTime).toLocaleString()}`
+                    ? `Successfully sent to ${response.data.data?.recipients?.length || 0} recipients!`
+                    : `Successfully scheduled for ${new Date(scheduledTime).toLocaleString()}!`
+                , {
+                    duration: 4000
+                }
             );
 
             // Reset form and refresh data
@@ -279,7 +291,7 @@ export default function BroadcastList() {
             await fetchMessageHistory();
 
         } catch (error) {
-            toast.dismiss();
+            toast.dismiss(loadingToast);
 
             console.error('Full error details:', {
                 message: error.message,
@@ -305,23 +317,42 @@ export default function BroadcastList() {
                 errorMsg = 'No response from server';
             }
 
-            toast.error(`Error: ${errorMsg}`);
+            toast.error(`Error: ${errorMsg}`, {
+                duration: 4000
+            });
         }
     };
 
     const handleSendNow = async (broadcast, message) => {
+        let loadingToast;
         try {
-            toast.loading(`Sending to ${broadcast.recipients?.length} recipients...`);
-            await axios.post('/broadcasts/send-now', {
+            loadingToast = toast.loading(`Sending to ${broadcast.recipients?.length || 0} recipients...`);
+            
+            const response = await axios.post('/broadcasts/send-now', {
                 broadcastId: broadcast._id,
-                message,
-                accountType: 'user1'
+                title: broadcast.title,
+                channel: broadcast.channel,
+                message
             });
-            toast.success('Sent successfully!');
+            
+            toast.dismiss(loadingToast);
+            toast.success(`Successfully sent to ${response.data.data?.recipients?.length || broadcast.recipients?.length || 0} recipients!`, {
+                duration: 4000
+            });
+            
+            // Reset form and close modal
+            setEmailMessage("");
+            setScheduledTime("");
             setShowScheduleModal(false);
-            fetchScheduledBroadcasts();
+            await fetchBroadcasts();
+            await fetchScheduledBroadcasts();
+            await fetchMessageHistory();
         } catch (error) {
-            toast.error(`Failed to send: ${error.message}`);
+            if (loadingToast) toast.dismiss(loadingToast);
+            console.error('Error sending broadcast:', error);
+            toast.error(`Failed to send: ${error.response?.data?.message || error.message}`, {
+                duration: 4000
+            });
         }
     };
 
@@ -388,35 +419,6 @@ export default function BroadcastList() {
         setDeleteType('regular');
     };
 
-    const handleProcessScheduled = async () => {
-        try {
-            setLoading(true);
-            const response = await axios.post('/broadcasts/process-scheduled');
-            
-            console.log('Process scheduled response:', response.data);
-            
-            const { processed, failed, total, debug } = response.data;
-            
-            if (total === 0) {
-                toast(`No scheduled broadcasts found that are due for processing. 
-                    ${debug?.allScheduledCount || 0} total scheduled broadcasts in database.`);
-            } else if (processed > 0) {
-                toast.success(`Processed ${processed} scheduled broadcasts successfully!`);
-            } else {
-                toast.error(`Found ${total} due broadcasts but ${failed} failed to process.`);
-            }
-            
-            // Refresh the data
-            await fetchScheduledBroadcasts();
-            await fetchMessageHistory();
-        } catch (error) {
-            console.error('Error processing scheduled broadcasts:', error);
-            toast.error('Failed to process scheduled broadcasts');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const formatDateTime = (dateString) => {
         return format(new Date(dateString), 'MMM dd, yyyy hh:mm a');
     };
@@ -465,7 +467,7 @@ export default function BroadcastList() {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Manual Broadcasts
+                                Broadcast Lists
                             </span>
                         </button>
                         <button
@@ -572,7 +574,6 @@ export default function BroadcastList() {
                             <option value="all">All Channels</option>
                             <option value="email">Email</option>
                             <option value="whatsapp">WhatsApp</option>
-                            <option value="sms">SMS</option>
                         </select>
 
                         {activeTab === 'manual' && (
@@ -619,9 +620,9 @@ export default function BroadcastList() {
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        Manual Broadcasts
+                                        Broadcast Lists
                                     </h3>
-                                    <p className="text-emerald-600 mt-1">Broadcast lists created manually</p>
+                                    <p className="text-emerald-600 mt-1">These are all the Broadcast Lists created</p>
                                 </div>
                                 <button
                                     onClick={fetchBroadcasts}
@@ -700,8 +701,8 @@ export default function BroadcastList() {
                                                     <svg className="h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                                     </svg>
-                                                    <p className="text-lg font-medium text-gray-500">No manual broadcasts found</p>
-                                                    <p className="text-sm text-gray-400 mt-1">Create your first broadcast to get started</p>
+                                                    <p className="text-lg font-medium text-gray-500">No broadcast lists found</p>
+                                                    <p className="text-sm text-gray-400 mt-1">Create your first broadcast list to get started</p>
                                                 </div>
                                             </td>
                                         </tr>
@@ -726,16 +727,6 @@ export default function BroadcastList() {
                                     <p className="text-blue-600 mt-1">Broadcasts scheduled for future delivery</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button
-                                        onClick={handleProcessScheduled}
-                                        disabled={loading}
-                                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 transform hover:scale-105 shadow-md flex items-center gap-2"
-                                    >
-                                        <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        {loading ? 'Processing...' : 'Process Due'}
-                                    </button>
                                     <button
                                         onClick={fetchScheduledBroadcasts}
                                         disabled={loading}
@@ -1080,7 +1071,6 @@ export default function BroadcastList() {
                             >
                                 <option value="Email">Email</option>
                                 <option value="WhatsApp">WhatsApp</option>
-                                <option value="SMS">SMS</option>
                             </select>
                         </div>
                         <div>
@@ -1106,6 +1096,8 @@ export default function BroadcastList() {
             {showScheduleModal && (
                 <Modal title={selectedBroadcast ? "Edit Scheduled Broadcast" : "Schedule Broadcast"} onClose={() => {
                     setSelectedBroadcast(null);
+                    setEmailMessage("");
+                    setScheduledTime("");
                     setShowScheduleModal(false);
                 }}>
                     {!selectedBroadcast ? (

@@ -1,5 +1,6 @@
 // models/scheduledBroadcast.model.js
 import mongoose from 'mongoose';
+import { CHANNEL_ENUM, normalizeChannel } from '../utils/channelNormalizer.js';
 
 const scheduledBroadcastSchema = new mongoose.Schema({
   title: { type: String, required: true }, // Added title field
@@ -8,9 +9,9 @@ const scheduledBroadcastSchema = new mongoose.Schema({
   scheduledTime: { type: Date, required: true },
   channel: { 
     type: String, 
-    enum: ['email', 'sms', 'whatsapp'], 
+    enum: CHANNEL_ENUM, 
     required: true,
-    set: (val) => val.toLowerCase() // Automatically convert to lowercase
+    set: (val) => normalizeChannel(val) // Automatically normalize channel values
   },
   recipients: [{ 
     type: mongoose.Schema.Types.ObjectId, 

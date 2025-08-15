@@ -93,7 +93,7 @@ export default function BroadcastAI({ onClose, onBroadcastCreated }) {
         try {
             const tagsArray = editableData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
             
-            const response = await axios.post('/api/broadcasts/ai', {
+            const response = await axios.post('/api/broadcasts', {
                 title: editableData.title,
                 listName: editableData.listName,
                 channel: editableData.channel.toLowerCase(),
@@ -195,8 +195,8 @@ export default function BroadcastAI({ onClose, onBroadcastCreated }) {
                                     </svg>
                                     Communication Channel
                                 </h3>
-                                <div className="grid grid-cols-3 gap-4">
-                                    {['email', 'whatsapp', 'sms'].map((channelOption) => (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {['email', 'whatsapp'].map((channelOption) => (
                                         <label key={channelOption} className="relative">
                                             <input
                                                 type="radio"
@@ -328,7 +328,6 @@ export default function BroadcastAI({ onClose, onBroadcastCreated }) {
                                         >
                                             <option value="email">Email</option>
                                             <option value="whatsapp">WhatsApp</option>
-                                            <option value="sms">SMS</option>
                                         </select>
                                     </div>
                                 </div>
