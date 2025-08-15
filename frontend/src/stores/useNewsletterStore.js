@@ -10,13 +10,13 @@ const getBaseUrl = () => {
 const normalizeImagePath = (path) => {
   if (!path) return '/placeholder-image.jpg';
   if (path.startsWith('http') || path.startsWith('/')) return path;
-  
+ 
   // Handle uploaded files
   const cleanPath = String(path)
     .replace(/^[\\/]+/, '')
     .replace(/\\/g, '/')
     .replace(/^uploads\//, '');
-    
+   
   return `${getBaseUrl()}/uploads/${cleanPath}`;
 };
 
@@ -46,7 +46,7 @@ initializeSlots: async () => {
   try {
     const res = await axios.get('/newsletters/slots');
     console.log('Raw slots data from backend:', res.data); // Add this to inspect the actual response
-    
+   
     const filteredSlots = (res.data || Array(3).fill(null)).map(slot => {
       if (!slot || slot.status !== 'published') return null;
       console.log('Original slot thumbnailPath:', slot.thumbnailPath); // Debug the original path

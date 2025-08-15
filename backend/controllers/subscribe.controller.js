@@ -1,12 +1,11 @@
 import sgMail from '@sendgrid/mail';
 import Subscriber from '../models/subscribe.model.js';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export const subscribe = async (req, res) => {
   const { email, firstName, lastName, source } = req.body;
 
-  // 1. Validate input
   if (!email) {
     return res.status(400).json({
       success: false,
@@ -15,24 +14,18 @@ export const subscribe = async (req, res) => {
     });
   }
 
-  // 2. Check existing subscriber
   try {
     const existing = await Subscriber.findOne({ email }).lean();
-    
+   
     if (existing) {
-      return res.status(200).json({ // 200 OK since this isn't really an error
+      return res.status(200).json({
         success: true,
         code: 'ALREADY_SUBSCRIBED',
         message: 'You are already subscribed',
-        data: {
-          email: existing.email,
-          isActive: existing.isActive,
-          subscribedAt: existing.subscribedAt
-        }
+        data: existing
       });
     }
 
-    // 3. Create new subscriber
     const subscriber = await Subscriber.create({
       email: email.toLowerCase().trim(),
       firstName,
@@ -41,49 +34,42 @@ export const subscribe = async (req, res) => {
       isActive: true
     });
 
-    // 4. Send welcome email
     try {
-      await sgMail.send({
+      const msg = {
         to: email,
         from: {
-          email: process.env.SENDGRID_TRANSACTIONAL_FROM,
-          name: 'Your Brand Name'
+          email: 'densie.t2910@gmail.com', // CHANGE TO YOUR VERIFIED DOMAIN
+          name: 'Yip Cheu Fong'
         },
-        subject: 'Welcome to our newsletter!',
-        html: `
-          <h1>Welcome ${firstName || 'Subscriber'}!</h1>
-          <p>Thank you for subscribing to our newsletter.</p>
-          <p><small>
-            <a href="${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}">
-              Unsubscribe
-            </a>
-          </small></p>
-        `,
-        trackingSettings: {
-          clickTracking: { enable: true },
-          openTracking: { enable: true }
+        templateId: 'd-de474d9c07a347569e076cec7efe85fa',
+        dynamicTemplateData: {
+          firstName: firstName || 'there',
+          unsubscribeUrl: `${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`
         }
-      });
+      };
+
+      console.log('Attempting to send email with payload:', msg); // Debug log
+      await sgMail.send(msg);
+      console.log('Welcome email sent successfully');
     } catch (emailError) {
-      console.error('Welcome email failed:', emailError);
-      // Continue even if email fails - we'll retry later
+      console.error('Email send failed with details:', {
+        message: emailError.message,
+        code: emailError.code,
+        responseErrors: emailError.response?.body?.errors,
+        stack: emailError.stack
+      });
     }
 
-    // 5. Return success
     return res.status(201).json({
       success: true,
       code: 'SUBSCRIBED',
       message: 'Subscription successful',
-      data: {
-        email: subscriber.email,
-        subscribedAt: subscriber.subscribedAt
-      }
+      data: subscriber
     });
 
   } catch (error) {
     console.error('Subscription error:', error);
-    
-    // Handle duplicate email (race condition)
+   
     if (error.code === 11000) {
       return res.status(200).json({
         success: true,
