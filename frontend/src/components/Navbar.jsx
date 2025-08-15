@@ -3,7 +3,6 @@ import {
   UserPlus,
   LogIn,
   LogOut,
-  Lock,
   Bell,
   Calendar,
   Home,
@@ -15,7 +14,8 @@ import {
   User,
   Bot,
   Menu,
-  X
+  X,
+  BarChart
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
@@ -172,15 +172,15 @@ const Navbar = () => {
             {isAdmin && (
               <>
                 <Link
-                  to="/secret-dashboard"
+                  to="/analytics"
                   className={`flex items-center transition duration-300 ease-in-out ${
-                    isActive("/secret-dashboard")
+                    isActive("/analytics")
                       ? 'text-purple-600'
                       : 'text-gray-700 hover:text-indigo-600'
                   }`}
                 >
-                  <Lock className="mr-1" size={18} />
-                  <span className="hidden sm:inline">Dashboard</span>
+                  <BarChart className="mr-1" size={18} />
+                  <span className="hidden sm:inline">Analytics</span>
                 </Link>
 
                 <Link
@@ -366,15 +366,15 @@ const Navbar = () => {
                 {isAdmin && (
                   <>
                     <Link
-                      to="/secret-dashboard"
+                      to="/analytics"
                       className={`flex items-center p-2 rounded-md ${
-                        isActive("/secret-dashboard")
+                        isActive("/analytics")
                           ? 'bg-purple-50 text-purple-600'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <Lock className="mr-2" size={18} />
-                      Dashboard
+                      <BarChart className="mr-2" size={18} />
+                      Analytics
                     </Link>
 
                     <Link
