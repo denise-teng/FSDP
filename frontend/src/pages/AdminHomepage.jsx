@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import DraftsOverview from '../components/DraftsOverview';
 import Navbar from '../components/Navbar';
 import NearEvents from '../components/NearEvents';
 import { Link } from 'react-router-dom';
@@ -332,6 +333,7 @@ const AdminHomePage = () => {
         </div>
       </motion.div >
 
+
     {/* Dashboard Metrics */ }
     < div className = "max-w-7xl mx-auto" >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
@@ -628,6 +630,20 @@ whileHover = {{ y: -5 }}
             </div>
         </div>
     </section>
+
+
+          {/* Dashboard Metrics */}
+<div className="max-w-7xl mx-auto">
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+    {/* (left) User Engagement Analysis card ... */}
+    {/* (right) Today's Summary card ... */}
+  </div>
+
+  {/* New Row: Drafts at a Glance */}
+  <div className="grid grid-cols-1 gap-8 mb-12">
+    <DraftsOverview />
+  </div>
+</div>
 
     {/* Upcoming Events Section */ }
     < section className = "mb-16" >
