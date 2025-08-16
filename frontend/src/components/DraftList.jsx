@@ -13,6 +13,7 @@ const DraftList = () => {
   const navigate = useNavigate();
   const [previewDraft, setPreviewDraft] = useState(null);
 
+
   useEffect(() => {
     const loadDrafts = async () => {
       setLoading(true);
@@ -41,6 +42,14 @@ const DraftList = () => {
         ))
       );
   }, [drafts, filterType, searchTerm]);
+
+  const handlePublishSuccess = async () => {
+    await fetchDrafts(); // Refresh the list after publishing
+  };
+
+  const handleEditDraft = (draft) => {
+    navigate(`/edit-draft/${draft._id}`); // Navigate to edit page
+  };
 
   if (error) {
     return (
@@ -118,8 +127,11 @@ const DraftList = () => {
             <DraftCard
               key={draft._id}
               draft={draft}
-              onEdit={() => navigate(`/edit-draft/${draft._id}`)}
+              onEdit={() => handleEditDraft(draft)}
               onPreview={() => setPreviewDraft(draft)}
+              onPublishSuccess={handlePublishSuccess}
+              // Add this if you need to refresh the list after delete
+              onDeleteSuccess={() => fetchDrafts()}
             />
           ))
         )}

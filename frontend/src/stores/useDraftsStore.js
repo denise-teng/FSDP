@@ -10,7 +10,7 @@ export const useDraftStore = create((set, get) => ({
   isDeleting: false, // Separate loading state for delete operations
   lastFetchTime: null,
 
- fetchDrafts: async () => {
+  fetchDrafts: async () => {
     // Prevent rapid consecutive fetches
     const { lastFetchTime } = get();
     if (lastFetchTime && Date.now() - lastFetchTime < 5000) {
@@ -20,43 +20,45 @@ export const useDraftStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await axios.get("/drafts");
-      set({ 
+      set({
         drafts: response.data,
-        loading: false,
-        lastFetchTime: Date.now() 
-      });
-    } catch (error) {
-      set({ 
-        error: error.message || "Failed to fetch drafts",
-        loading: false 
-      });
-    }
-  },
-
-
-
-  // Similar for fetchDeletedDrafts
-  fetchDeletedDrafts: async () => {
-    const { lastFetchTime } = get();
-    if (lastFetchTime && Date.now() - lastFetchTime < 5000) {
-      return;
-    }
-
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get("/deleted_drafts");
-      set({ 
-        deletedDrafts: response.data,
         loading: false,
         lastFetchTime: Date.now()
       });
     } catch (error) {
-      set({ 
-        error: error.message || "Failed to fetch deleted drafts",
-        loading: false 
+      set({
+        error: error.message || "Failed to fetch drafts",
+        loading: false
       });
     }
   },
+
+
+fetchDeletedDrafts: async () => {
+  const currentState = get();
+  // Skip if already loading or recently fetched
+  if (currentState.loading || 
+      (currentState.lastFetch && Date.now() - currentState.lastFetch < 5000)) {
+    return;
+  }
+
+  set({ loading: true, error: null });
+  try {
+    const response = await axios.get('/deleted_drafts');
+    set({
+      deletedDrafts: response.data,
+      loading: false,
+      lastFetch: Date.now() // Track when we last fetched
+    });
+  } catch (error) {
+    set({
+      error: error.response?.data?.error || 'Failed to fetch deleted drafts',
+      loading: false
+    });
+    throw error;
+  }
+},
+
 
   // Add a new draft
   addDraft: async (draftData) => {
@@ -65,9 +67,9 @@ export const useDraftStore = create((set, get) => ({
       const res = await axios.post('/drafts', draftData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      set((state) => ({ 
-        drafts: [res.data, ...state.drafts], 
-        loading: false 
+      set((state) => ({
+        drafts: [res.data, ...state.drafts],
+        loading: false
       }));
       toast.success("Draft created successfully");
       return res.data;
@@ -99,82 +101,70 @@ export const useDraftStore = create((set, get) => ({
       throw error;
     }
   },
+deleteDraft: async (id) => {
+  set({ isDeleting: true, error: null });
+  try {
+    const response = await axios.delete(`/drafts/${id}`);
+    
+    if (response.data?.success) {
+      // Optimistically update the UI
+      set(state => ({
+        drafts: state.drafts.filter(draft => draft._id !== id),
+        deletedDrafts: [response.data.draft, ...state.deletedDrafts],
+        isDeleting: false
+      }));
+      toast.success("Draft moved to trash");
+      return true;
+    }
+    throw new Error(response.data?.message || 'Failed to delete draft');
+  } catch (error) {
+    set({ error: error.message, isDeleting: false });
+    toast.error(error.message);
+    return false;
+  }
+},
 
-  // Delete a draft (soft delete)
-  deleteDraft: async (id) => {
+
+  // In useDraftsStore.js
+  permanentlyDeleteDraft: async (id) => {
     set({ isDeleting: true, error: null });
     try {
-      const response = await axios.delete(`/drafts/${id}`);
-      
-      if (response.data.success) {
-        // Remove from active drafts and add to deleted drafts
-        set((state) => ({
-          drafts: state.drafts.filter(draft => draft._id !== id),
-          deletedDrafts: [response.data.draft, ...state.deletedDrafts],
+      const response = await axios.delete(`/deleted_drafts/${id}`);
+
+      if (response.data?.success) {
+        set(state => ({
+          deletedDrafts: state.deletedDrafts.filter(draft => draft._id !== id),
           isDeleting: false
         }));
-        toast.success("Draft moved to trash");
         return true;
       }
+      throw new Error(response.data?.message || 'Deletion failed');
     } catch (error) {
-      const errorMsg = error.response?.data?.error || "Failed to delete draft";
-      set({ error: errorMsg, isDeleting: false });
-      toast.error(errorMsg);
-      return false;
+      set({ error: error.message, isDeleting: false });
+      throw error;
     }
   },
 
-  // Restore a deleted draft
   restoreDraft: async (id) => {
     set({ loading: true, error: null });
     try {
       const response = await axios.put(`/deleted_drafts/${id}/restore`);
-      
-      if (response.data) {
-        // Remove from deleted drafts and add back to active drafts
-        set((state) => ({
+
+      if (response.data?.draft) {
+        set(state => ({
           deletedDrafts: state.deletedDrafts.filter(draft => draft._id !== id),
           drafts: [response.data.draft, ...state.drafts],
           loading: false
         }));
-        toast.success("Draft restored successfully");
         return true;
       }
+      throw new Error(response.data?.message || 'Restoration failed');
     } catch (error) {
-      const errorMsg = error.response?.data?.error || "Failed to restore draft";
-      set({ error: errorMsg, loading: false });
-      toast.error(errorMsg);
-      return false;
+      set({ error: error.message, loading: false });
+      throw error;
     }
   },
 
-  // Permanently delete a draft
-  permanentlyDeleteDraft: async (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this draft?")) {
-      return false;
-    }
-
-    set({ isDeleting: true, error: null });
-    try {
-      const response = await axios.delete(`/deleted_drafts/${id}`);
-      
-      if (response.data.success) {
-        set((state) => ({
-          deletedDrafts: state.deletedDrafts.filter(draft => draft._id !== id),
-          isDeleting: false
-        }));
-        toast.success("Draft permanently deleted");
-        return true;
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.error || "Failed to delete draft permanently";
-      set({ error: errorMsg, isDeleting: false });
-      toast.error(errorMsg);
-      return false;
-    }
-  },
-
-  // Publish a draft
   publishDraft: async (id) => {
     set({ loading: true });
     try {
@@ -195,7 +185,68 @@ export const useDraftStore = create((set, get) => ({
 
   // Helper function to get draft by ID
   getDraftById: (id) => {
-    return get().drafts.find(draft => draft._id === id) || 
-           get().deletedDrafts.find(draft => draft._id === id);
+    return get().drafts.find(draft => draft._id === id) ||
+      get().deletedDrafts.find(draft => draft._id === id);
   }
 }));
+
+export const getDeletedDrafts = async (req, res) => {
+  try {
+    const drafts = await Draft.find({ deletedAt: { $ne: null } })
+      .sort({ deletedAt: -1 });
+    res.json(drafts);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to fetch deleted drafts',
+      details: error.message
+    });
+  }
+};
+
+export const restoreDraft = async (req, res) => {
+  try {
+    const draft = await Draft.findByIdAndUpdate(
+      req.params.id,
+      { $set: { deletedAt: null } },
+      { new: true }
+    );
+
+    if (!draft) {
+      return res.status(404).json({ message: 'Draft not found' });
+    }
+
+    res.json({ draft });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to restore draft',
+      details: error.message
+    });
+  }
+};
+
+export const permanentlyDeleteDraft = async (req, res) => {
+  try {
+    const result = await Draft.deleteOne({
+      _id: req.params.id,
+      deletedAt: { $ne: null }
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Draft not found or not marked as deleted'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Draft permanently deleted'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete draft',
+      details: error.message
+    });
+  }
+};

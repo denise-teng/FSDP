@@ -150,21 +150,21 @@ export const deleteDraft = async (req, res) => {
 
 export const getDeletedDrafts = async (req, res) => {
   try {
-    const { search } = req.query;
-
-    let query = { deletedAt: { $ne: null } };
-
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const deletedDrafts = await Draft.find(query).sort({ deletedAt: -1 });
-    res.json(deletedDrafts);
+    console.log('Fetching deleted drafts...');
+    const drafts = await Draft.find({ 
+      deletedAt: { $ne: null } 
+    })
+    .sort({ deletedAt: -1 })
+    .lean(); // Use lean() for better performance
+    
+    console.log('Fetched deleted drafts count:', drafts.length);
+    res.json(drafts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch deleted drafts' });
+    console.error('Error fetching deleted drafts:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch deleted drafts',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

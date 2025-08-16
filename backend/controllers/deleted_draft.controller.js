@@ -2,21 +2,14 @@ import Draft from '../models/draft.model.js';
 
 export const getDeletedDrafts = async (req, res) => {
   try {
-    const { search } = req.query;
-    
-    let query = { deletedAt: { $ne: null } };
-    
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    const deletedDrafts = await Draft.find(query).sort({ deletedAt: -1 });
-    res.json(deletedDrafts);
+    const drafts = await Draft.find({ deletedAt: { $ne: null } })
+      .sort({ deletedAt: -1 });
+    res.json(drafts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch deleted drafts' });
+    res.status(500).json({ 
+      error: 'Failed to fetch deleted drafts',
+      details: error.message 
+    });
   }
 };
 
@@ -32,23 +25,68 @@ export const restoreDraft = async (req, res) => {
       return res.status(404).json({ message: 'Draft not found' });
     }
     
-    res.json({ message: 'Draft restored successfully', draft });
+    res.json({ draft });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to restore draft' });
+    res.status(500).json({ 
+      error: 'Failed to restore draft',
+      details: error.message 
+    });
   }
 };
 
 export const permanentlyDeleteDraft = async (req, res) => {
   try {
-    const draft = await Draft.findByIdAndDelete(req.params.id);
+    const result = await Draft.deleteOne({ 
+      _id: req.params.id,
+      deletedAt: { $ne: null } 
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Draft not found or not marked as deleted' 
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Draft permanently deleted'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to delete draft',
+      details: error.message 
+    });
+  }
+};
+
+export const deleteDraft = async (req, res) => {
+  try {
+    const draft = await Draft.findByIdAndUpdate(
+      req.params.id,
+      { $set: { deletedAt: new Date() } },
+      { new: true }
+    );
     
     if (!draft) {
-      return res.status(404).json({ message: 'Draft not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Draft not found' 
+      });
     }
-    
-    // Optionally delete associated files here
-    res.json({ message: 'Draft permanently deleted' });
+
+    res.status(200).json({
+      success: true,
+      message: 'Draft moved to trash',
+      draft // Make sure to return the updated draft
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete draft' });
+    console.error('Delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete draft',
+      details: error.message
+    });
   }
 };

@@ -62,7 +62,8 @@ const draftSchema = new mongoose.Schema({
   },
   deletedAt: {
     type: Date,
-    default: null
+    default: null,
+    index: true
   }
 }, { timestamps: true });
 

@@ -13,7 +13,8 @@ import mongoose from 'mongoose';
 import Newsletter from '../models/newsletter.model.js';
 import { 
   sendNewsletterToSubscribers
-} from '../controllers/publishnewsletter.controller.js';
+} from '../controllers/publishNewsletter.controller.js';
+import Draft from '../models/draft.model.js';  // Add this import at the top
 
 const router = express.Router();
 
@@ -188,5 +189,53 @@ router.post('/slots', async (req, res) => {
 });
 
 router.post('/:id/send', sendNewsletterToSubscribers);
+
+// In newsletter.routes.js
+router.post('/convert-draft', 
+  upload.fields([
+    { name: 'newsletterFile', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const { draftId } = req.body;
+      
+      // 1. Get the draft
+      const draft = await Draft.findById(draftId);
+      if (!draft) {
+        return res.status(404).json({ error: 'Draft not found' });
+      }
+
+      // 2. Create newsletter data
+      const newsletterData = {
+        title: draft.title,
+        content: draft.content,
+        tags: draft.tags,
+        sendTo: draft.sendTo,
+        audience: draft.audience,
+        category: draft.category,
+        status: 'published',
+        // Use newly uploaded files if provided, otherwise use draft files
+        newsletterFilePath: req.files?.newsletterFile?.[0]?.path || draft.newsletterFilePath,
+        thumbnailPath: req.files?.thumbnail?.[0]?.path || draft.thumbnailPath
+      };
+
+      // 3. Create the newsletter
+      const newsletter = await Newsletter.create(newsletterData);
+
+      // 4. Delete the draft
+      await Draft.findByIdAndDelete(draftId);
+
+      res.status(201).json(newsletter);
+
+    } catch (error) {
+      console.error('Draft conversion error:', error);
+      res.status(500).json({ 
+        error: 'Failed to convert draft to newsletter',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+);
 
 export default router;

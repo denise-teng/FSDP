@@ -35,6 +35,7 @@ import AdminContactPage from "./pages/AdminContactPage";
 import { throttle } from 'lodash';
 import ConsultationBooking from './pages/ConsultationBookingPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import DeletedPage from './pages/DeletedPage';
 
 // ✅ Set token globally for all Axios requests
 const token = localStorage.getItem('authToken');
@@ -159,6 +160,7 @@ function App() {
           <Route path='/broadcasts' element={user?.role === 'admin' ? <BroadcastPage /> : <Navigate to="/" />} />
           <Route path='/broadcast' element={user?.role === 'admin' ? <BroadcastPage /> : <Navigate to="/" />} />
           <Route path='/content-generation' element={<ContentGenerationPage />} />
+          <Route path="/deleted-drafts" element={<DeletedPage />} />
         </Routes>
       </div>
 

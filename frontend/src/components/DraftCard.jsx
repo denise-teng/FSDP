@@ -3,6 +3,7 @@ import { useDraftStore } from "../stores/useDraftsStore";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import axios from 'axios';  // Add this line at the top with other imports
 
 const formatList = (val) => {
   if (Array.isArray(val)) return val.join(", ");
@@ -29,7 +30,7 @@ const getFileUrl = (path) => {
   return `${baseUrl}/uploads/${cleanPath}`;
 };
 
-const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess }) => {
+const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -43,24 +44,60 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess }) => {
   const handlePublish = async () => {
     setIsPublishing(true);
     try {
-      const publishedNewsletter = await publishDraft(draft._id);
-      toast.success(`"${draft.title}" published successfully!`);
+      const response = await axios.post(
+        `/api/drafts/${draft._id}/publish`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      let successMessage = `"${draft.title}" published successfully!`;
+
+      if (response.data.emailError) {
+        successMessage += ' (Emails partially sent)';
+      } else if (draft.sendTo.includes('Email')) {
+        successMessage += ' Emails are being sent to subscribers!';
+      }
+
+      toast.success(successMessage);
       setShowPublishConfirm(false);
-      
+
       if (onPublishSuccess) {
-        onPublishSuccess(publishedNewsletter);
+        onPublishSuccess(response.data);
       }
     } catch (error) {
       console.error("Publish failed:", error);
-      toast.error(`Failed to publish "${draft.title}": ${error.message}`);
+      const errorMsg = error.response?.data?.error ||
+        error.message ||
+        "Failed to publish draft";
+      toast.error(errorMsg);
     } finally {
       setIsPublishing(false);
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      const success = await deleteDraft(draft._id);
+      if (success) {
+        toast.success(`Draft "${draft.title}" moved to trash`);
+        setShowDeleteConfirm(false);
+        if (onDeleteSuccess) {
+          onDeleteSuccess(); // Call this to refresh the list
+        }
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to delete draft");
+    }
+  };
+
   return (
     <div className={`bg-white/90 backdrop-blur-sm rounded-xl shadow-md border ${isGenerated ? 'border-blue-200' : 'border-purple-200'} p-6 mb-4 hover:shadow-lg transition-shadow duration-300`}>
-      
+
       {/* Header for generated messages */}
       {isGenerated && (
         <div className="flex items-center mb-2">
@@ -194,13 +231,11 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess }) => {
             </p>
             <div className="flex justify-center gap-3">
               <button
-                onClick={async () => {
-                  await deleteDraft(draft._id);
-                  setShowDeleteConfirm(false);
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                onClick={handleDelete}
+                disabled={loading}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
               >
-                Delete
+                {loading ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
