@@ -194,10 +194,10 @@ const GenerateMessageModal = ({ onClose }) => {
         {/* Input Section */}
         <div className="col-span-1">
           <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Amazon Titan Text Express Generator
+            Your Personal Message Generator
           </h3>
           <p className="text-sm text-gray-500 mb-4">
-            Enter your prompt below. Titan works best with clear, specific instructions.
+            Enter your prompt below. We works best with clear, specific instructions.
           </p>
           <textarea
             className="w-full h-24 bg-white border border-gray-300 rounded-xl px-4 py-3 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"

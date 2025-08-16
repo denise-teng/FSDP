@@ -51,6 +51,7 @@ import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
 import consultationRoutes from './routes/consultation.routes.js';
 import articlesRoutes from './routes/articles.route.js';
 import summariseContentRoutes from './routes/summarise_content.route.js';
+import subscribeRoutes from './routes/subscribe.route.js'; 
 
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
@@ -107,7 +108,7 @@ app.use("/api/contacts/public", publicContactRoutes);
 app.use("/api/broadcasts", broadcastRoutes);
 app.use("/api/scheduled-broadcasts", scheduledBroadcastRoutes);
 app.use("/api/recent-broadcasts", recentBroadcastRoutes);
-
+app.use('/api/subscribe', subscribeRoutes);
 
 // 🔁 Utility function
 function getRecentMessages(messages, timeFrame = '2days') {
@@ -151,11 +152,12 @@ app.use('/api/broadcasts/recent', recentBroadcastRoutes); // Recent Broadcasts (
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
 app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
-app.post('/api/subscribe', subscribe); // Changed from /subscribe to /api/subscribe
+app.post('/api/subscribe', subscribeRoutes); // Changed from /subscribe to /api/subscribe
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use('/api/articles', articlesRoutes);
 app.use('/api/content', summariseContentRoutes);
+app.use('/api/subscribe', subscribeRoutes); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {

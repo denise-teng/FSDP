@@ -86,3 +86,61 @@ export const subscribe = async (req, res) => {
     });
   }
 };
+
+export const getSubscribers = async (req, res) => {
+  try {
+    const subscribers = await Subscriber.find()
+      .sort({ subscribedAt: -1 })
+      .select('email subscribedAt') // Only get these fields
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: subscribers,
+      count: subscribers.length
+    });
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subscribers'
+    });
+  }
+};
+
+
+export const removeSubscriber = async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    // First check if subscriber exists
+    const subscriber = await Subscriber.findOne({ email });
+    if (!subscriber) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Subscriber not found'
+      });
+    }
+
+    // Then delete
+    const result = await Subscriber.deleteOne({ email });
+    
+    if (result.deletedCount === 1) {
+      return res.status(200).json({ 
+        success: true,
+        message: 'Subscriber removed successfully'
+      });
+    } else {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Failed to remove subscriber'
+      });
+    }
+  } catch (error) {
+    console.error('Error removing subscriber:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};

@@ -188,6 +188,8 @@ router.post('/slots', async (req, res) => {
   }
 });
 
+router.post('/send-newsletter/:id', sendNewsletterToSubscribers);
+
 router.post('/:id/send', sendNewsletterToSubscribers);
 
 // In newsletter.routes.js
