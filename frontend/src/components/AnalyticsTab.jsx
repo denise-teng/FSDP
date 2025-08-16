@@ -69,6 +69,8 @@ export default function AnalyticsTab() {
   const [showEdit, setShowEdit] = useState(false);
   const [editing, setEditing] = useState(null);
   const [data, setData] = useState([]);
+  const [userActivityData, setUserActivityData] = useState([]);
+  const [activityFilter, setActivityFilter] = useState('All'); // New filter state
   const [recommendations, setRecommendations] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [charts, setCharts] = useState([]);
@@ -87,6 +89,14 @@ export default function AnalyticsTab() {
     return `${min}m ${sec}s`;
   };
 
+  // Filter function for user activity data
+  const getFilteredUserActivityData = () => {
+    if (activityFilter === 'All') {
+      return userActivityData;
+    }
+    return userActivityData.filter(user => user.userClassification === activityFilter);
+  };
+
   useEffect(() => {
     localStorage.setItem('savedAnalyticsTables', JSON.stringify(savedTables));
   }, [savedTables]);
@@ -94,6 +104,7 @@ export default function AnalyticsTab() {
   useEffect(() => {
     fetchData();
     fetchRecommendations();
+    fetchUserActivityData();
   }, []);
 
   const fetchData = async () => {
@@ -103,6 +114,16 @@ export default function AnalyticsTab() {
     } catch (err) {
       console.error('Error fetching data:', err);
       toast.error('Failed to load engagement data');
+    }
+  };
+
+  const fetchUserActivityData = async () => {
+    try {
+      const res = await axios.get('/analytics/user-activity-analysis');
+      setUserActivityData(res.data);
+    } catch (err) {
+      console.error('Error fetching user activity data:', err);
+      toast.error('Failed to load user activity data');
     }
   };
 
@@ -202,6 +223,36 @@ export default function AnalyticsTab() {
     const data_blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
     saveAs(data_blob, `${tableTitle || 'analytics'}.xlsx`);
     toast.success('Excel file exported successfully!');
+  };
+
+  const exportUserActivityToExcel = () => {
+    const filteredData = getFilteredUserActivityData();
+    if (!filteredData || filteredData.length === 0) {
+      toast.error('No user activity data available to export');
+      return;
+    }
+
+    const exportData = filteredData.map((user, i) => ({
+      'No.': i + 1,
+      'Username': user.name,
+      'Email': user.email,
+      'User Type': user.userType === 'customer' ? 'Customer' : 'Admin',
+      'Clicks': user.clicks,
+      'Browse Time (seconds)': user.engagingTime,
+      'Replies': user.replies,
+      'Activity Score': user.activityScore,
+      'Classification': user.userClassification,
+      'Last Active': user.daysSinceLastActivity ? `${user.daysSinceLastActivity} days ago` : 'Never active'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'User Activity Analysis');
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data_blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    saveAs(data_blob, 'User_Activity_Analysis.xlsx');
+    toast.success('User activity analysis exported successfully!');
   };
 
   const createNewChart = () => {
@@ -620,11 +671,304 @@ export default function AnalyticsTab() {
               )}
             </motion.div>
 
+            {/* User Activity Analysis Section */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.45 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">User Activity Analysis</h2>
+                  <p className="text-gray-600 mt-2">Comprehensive analysis based on clicks, browse time, and replies</p>
+                </div>
+                <div className="flex gap-3 items-center">
+                  {/* Activity Filter Dropdown */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Filter by Activity:</label>
+                    <select
+                      value={activityFilter}
+                      onChange={(e) => setActivityFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm text-black"
+                    >
+                      <option value="All" className="text-black">All Users</option>
+                      <option value="Highly Active" className="text-black">Highly Active</option>
+                      <option value="Active" className="text-black">Active</option>
+                      <option value="Regular" className="text-black">Regular</option>
+                      <option value="Silent" className="text-black">Silent</option>
+                      <option value="Churned" className="text-black">Churned</option>
+                    </select>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={fetchUserActivityData}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all duration-300"
+                  >
+                    <RefreshCw className="h-5 w-5" />
+                    Refresh Data
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={exportUserActivityToExcel}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all duration-300"
+                  >
+                    <Download className="h-5 w-5" />
+                    Export Table
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Activity Level Legend */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Activity Level Standards</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="font-medium text-black">Highly Active</span>
+                      <span className="text-black">(80-100 pts)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{backgroundColor: '#059669'}}></div>
+                      <span className="font-medium text-black">Active</span>
+                      <span className="text-black">(60-79 pts)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="font-medium text-black">Regular</span>
+                      <span className="text-black">(40-59 pts)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                      <span className="font-medium text-black">Silent</span>
+                      <span className="text-black">(15-39 pts)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="font-medium text-black">Churned</span>
+                      <span className="text-black">(&lt;15 pts)</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-black">
+                  * Activity score is calculated based on user clicks, browse time, and replies, with a maximum of 100 points
+                </div>
+              </div>
+
+              {/* Activity Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                {/* Filter Result Counter */}
+                {activityFilter !== 'All' && (
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-black text-xs font-bold">Filtered Results</p>
+                        <p className="text-xl font-bold text-black">
+                          {getFilteredUserActivityData().length}
+                        </p>
+                        <p className="text-xs text-black">{activityFilter} users</p>
+                      </div>
+                      <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                        <Filter className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-black text-xs font-bold">Highly Active</p>
+                      <p className="text-xl font-bold text-black">
+                        {userActivityData.filter(u => u.userClassification === 'Highly Active').length}
+                      </p>
+                      <p className="text-xs text-black">≥80 pts</p>
+                    </div>
+                    <div className="h-10 w-10 bg-green-600 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-green-50 border border-green-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-black text-xs font-bold">Active Users</p>
+                      <p className="text-xl font-bold text-black">
+                        {userActivityData.filter(u => u.userClassification === 'Active').length}
+                      </p>
+                      <p className="text-xs text-black">60-79 pts</p>
+                    </div>
+                    <div className="h-10 w-10 bg-green-700 rounded-lg flex items-center justify-center">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-black text-xs font-bold">Regular Users</p>
+                      <p className="text-xl font-bold text-black">
+                        {userActivityData.filter(u => u.userClassification === 'Regular').length}
+                      </p>
+                      <p className="text-xs text-black">40-59 pts</p>
+                    </div>
+                    <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-black text-xs font-bold">Silent Users</p>
+                      <p className="text-xl font-bold text-black">
+                        {userActivityData.filter(u => u.userClassification === 'Silent').length}
+                      </p>
+                      <p className="text-xs text-black">15-39 pts</p>
+                    </div>
+                    <div className="h-10 w-10 bg-yellow-600 rounded-lg flex items-center justify-center">
+                      <Eye className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-black text-xs font-bold">Churned Users</p>
+                      <p className="text-xl font-bold text-black">
+                        {userActivityData.filter(u => u.userClassification === 'Churned').length}
+                      </p>
+                      <p className="text-xs text-black">&lt;15 pts</p>
+                    </div>
+                    <div className="h-10 w-10 bg-red-600 rounded-lg flex items-center justify-center">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Activity Table */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {/* Filter Status Bar */}
+                {activityFilter !== 'All' && (
+                  <div className="bg-indigo-600 px-6 py-3 border-b border-indigo-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-white" />
+                        <span className="text-sm font-medium text-white">
+                          Showing {getFilteredUserActivityData().length} {activityFilter} users out of {userActivityData.length} total
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setActivityFilter('All')}
+                        className="text-xs text-white hover:text-gray-200 font-medium"
+                      >
+                        Clear Filter
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">No.</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Username</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">User Type</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Clicks</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Browse Time</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Replies</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Activity Score</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-black uppercase tracking-wider">Classification</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {getFilteredUserActivityData().map((user, i) => (
+                        <motion.tr 
+                          key={user._id || i}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3, delay: i * 0.05 }}
+                          className="hover:bg-gray-50"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{i + 1}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">{user.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{user.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              user.userType === 'admin' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {user.userType === 'admin' ? 'Admin' : 'Customer'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{user.clicks}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{formatTime(user.engagingTime)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{user.replies}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <span className="text-black">{user.activityScore}</span>
+                              <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full transition-all duration-300"
+                                  style={{ 
+                                    width: `${Math.min(user.activityScore, 100)}%`,
+                                    backgroundColor: user.classificationColor
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span 
+                              className="inline-flex px-3 py-1 text-xs font-medium rounded-full border"
+                              style={{ 
+                                backgroundColor: user.classificationBgColor,
+                                color: user.classificationColor,
+                                borderColor: user.classificationColor
+                              }}
+                            >
+                              {user.userClassification}
+                            </span>
+                            <div className="mt-1 text-xs text-black">
+                              Score: {user.activityScore}
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {getFilteredUserActivityData().length === 0 && userActivityData.length > 0 && (
+                  <div className="text-center py-12">
+                    <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-black text-lg">No users found for "{activityFilter}" classification</p>
+                    <p className="text-black">Try selecting a different filter or "All Users"</p>
+                  </div>
+                )}
+                {userActivityData.length === 0 && (
+                  <div className="text-center py-12">
+                    <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-black text-lg">No user activity data available</p>
+                    <p className="text-black">Click "Refresh Data" to load user activity analysis</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
             {/* AI Recommendations Section */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.55 }}
               className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
             >
               <div className="flex justify-between items-center mb-6">
