@@ -28,6 +28,8 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+
 
   const [form, setForm] = useState({
     title: "",
@@ -42,8 +44,30 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
 
   const [existingFile, setExistingFile] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
-  const [selectedThumbnail, setSelectedThumbnail] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 16, filter: "blur(2px)" },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+      transition: { duration: 0.45, ease: "easeOut" }
+    },
+  };
+
+  const staggerContainer = {
+    hidden: {},
+    show: {
+      transition: { staggerChildren: 0.06, delayChildren: 0.08 }
+    }
+  };
+
+  const fieldVariant = {
+    hidden: { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35 } }
+  };
+
 
   useEffect(() => {
     console.log('Edit Mode:', editMode);
@@ -92,7 +116,6 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
 
         setExistingFile(newsletterFileUrl);
         setExistingThumbnail(thumbnailUrl);
-        setSelectedThumbnail(thumbnailUrl);
 
         setPreviewNewsletter({
           _id: data._id,
@@ -207,9 +230,10 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
       newErrors.newsletterFile = "Newsletter file is required";
     }
 
-    if (form.sendTo.includes("Homepage") && !selectedThumbnail && !form.thumbnail) {
+    if (form.sendTo.includes("Homepage") && !form.thumbnail && !existingThumbnail) {
       newErrors.thumbnail = "Thumbnail is required for homepage newsletters";
     }
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -226,7 +250,6 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     });
     setExistingFile(null);
     setExistingThumbnail(null);
-    setSelectedThumbnail(null);
     setNewNewsletter(null);
     setPreviewNewsletter(null);
     setErrors({});
@@ -240,21 +263,30 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     resetForm();
   };
 
+  // add near top: a ref to track/revoke old object urls
+  const lastThumbUrlRef = useRef(null);
+
   const handleCustomThumbnailChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const thumbnailUrl = URL.createObjectURL(file);
-      setSelectedThumbnail(thumbnailUrl);
-      setForm(prev => ({ ...prev, thumbnail: file }));
-      setErrors(prev => ({ ...prev, thumbnail: null }));
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      e.target.value = "";
+      return;
     }
+
+    const url = URL.createObjectURL(file);
+
+    // revoke previous object URL to avoid leaks
+    if (lastThumbUrlRef.current) URL.revokeObjectURL(lastThumbUrlRef.current);
+    lastThumbUrlRef.current = url;
+
+    setThumbnailPreview(url);
+    setForm((prev) => ({ ...prev, thumbnail: file }));
+    setErrors((prev) => ({ ...prev, thumbnail: null }));
   };
 
-  const handleThumbnailSelect = (thumbnail) => {
-    setSelectedThumbnail(thumbnail);
-    setForm(prev => ({ ...prev, thumbnail: null })); // Reset file upload if selecting a preset
-    setErrors(prev => ({ ...prev, thumbnail: null }));
-  };
 
   const handleSaveDraft = async () => {
     if (editMode && !newsletterId) {
@@ -327,7 +359,7 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
       await useDraftStore.getState().fetchDrafts();
 
       // 4. Show success and navigate
-      toast.success(`Draft "${newDraft.title}" saved successfully!`);
+      toast.success(`Draft saved successfully!`);
       navigate(`/drafts/${newDraft._id}`);
 
     } catch (error) {
@@ -341,71 +373,72 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
 
 
   const handlePublish = async () => {
-  try {
-    if (!validateForm()) {
-      toast.error("Please fix validation errors before publishing");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("category", form.category);
-    formData.append("status", "published");
-    formData.append("type", "newsletter");
-    formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
-    formData.append("sendTo", JSON.stringify(form.sendTo));
-    formData.append("audience", JSON.stringify(form.audience));
-    formData.append("content", JSON.stringify([form.content]));
-
-    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
-
-    let response;
-    if (isDraft) {
-      response = await axios.post('/newsletters', formData);
-      await axios.delete(`/drafts/${newsletterId}`);
-    } else if (editMode) {
-      response = await axios.put(`/newsletters/${newsletterId}`, formData);
-    } else {
-      response = await axios.post('/newsletters', formData);
-    }
-
-    // NEW: Send to subscribers if Email is selected
-    if (form.sendTo.includes("Email")) {
-      setIsSending(true);
-      try {
-        await axios.post(`/newsletters/${response.data._id}/send`);
-        toast.success("Newsletter sent to subscribers!");
-      } catch (sendError) {
-        console.error("Sending failed but newsletter was published", sendError);
-        toast.error("Published but failed to send to subscribers");
-      } finally {
-        setIsSending(false);
+    try {
+      setShowOverlay(true);
+      if (!validateForm()) {
+        toast.error("Please fix validation errors before publishing");
+        return;
       }
+
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("category", form.category);
+      formData.append("status", "published");
+      formData.append("type", "newsletter");
+      formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
+      formData.append("sendTo", JSON.stringify(form.sendTo));
+      formData.append("audience", JSON.stringify(form.audience));
+      formData.append("content", JSON.stringify([form.content]));
+
+      if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+      if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
+
+      let response;
+      if (isDraft) {
+        response = await axios.post('/newsletters', formData);
+        await axios.delete(`/drafts/${newsletterId}`);
+      } else if (editMode) {
+        response = await axios.put(`/newsletters/${newsletterId}`, formData);
+      } else {
+        response = await axios.post('/newsletters', formData);
+      }
+
+      // NEW: Send to subscribers if Email is selected
+      if (form.sendTo.includes("Email")) {
+        setIsSending(true);
+        try {
+          await axios.post(`/newsletters/${response.data._id}/send`);
+          toast.success("Newsletter sent to subscribers!");
+        } catch (sendError) {
+          console.error("Sending failed but newsletter was published", sendError);
+          toast.error("Published but failed to send to subscribers");
+        } finally {
+          setShowOverlay(false);
+          setIsSending(false);
+        }
+      }
+
+      await Promise.all([
+        useNewsletterStore.getState().fetchNewsletters(),
+        isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
+      ]);
+
+      navigate('/uploads');
+      toast.success(
+        isDraft ? "Published successfully!" :
+          editMode ? "Updated successfully!" : "Created successfully!"
+      );
+
+    } catch (err) {
+      console.error("Publish error:", err);
+      toast.error(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to publish newsletter"
+      );
     }
-
-    await Promise.all([
-      useNewsletterStore.getState().fetchNewsletters(),
-      isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
-    ]);
-
-    navigate('/uploads');
-    toast.success(
-      isDraft ? "Published successfully!" :
-        editMode ? "Updated successfully!" :
-          "Created successfully!"
-    );
-
-  } catch (err) {
-    console.error("Publish error:", err);
-    toast.error(
-      err.response?.data?.error ||
-      err.response?.data?.message ||
-      err.message ||
-      "Failed to publish newsletter"
-    );
-  }
-};
+  };
 
 
   // Helper function to create FormData
@@ -416,14 +449,8 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     form.sendTo.forEach(value => value && formData.append("sendTo", value));
     formData.append("audience", JSON.stringify(form.audience));
     formData.append("type", "newsletter");
-
     if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-    if (form.thumbnail) {
-      formData.append("thumbnail", form.thumbnail);
-    } else if (selectedThumbnail && !selectedThumbnail.startsWith('blob:')) {
-      formData.append("thumbnailPreset", selectedThumbnail);
-    }
-
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
     return formData;
   };
 
@@ -435,7 +462,10 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
       return;
     }
 
+
+
     try {
+      setShowOverlay(true);
       setIsGenerating(true);
       toast.loading("Analyzing content and generating newsletter...");
 
@@ -480,6 +510,7 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
       toast.error(error.response?.data?.error || "Failed to generate content");
     } finally {
       setIsGenerating(false);
+      setShowOverlay(false);
     }
   };
 
@@ -488,6 +519,22 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-800 p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Subtle full-screen overlay while saving/generating/sending */}
+        <motion.div
+          initial={false}
+          animate={showOverlay ? { opacity: 1, pointerEvents: "auto" } : { opacity: 0, pointerEvents: "none" }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] flex items-center justify-center"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0.8 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl shadow-2xl px-6 py-5 flex items-center gap-3"
+          >
+            <Loader className="h-5 w-5 animate-spin" />
+            <span className="font-medium text-gray-700">Working…</span>
+          </motion.div>
+        </motion.div>
 
         {/* Main Form Card */}
         <motion.div
@@ -580,143 +627,157 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
               {errors.audience && <p className="text-red-500 text-sm mt-1">{errors.audience}</p>}
             </div>
 
-            {/* Thumbnail Selection */}
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Thumbnail {form.sendTo.includes("Homepage") && "*"}
-              </label>
+            {/* Thumbnail + Newsletter in one responsive row */}
+            <motion.div
+              variants={fieldVariant}
+              className="flex flex-col md:flex-row gap-6 items-start"
+            >
+              {/* Left: Thumbnail (same dashed wrapper as newsletter) */}
+              <div className="w-40">
+                <label className="block text-gray-700 text-sm font-medium mb-2">
+                  Thumbnail {form.sendTo.includes("Homepage") && "*"}
+                </label>
 
-              <div className="flex gap-4 overflow-x-auto py-2">
-                {["/images/GenAI-Image01.webp", "/images/GenAI-Image02.jpg", "/images/GenAI-Image03.avif"].map((thumbnail, index) => (
+                <label
+                  className="block"
+                  title={(thumbnailPreview || existingThumbnail) ? "Change thumbnail" : "Upload thumbnail"}
+                >
+                  {/* 👇 EXACT same shell as newsletter: dashed, rounded, padded */}
                   <div
-                    key={index}
-                    className={`relative flex-shrink-0 w-32 h-32 rounded-xl border-2 ${selectedThumbnail === thumbnail ? "border-indigo-500 ring-2 ring-indigo-200" : "border-gray-200"} cursor-pointer transition-all`}
-                    onClick={() => handleThumbnailSelect(thumbnail)}
+                    className={`mt-1 flex items-center justify-center px-6
+                  w-40 h-36 border-2 border-dashed rounded-xl
+                  ${errors.thumbnail ? 'border-red-500' : 'border-gray-300 hover:border-indigo-400'}
+                  transition-colors relative`}
                   >
-                    <img
-                      src={thumbnail}
-                      alt={`Generated Thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                    {selectedThumbnail === thumbnail && (
-                      <div className="absolute top-2 right-2 text-white bg-black/50 p-1 rounded-full">
-                        <PlusCircle className="w-5 h-5" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {selectedThumbnail && selectedThumbnail.startsWith('blob:') ? (
-                  <div className="relative flex-shrink-0 w-32 h-32 rounded-xl border-2 border-indigo-500 ring-2 ring-indigo-200 overflow-hidden">
-                    <img
-                      src={selectedThumbnail}
-                      alt="Selected thumbnail"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() => {
-                        setSelectedThumbnail(null);
-                        if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
-                      }}
-                      className="absolute top-2 right-2 bg-white/80 p-1 rounded-full hover:bg-white"
-                    >
-                      <X className="w-4 h-4 text-gray-700" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex-shrink-0 relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors cursor-pointer">
                     <input
+                      id="thumbnail-upload"
                       type="file"
                       accept="image/*"
                       className="hidden"
                       onChange={handleCustomThumbnailChange}
                       ref={thumbnailInputRef}
                     />
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600">
-                      <PlusCircle className="w-8 h-8 mb-2" />
-                      <span className="text-sm">Upload Custom</span>
-                    </div>
-                  </label>
-                )}
-              </div>
-              {errors.thumbnail && <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>}
-            </div>
-            {/* Newsletter File Upload */}
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Newsletter File* {!editMode && "(PDF or DOCX)"}
-              </label>
-              <label className="block">
-                <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed ${errors.newsletterFile ? 'border-red-500' : 'border-gray-300'} rounded-xl hover:border-indigo-400 transition-colors`}>
-                  <div className="space-y-1 text-center">
-                    {uploadedFileName || existingFile ? (
-                      <div className="text-center">
-                        <FileText className="mx-auto h-12 w-12 text-indigo-500" />
-                        <p className="mt-2 text-sm text-gray-900">
-                          {uploadedFileName || (existingFile && "Current file: " + existingFile.split('/').pop())}
-                        </p>
+
+                    {(thumbnailPreview || existingThumbnail) ? (
+                      <>
+                        {/* Inner clip so the image doesn't cover the dashed border */}
+                        <div className="absolute inset-1 rounded-lg overflow-hidden">
+                          <img
+                            src={thumbnailPreview || existingThumbnail}
+                            alt="Thumbnail"
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => {
-                            setUploadedFileName("");
-                            setForm(prev => ({ ...prev, newsletterFile: null }));
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          onClick={(ev) => {
+                            ev.preventDefault();
+                            if (lastThumbUrlRef.current) URL.revokeObjectURL(lastThumbUrlRef.current);
+                            lastThumbUrlRef.current = null;
+                            setThumbnailPreview(null);
+                            setForm(prev => ({ ...prev, thumbnail: null }));
+                            if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
                           }}
-                          className="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+                          className="absolute top-2 right-2 bg-white/85 hover:bg-white p-1 rounded-full shadow"
+                          title="Remove thumbnail"
                         >
-                          Change file
+                          <X className="w-4 h-4 text-gray-700" />
                         </button>
-                      </div>
-                    ) : (
-                      <>
-                        <svg
-                          className="mx-auto h-12 w-12 text-gray-400"
-                          stroke="currentColor"
-                          fill="none"
-                          viewBox="0 0 48 48"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        <div className="flex text-sm text-gray-600">
-                          <label
-                            htmlFor="file-upload"
-                            className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
-                          >
-                            <span>Upload a file</span>
-                            <input
-                              id="file-upload"
-                              type="file"
-                              accept=".pdf,.docx"
-                              onChange={(e) => handleFileChange(e, 'newsletterFile')}
-                              className="sr-only"
-                              ref={fileInputRef}
-                            />
-                          </label>
-                          <p className="pl-1">or drag and drop</p>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          PDF or DOCX up to 10MB
-                        </p>
                       </>
+                    ) : (
+                      <div className="text-center text-gray-500 hover:text-indigo-600 select-none">
+                        <PlusCircle className="mx-auto w-8 h-8 mb-2" />
+                        <span className="text-sm">Upload Thumbnail</span>
+                        <p className="text-[11px] mt-1 opacity-70">PNG/JPG</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              </label>
-              {errors.newsletterFile && <p className="text-red-500 text-sm mt-1">{errors.newsletterFile}</p>}
-              {editMode && (
-                <p className="text-sm text-gray-500 mt-2">
-                  {form.newsletterFile
-                    ? "New file selected (will replace current file)"
-                    : "Leave blank to keep the existing file unchanged"}
-                </p>
-              )}
-            </div>
+                </label>
+
+                {errors.thumbnail && <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>}
+              </div>
+
+
+
+              {/* Right: Newsletter File Upload (fills remaining width) */}
+              <div className="flex-1 w-full">
+                <label className="block text-gray-700 text-sm font-medium mb-2">
+                  Newsletter File* {!editMode && "(PDF or DOCX)"}
+                </label>
+                <label className="block">
+                  <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed ${errors.newsletterFile ? 'border-red-500' : 'border-gray-300'} rounded-xl hover:border-indigo-400 transition-colors`}>
+                    <div className="space-y-1 text-center">
+                      {uploadedFileName || existingFile ? (
+                        <div className="text-center">
+                          <FileText className="mx-auto h-12 w-12 text-indigo-500" />
+                          <p className="mt-2 text-sm text-gray-900">
+                            {uploadedFileName || (existingFile && "Current file: " + existingFile.split('/').pop())}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadedFileName("");
+                              setForm(prev => ({ ...prev, newsletterFile: null }));
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                            className="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
+                          >
+                            Change file
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 48 48"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <div className="flex text-sm text-gray-600">
+                            <label
+                              htmlFor="file-upload"
+                              className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none"
+                            >
+                              <span>Upload a file</span>
+                              <input
+                                id="file-upload"
+                                type="file"
+                                accept=".pdf,.docx"
+                                onChange={(e) => handleFileChange(e, 'newsletterFile')}
+                                className="sr-only"
+                                ref={fileInputRef}
+                              />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            PDF or DOCX up to 10MB
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </label>
+                {errors.newsletterFile && <p className="text-red-500 text-sm mt-1">{errors.newsletterFile}</p>}
+                {editMode && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {form.newsletterFile
+                      ? "New file selected (will replace current file)"
+                      : "Leave blank to keep the existing file unchanged"}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+
 
             {/* Content Field with Auto-Generate Button */}
             <div>
@@ -771,7 +832,7 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
                 onClick={handlePublish}
                 disabled={loading || isSending}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-95 ${loading || isSending ? 'bg-gray-400 cursor-not-allowed' :
-                    'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'
+                  'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'
                   }`}
               >
                 {isSending ? (
