@@ -29,6 +29,26 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+
+  const refreshCurrentView = (nextRoute) => {
+  // clear volatile UI bits so inputs look fresh
+  setUploadedFileName("");
+  setThumbnailPreview(null);
+  if (fileInputRef.current) fileInputRef.current.value = "";
+  if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+
+  if (nextRoute) {
+    // move to the route that represents the current context, then remount
+    navigate(nextRoute, { replace: true });
+    // ensure remount after navigation
+    setTimeout(() => setRefreshTick(t => t + 1), 0);
+  } else {
+    // just refetch/remount in place
+    setRefreshTick(t => t + 1);
+  }
+};
 
 
   const [form, setForm] = useState({
@@ -77,70 +97,79 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
     const { signal } = abortController;
 
     const fetchNewsletter = async () => {
-      if (!editMode || !newsletterId) return;
+  if (!editMode || !newsletterId) return;
 
-      try {
-        const res = await axios.get(
-          isDraft ? `/drafts/${newsletterId}` : `/newsletters/${newsletterId}`,
-          { signal }
-        );
+  try {
+    const res = await axios.get(
+      isDraft ? `/drafts/${newsletterId}` : `/newsletters/${newsletterId}`,
+      { signal }
+    );
 
-        if (!res?.data) throw new Error('Invalid newsletter data');
-        const data = res.data;
+    // Accept both shapes: { success, data } or raw object
+    const payload = res?.data;
+    const data = payload?.data ?? payload;
+    if (!data) throw new Error('Invalid response shape');
 
-        const getFileUrl = (path) => {
-          if (!path) return null;
-          if (path.startsWith('http')) return path;
-
-          const cleanedPath = path
-            .replace(/^[\\/]+/, '')
-            .replace(/\\/g, '/');
-
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-          return `${baseUrl}/${cleanedPath}`;
-        };
-
-        const newsletterFileUrl = getFileUrl(data.newsletterFilePath);
-        const thumbnailUrl = getFileUrl(data.thumbnailPath);
-
-        setForm({
-          title: data.title || "",
-          tags: Array.isArray(data.tags) ? data.tags.join(', ') : data.tags || "",
-          sendTo: Array.isArray(data.sendTo) ? data.sendTo : [],
-          audience: Array.isArray(data.audience) ? data.audience : [],
-          category: data.category || "Financial Planning",
-          content: Array.isArray(data.content) ? data.content.join('\n') : data.content || "",
-          newsletterFile: null,
-          thumbnail: null
-        });
-
-        setExistingFile(newsletterFileUrl);
-        setExistingThumbnail(thumbnailUrl);
-
-        setPreviewNewsletter({
-          _id: data._id,
-          title: data.title,
-          tags: data.tags,
-          thumbnailUrl: thumbnailUrl,
-          fileUrl: newsletterFileUrl,
-          thumbnailPath: data.thumbnailPath,
-          newsletterFilePath: data.newsletterFilePath
-        });
-
-      } catch (err) {
-        if (!axios.isCancel(err)) {
-          toast.error("Failed to load newsletter for editing");
-          console.error("Fetch error:", err);
-        }
-      }
+    // Helper to get absolute URL for stored files
+    const getFileUrl = (p) => {
+      if (!p) return null;
+      if (p.startsWith('http')) return p;
+      const cleaned = p.replace(/^[\\/]+/, '').replace(/\\/g, '/');
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      return `${baseUrl}/${cleaned}`;
     };
+
+    const newsletterFileUrl = getFileUrl(data.newsletterFilePath);
+    const thumbnailUrl = getFileUrl(data.thumbnailPath);
+
+    // Normalize all fields for the form
+    const toCSV = (arrOrStr) => {
+      if (Array.isArray(arrOrStr)) return arrOrStr.join(', ');
+      if (typeof arrOrStr === 'string') return arrOrStr;
+      return '';
+    };
+    const toArray = (v) => Array.isArray(v) ? v : (typeof v === 'string'
+      ? (v.trim() ? v.split(',').map(x => x.trim()).filter(Boolean) : [])
+      : (v ? [v] : []));
+
+    setForm({
+      title: data.title || "",
+      tags: toCSV(data.tags || []),
+      sendTo: toArray(data.sendTo || []),
+      audience: toArray(data.audience || []),
+      category: data.category || "Financial Planning",
+      content: Array.isArray(data.content) ? data.content.join('\n') : (data.content || ""),
+      newsletterFile: null,  // keep null so "Change file" works
+      thumbnail: null
+    });
+
+    setExistingFile(newsletterFileUrl);
+    setExistingThumbnail(thumbnailUrl);
+
+    setPreviewNewsletter({
+      _id: data._id,
+      title: data.title,
+      tags: data.tags,
+      thumbnailUrl,
+      fileUrl: newsletterFileUrl,
+      thumbnailPath: data.thumbnailPath,
+      newsletterFilePath: data.newsletterFilePath
+    });
+  } catch (err) {
+    if (!axios.isCancel(err)) {
+      toast.error("Failed to load item for editing");
+      console.error("Fetch error:", err);
+    }
+  }
+};
+
 
     fetchNewsletter();
 
     return () => {
       abortController.abort();
     };
-  }, [editMode, newsletterId, isDraft]);
+  }, [editMode, newsletterId, isDraft, refreshTick]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -240,16 +269,23 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
   };
 
   const resetForm = () => {
+    // Don't reset if we're in edit mode
+    if (editMode) return;
+
     setForm({
       title: "",
       tags: "",
       sendTo: [],
       audience: [],
+      category: "Financial Planning",
+      content: "",
       newsletterFile: null,
       thumbnail: null,
     });
     setExistingFile(null);
     setExistingThumbnail(null);
+    setThumbnailPreview(null);
+    setUploadedFileName("");
     setNewNewsletter(null);
     setPreviewNewsletter(null);
     setErrors({});
@@ -289,156 +325,159 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
 
 
   const handleSaveDraft = async () => {
-    if (editMode && !newsletterId) {
-      toast.error("Missing newsletter ID for draft update");
-      return;
-    }
+  if (editMode && !newsletterId) {
+    toast.error("Missing newsletter ID for draft update");
+    return;
+  }
+  try {
+    useDraftStore.getState().loading = true;
 
-    try {
-      // 1. Set loading state
-      useDraftStore.getState().loading = true;
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("category", form.category);
+    formData.append("tags", JSON.stringify(form.tags.split(',').map(tag => tag.trim())));
+    formData.append("content", JSON.stringify(form.content.split('\n').filter(line => line.trim())));
+    formData.append("sendTo", JSON.stringify(form.sendTo));
+    formData.append("audience", JSON.stringify(form.audience));
+    formData.append("status", "draft");
+    formData.append("type", "newsletter");
+    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
 
-      // 2. Construct FormData
-      const formData = new FormData();
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("tags", JSON.stringify(form.tags.split(',').map(tag => tag.trim())));
-      formData.append("content", JSON.stringify(form.content.split('\n').filter(line => line.trim())));
-      formData.append("sendTo", JSON.stringify(form.sendTo));
-      formData.append("audience", JSON.stringify(form.audience));
-      formData.append("status", "draft");
-      formData.append("type", "newsletter");
-      if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-      if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
+    await axios.put(`/drafts/${newsletterId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
-      // 3. Execute update
-      const { data } = await axios.put(`/drafts/${newsletterId}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    await useDraftStore.getState().fetchDrafts();
+    toast.success("Draft updated successfully!");
 
-      // 4. Refresh draft list
-      await useDraftStore.getState().fetchDrafts();
-
-      // 5. Show success and redirect
-      toast.success(`Draft "${data.title}" updated successfully!`);
-      navigate(`/drafts/${newsletterId}`);
-    } catch (err) {
-      console.error("Draft save error:", err);
-      toast.error(err.response?.data?.message || "Failed to save draft");
-    } finally {
-      useDraftStore.getState().loading = false;
-    }
-  };
-
+    // refresh THIS page (stay on /drafts/:id)
+    refreshCurrentView();     // no route passed → refetch/remount in place
+  } catch (err) {
+    console.error("Draft save error:", err);
+    toast.error(err.response?.data?.message || "Failed to save draft");
+  } finally {
+    useDraftStore.getState().loading = false;
+  }
+};
 
 
 
   const handleSaveToDrafts = async () => {
-    try {
-      // 1. Set loading state
-      useDraftStore.getState().loading = true;
+  try {
+    useDraftStore.getState().loading = true;
 
-      const formData = new FormData();
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("tags", JSON.stringify(form.tags.split(',').map(tag => tag.trim())));
-      formData.append("content", JSON.stringify(form.content.split('\n').filter(line => line.trim())));
-      formData.append('sendTo', JSON.stringify(form.sendTo));
-      formData.append('audience', JSON.stringify(form.audience));
-      formData.append("status", "draft");
-      formData.append("type", "newsletter");
-      if (form.newsletterFile) formData.append('newsletterFile', form.newsletterFile);
-      if (form.thumbnail) formData.append('thumbnail', form.thumbnail);
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("category", form.category);
+    formData.append("tags", JSON.stringify(form.tags.split(',').map(tag => tag.trim())));
+    formData.append("content", JSON.stringify(form.content.split('\n').filter(line => line.trim())));
+    formData.append("sendTo", JSON.stringify(form.sendTo));
+    formData.append("audience", JSON.stringify(form.audience));
+    formData.append("status", "draft");
+    formData.append("type", "newsletter");
+    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
 
-      // 2. Execute the save operation
-      const { data: newDraft } = await axios.post('/drafts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+    await axios.post('/drafts', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
 
-      // 3. Update state by fetching fresh drafts list
-      await useDraftStore.getState().fetchDrafts();
+    await useDraftStore.getState().fetchDrafts();
+    toast.success("Draft saved successfully!");
 
-      // 4. Show success and navigate
-      toast.success(`Draft saved successfully!`);
-      navigate(`/drafts/${newDraft._id}`);
+    // clear the form + refresh the upload page
+    resetForm();
+    refreshCurrentView();     // stay on upload; remount form
+  } catch (error) {
+    console.error('Error saving draft:', error);
+    toast.error(error.response?.data?.error || 'Failed to save draft');
+  } finally {
+    useDraftStore.getState().loading = false;
+  }
+};
 
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast.error(error.response?.data?.error || 'Failed to save draft');
-    } finally {
-      // 5. Reset loading state
-      useDraftStore.getState().loading = false;
-    }
-  };
 
 
   const handlePublish = async () => {
-    try {
-      setShowOverlay(true);
-      if (!validateForm()) {
-        toast.error("Please fix validation errors before publishing");
-        return;
-      }
+  setShowOverlay(true);
+  if (!validateForm()) {
+    toast.error("Please fix validation errors before publishing");
+    setShowOverlay(false);
+    return;
+  }
+  try {
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("category", form.category);
+    formData.append("status", "published");
+    formData.append("type", "newsletter");
+    formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
+    formData.append("sendTo", JSON.stringify(form.sendTo));
+    formData.append("audience", JSON.stringify(form.audience));
+    formData.append("content", JSON.stringify([form.content]));
+    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
 
-      const formData = new FormData();
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("status", "published");
-      formData.append("type", "newsletter");
-      formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
-      formData.append("sendTo", JSON.stringify(form.sendTo));
-      formData.append("audience", JSON.stringify(form.audience));
-      formData.append("content", JSON.stringify([form.content]));
-
-      if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-      if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
-
-      let response;
-      if (isDraft) {
-        response = await axios.post('/newsletters', formData);
-        await axios.delete(`/drafts/${newsletterId}`);
-      } else if (editMode) {
-        response = await axios.put(`/newsletters/${newsletterId}`, formData);
-      } else {
-        response = await axios.post('/newsletters', formData);
-      }
-
-      // NEW: Send to subscribers if Email is selected
-      if (form.sendTo.includes("Email")) {
-        setIsSending(true);
-        try {
-          await axios.post(`/newsletters/${response.data._id}/send`);
-          toast.success("Newsletter sent to subscribers!");
-        } catch (sendError) {
-          console.error("Sending failed but newsletter was published", sendError);
-          toast.error("Published but failed to send to subscribers");
-        } finally {
-          setShowOverlay(false);
-          setIsSending(false);
-        }
-      }
-
-      await Promise.all([
-        useNewsletterStore.getState().fetchNewsletters(),
-        isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
-      ]);
-
-      navigate('/uploads');
-      toast.success(
-        isDraft ? "Published successfully!" :
-          editMode ? "Updated successfully!" : "Created successfully!"
-      );
-
-    } catch (err) {
-      console.error("Publish error:", err);
-      toast.error(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to publish newsletter"
-      );
+    let response;
+    if (isDraft) {
+      response = await axios.post('/newsletters', formData);
+      await axios.delete(`/drafts/${newsletterId}`);
+    } else if (editMode) {
+      response = await axios.put(`/newsletters/${newsletterId}`, formData);
+    } else {
+      response = await axios.post('/newsletters', formData);
     }
-  };
+
+    if (form.sendTo.includes("Email")) {
+      setIsSending(true);
+      try {
+        await axios.post(`/newsletters/${response.data._id}/send`);
+        toast.success("Newsletter sent to subscribers!");
+      } catch (sendError) {
+        console.error("Sending failed but newsletter was published", sendError);
+        toast.error("Published but failed to send to subscribers");
+      } finally {
+        setIsSending(false);
+      }
+    }
+
+    await Promise.all([
+      useNewsletterStore.getState().fetchNewsletters(),
+      isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
+    ]);
+
+    // refresh current context
+    if (isDraft) {
+      // you were on /drafts/:id, now promote to newsletter and refresh on edit-newsletter page
+      refreshCurrentView(`/edit-newsletter/${response.data._id}`);
+    } else if (editMode) {
+      // you were editing a newsletter -> stay and refresh
+      refreshCurrentView(); // same route
+    } else {
+      // you were on upload page -> clear and refresh upload
+      resetForm();
+      refreshCurrentView(); // same route
+    }
+
+    toast.success(
+      isDraft ? "Published successfully!" :
+      editMode ? "Updated successfully!" : "Created successfully!"
+    );
+  } catch (err) {
+    console.error("Publish error:", err);
+    toast.error(
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to publish newsletter"
+    );
+  } finally {
+    setShowOverlay(false);
+  }
+};
+
+
 
 
   // Helper function to create FormData
@@ -536,13 +575,14 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false }) 
           </motion.div>
         </motion.div>
 
-        {/* Main Form Card */}
-        <motion.div
-          className="bg-white/90 rounded-2xl shadow-xl border border-gray-100/50 p-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
+<motion.div
+  key={editMode ? `${isDraft ? 'draft' : 'news'}-${newsletterId}-${refreshTick}`
+                : `create-${refreshTick}`}
+  className="bg-white/90 rounded-2xl shadow-xl border border-gray-100/50 p-8"
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.8 }}
+>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             {/* Title Field */}
             <div>

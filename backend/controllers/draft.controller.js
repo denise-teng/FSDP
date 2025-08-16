@@ -257,3 +257,25 @@ export const editDraft = async (req, res) => {
 };
 
 
+// controllers/draft.controller.js
+export const getDraftById = async (req, res) => {
+  try {
+    const draft = await Draft.findById(req.params.id).lean();
+    if (!draft) {
+      return res.status(404).json({ success: false, message: 'Draft not found' });
+    }
+    // Optional: add a friendly download URL like newsletters do
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    if (draft.newsletterFilePath) {
+      draft.downloadUrl = `${baseUrl}/${draft.newsletterFilePath.replace(/\\/g, '/')}`;
+    }
+    if (draft.thumbnailPath) {
+      draft.thumbnailUrl = `${baseUrl}/${draft.thumbnailPath.replace(/\\/g, '/')}`;
+    }
+
+    return res.json({ success: true, data: draft });
+  } catch (error) {
+    console.error('getDraftById error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch draft' });
+  }
+};
