@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import {
     Mail, Users, BarChart2, LayoutDashboard, MessageSquare,
     ArrowRight, ChevronDown, X, Check, MapPin, Phone,
-    ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle
+    ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle, Send, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import NearEvents from '../components/NearEvents';
 import { Link } from 'react-router-dom';
+import axios from '../lib/axios';
 // Example of tabs
 const tabs = [
     { id: 'contacts', label: 'Contacts', icon: Mail },
@@ -18,6 +19,11 @@ const tabs = [
 const AdminHomePage = () => {
     const [currentUpdate, setCurrentUpdate] = useState(0);
     const [isHovering, setIsHovering] = useState(false);
+    const [scheduledBroadcasts, setScheduledBroadcasts] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [currentBroadcastPage, setCurrentBroadcastPage] = useState(0);
+
+    const BROADCASTS_PER_PAGE = 3;
 
     // Sample updates data
     const updates = [
@@ -58,12 +64,74 @@ const AdminHomePage = () => {
         return () => clearInterval(interval);
     }, [isHovering]);
 
+    // Fetch scheduled broadcasts
+    useEffect(() => {
+        fetchScheduledBroadcasts();
+    }, []);
+
+    const fetchScheduledBroadcasts = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get('/broadcasts/scheduled');
+            // Ensure we always set an array, even if the response is not an array
+            const broadcasts = Array.isArray(response.data) ? response.data : [];
+            setScheduledBroadcasts(broadcasts);
+            // Reset pagination to first page when new data is loaded
+            setCurrentBroadcastPage(0);
+        } catch (error) {
+            console.error('Error fetching scheduled broadcasts:', error);
+            // Set empty array on error to prevent map errors
+            setScheduledBroadcasts([]);
+            setCurrentBroadcastPage(0);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatDateTime = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInHours = (date - now) / (1000 * 60 * 60);
+        
+        if (diffInHours < 24) {
+            return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        } else if (diffInHours < 48) {
+            return `Tomorrow, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        } else {
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+    };
+
     const nextUpdate = () => {
         setCurrentUpdate((prev) => (prev === updates.length - 1 ? 0 : prev + 1));
     };
 
     const prevUpdate = () => {
         setCurrentUpdate((prev) => (prev === 0 ? updates.length - 1 : prev - 1));
+    };
+
+    // Pagination logic for scheduled broadcasts
+    const totalBroadcastPages = Math.ceil(scheduledBroadcasts.length / BROADCASTS_PER_PAGE);
+    const currentBroadcasts = scheduledBroadcasts.slice(
+        currentBroadcastPage * BROADCASTS_PER_PAGE,
+        (currentBroadcastPage + 1) * BROADCASTS_PER_PAGE
+    );
+
+    const nextBroadcastPage = () => {
+        setCurrentBroadcastPage((prev) => 
+            prev === totalBroadcastPages - 1 ? 0 : prev + 1
+        );
+    };
+
+    const prevBroadcastPage = () => {
+        setCurrentBroadcastPage((prev) => 
+            prev === 0 ? totalBroadcastPages - 1 : prev - 1
+        );
     };
 
     // Engagement chart data
@@ -308,6 +376,165 @@ whileHover = {{ y: -5 }}
     </div>
           </motion.div >
         </div >
+
+    {/* Scheduled Broadcasts Section */}
+    <section className="mb-16">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+            <div className="p-6 flex items-center justify-between border-b border-gray-100">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <Send className="h-5 w-5 text-indigo-600 mr-2" />
+                    Scheduled Broadcasts
+                    {scheduledBroadcasts.length > 0 && (
+                        <span className="ml-2 text-sm font-normal text-gray-500">
+                            ({scheduledBroadcasts.length} total)
+                        </span>
+                    )}
+                </h2>
+                <div className="flex items-center space-x-3">
+                    {/* Pagination controls */}
+                    {totalBroadcastPages > 1 && (
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={prevBroadcastPage}
+                                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
+                                aria-label="Previous page"
+                            >
+                                <ChevronLeft className="h-4 w-4 text-gray-600" />
+                            </button>
+                            <span className="text-sm text-gray-600 px-2">
+                                {currentBroadcastPage + 1} of {totalBroadcastPages}
+                            </span>
+                            <button
+                                onClick={nextBroadcastPage}
+                                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
+                                aria-label="Next page"
+                            >
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        onClick={fetchScheduledBroadcasts}
+                        disabled={loading}
+                        className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        <span>Refresh</span>
+                    </button>
+                    <Link 
+                        to="/broadcast" 
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200"
+                    >
+                        Manage broadcasts
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                    </Link>
+                </div>
+            </div>
+            
+            <div className="p-6">
+                {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    </div>
+                ) : Array.isArray(scheduledBroadcasts) && scheduledBroadcasts.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {currentBroadcasts.map((broadcast, index) => (
+                            <motion.div
+                                key={broadcast._id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: index * 0.1 }}
+                                className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300"
+                                whileHover={{ y: -2 }}
+                            >
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center">
+                                            <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                                                <Mail className="h-4 w-4 text-indigo-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900 text-sm">
+                                                    {broadcast.title || 'Untitled Broadcast'}
+                                                </h3>
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                    Email
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                            broadcast.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' :
+                                            broadcast.status === 'Sent' ? 'bg-green-100 text-green-800' :
+                                            broadcast.status === 'Failed' ? 'bg-red-100 text-red-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }`}>
+                                            {broadcast.status}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="space-y-2 mb-3">
+                                        <div className="flex items-center text-sm text-gray-600">
+                                            <Clock className="h-4 w-4 mr-2" />
+                                            {formatDateTime(broadcast.scheduledTime)}
+                                        </div>
+                                        <div className="flex items-center text-sm text-gray-600">
+                                            <Users className="h-4 w-4 mr-2" />
+                                            {broadcast.recipientCount || broadcast.broadcast?.recipients?.length || 0} recipients
+                                        </div>
+                                    </div>
+                                    
+                                    {broadcast.message && (
+                                        <p className="text-sm text-gray-700 mb-3 overflow-hidden" style={{
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical'
+                                        }}>
+                                            {broadcast.message.length > 80 
+                                                ? `${broadcast.message.substring(0, 80)}...` 
+                                                : broadcast.message
+                                            }
+                                        </p>
+                                    )}
+                                    
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-500">
+                                            {broadcast.createdAt 
+                                                ? `Created ${new Date(broadcast.createdAt).toLocaleDateString()}`
+                                                : 'Recently created'
+                                            }
+                                        </span>
+                                        <Link 
+                                            to="/broadcast"
+                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                        >
+                                            View Details
+                                        </Link>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <div className="flex flex-col items-center">
+                            <div className="p-4 bg-gray-100 rounded-full mb-4">
+                                <Send className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Scheduled Broadcasts</h3>
+                            <p className="text-gray-600 mb-6">You don't have any broadcasts scheduled at the moment.</p>
+                            <Link 
+                                to="/broadcast"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center"
+                            >
+                                <Send className="h-4 w-4 mr-2" />
+                                Schedule Broadcast
+                            </Link>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </section>
 
     {/* Upcoming Events Section */ }
     < section className = "mb-16" >
