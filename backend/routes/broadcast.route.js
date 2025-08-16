@@ -342,6 +342,50 @@ router.delete('/scheduled/:id', async (req, res) => {
     }
 });
 
+// Update a scheduled broadcast (only message can be edited)
+router.put('/scheduled/:id', async (req, res) => {
+    try {
+        console.log(`=== EDITING SCHEDULED BROADCAST ===`);
+        console.log(`ID to edit: ${req.params.id}`);
+        console.log(`New message: ${req.body.message}`);
+        
+        const { message } = req.body;
+        
+        if (!message) {
+            return res.status(400).json({ message: 'Message is required' });
+        }
+        
+        // Find the scheduled broadcast
+        const scheduledBroadcast = await ScheduledBroadcast.findById(req.params.id);
+        
+        if (!scheduledBroadcast) {
+            console.log(`❌ Scheduled broadcast not found with ID: ${req.params.id}`);
+            return res.status(404).json({ message: 'Scheduled broadcast not found' });
+        }
+        
+        // Only allow editing if status is 'Scheduled'
+        if (scheduledBroadcast.status !== 'Scheduled') {
+            console.log(`❌ Cannot edit broadcast with status: ${scheduledBroadcast.status}`);
+            return res.status(400).json({ 
+                message: `Cannot edit broadcast with status: ${scheduledBroadcast.status}. Only scheduled broadcasts can be edited.` 
+            });
+        }
+        
+        // Update the message
+        scheduledBroadcast.message = message;
+        await scheduledBroadcast.save();
+        
+        console.log(`✅ Successfully updated scheduled broadcast: ${scheduledBroadcast.title}`);
+        res.json({ 
+            message: 'Scheduled broadcast updated successfully',
+            data: scheduledBroadcast
+        });
+    } catch (error) {
+        console.error('❌ Error updating scheduled broadcast:', error);
+        res.status(500).json({ message: 'Error updating scheduled broadcast', error });
+    }
+});
+
 // Delete a message from history
 router.delete('/message-history/:id', async (req, res) => {
     try {
@@ -483,6 +527,57 @@ router.post('/add-contact', async (req, res) => {
     } catch (error) {
         console.error('Error adding contact to broadcast:', error);
         res.status(500).json({ message: 'Error adding contact to broadcast', error });
+    }
+});
+
+// Remove recipient from specific broadcast group
+router.delete('/recipients/:contactId/group/:groupName', async (req, res) => {
+    try {
+        const { contactId, groupName } = req.params;
+        
+        // Find the broadcast with the specified title (group name)
+        const broadcast = await Broadcast.findOne({ title: groupName });
+        if (!broadcast) {
+            return res.status(404).json({ message: 'Broadcast group not found' });
+        }
+        
+        // Remove the contact from this broadcast's recipients
+        broadcast.recipients = broadcast.recipients.filter(
+            recipientId => recipientId.toString() !== contactId
+        );
+        
+        await broadcast.save();
+        
+        res.json({ 
+            message: `Recipient removed from "${groupName}" successfully`,
+            broadcast: await Broadcast.findById(broadcast._id).populate('recipients')
+        });
+    } catch (error) {
+        console.error('Error removing recipient from group:', error);
+        res.status(500).json({ message: 'Error removing recipient from group', error });
+    }
+});
+
+// Remove recipient from all broadcast groups
+router.delete('/recipients/:contactId', async (req, res) => {
+    try {
+        const { contactId } = req.params;
+        
+        // Remove the contact from all broadcasts
+        await Broadcast.updateMany(
+            { recipients: contactId },
+            { $pull: { recipients: contactId } }
+        );
+        
+        // Optionally delete the contact from the Contact collection
+        // await Contact.findByIdAndDelete(contactId);
+        
+        res.json({ 
+            message: 'Recipient removed from all groups successfully'
+        });
+    } catch (error) {
+        console.error('Error removing recipient from all groups:', error);
+        res.status(500).json({ message: 'Error removing recipient from all groups', error });
     }
 });
 
