@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,  // Ensures the origin header is updated for the proxy request
         secure: false,       // Set to false if your backend does not use HTTPS
       },
+      '/analytics': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });
