@@ -172,3 +172,65 @@ export const getNewsletterById = async (req, res) => {
     });
   }
 };
+
+
+// controllers/newsletter.controller.js
+export const getSlots = async (req, res) => {
+  try {
+    const found = await Newsletter.find({
+      homepageSlot: { $in: [0, 1, 2] },
+      status: 'published', // optional business rule
+    }).lean();
+
+    const slots = [null, null, null];
+    for (const n of found) {
+      if (Number.isInteger(n.homepageSlot) && n.homepageSlot >= 0 && n.homepageSlot <= 2) {
+        slots[n.homepageSlot] = n;
+      }
+    }
+    res.json(slots);
+  } catch (e) {
+    console.error('getSlots error:', e);
+    res.status(500).json({ error: 'Failed to load homepage slots' });
+  }
+};
+
+export const updateSlot = async (req, res) => {
+  try {
+    const { slotIndex, newsletterId } = req.body;
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 2) {
+      return res.status(400).json({ error: 'Invalid slot index (0–2)' });
+    }
+    if (!newsletterId) {
+      return res.status(400).json({ error: 'newsletterId is required' });
+    }
+
+    const target = await Newsletter.findById(newsletterId);
+    if (!target) return res.status(404).json({ error: 'Newsletter not found' });
+
+    // Clear prior occupant of this slot
+    await Newsletter.updateMany({ homepageSlot: slotIndex }, { $set: { homepageSlot: null } });
+
+    // Assign selected newsletter to the slot
+    target.homepageSlot = slotIndex;
+    await target.save();
+
+    // Return fresh slots
+    const found = await Newsletter.find({
+      homepageSlot: { $in: [0, 1, 2] },
+      status: 'published',
+    }).lean();
+
+    const slots = [null, null, null];
+    for (const n of found) {
+      if (Number.isInteger(n.homepageSlot) && n.homepageSlot >= 0 && n.homepageSlot <= 2) {
+        slots[n.homepageSlot] = n;
+      }
+    }
+    res.json({ ok: true, slots });
+  } catch (e) {
+    console.error('updateSlot error:', e);
+    res.status(500).json({ error: 'Failed to update slot' });
+  }
+};
+
