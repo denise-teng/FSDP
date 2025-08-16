@@ -338,7 +338,6 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                             // Show channel for specific broadcast
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                               r.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                              r.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
                               {r.channel ? r.channel.charAt(0).toUpperCase() + r.channel.slice(1) : 'No channel'}

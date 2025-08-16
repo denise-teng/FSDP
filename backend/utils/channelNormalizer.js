@@ -3,7 +3,7 @@
  * Ensures consistent channel values across all models and services
  */
 
-export const VALID_CHANNELS = ['email', 'whatsapp'];
+export const VALID_CHANNELS = ['email'];
 
 /**
  * Normalizes channel value to lowercase format

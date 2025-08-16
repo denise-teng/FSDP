@@ -609,7 +609,6 @@ export default function BroadcastList() {
                         >
                             <option value="all">All Channels</option>
                             <option value="email">Email</option>
-                            <option value="whatsapp">WhatsApp</option>
                         </select>
 
                         {activeTab === 'manual' && (
@@ -702,7 +701,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         b.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                                        b.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {b.channel?.charAt(0).toUpperCase() + b.channel?.slice(1)}
@@ -805,7 +803,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         b.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                                        b.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {b.channel?.charAt(0).toUpperCase() + b.channel?.slice(1)}
@@ -969,7 +966,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         m.channel === 'Email' ? 'bg-blue-100 text-blue-800' :
-                                                        m.channel === 'WhatsApp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {m.channel}
@@ -1143,7 +1139,6 @@ export default function BroadcastList() {
                                 required
                             >
                                 <option value="Email">Email</option>
-                                <option value="WhatsApp">WhatsApp</option>
                             </select>
                         </div>
                         <div>

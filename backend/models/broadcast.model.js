@@ -20,11 +20,6 @@ const BroadcastSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Contact'
   }],
-  whatsappContacts: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'WhatsappContact',
-    default: []
-  }],
   tags: [{
     type: String
   }],
