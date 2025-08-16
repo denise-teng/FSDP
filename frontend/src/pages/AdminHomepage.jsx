@@ -10,6 +10,21 @@ import Navbar from '../components/Navbar';
 import NearEvents from '../components/NearEvents';
 import { Link } from 'react-router-dom';
 import axios from '../lib/axios';
+import { Scatter } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend
+);
 // Example of tabs
 const tabs = [
     { id: 'contacts', label: 'Contacts', icon: Mail },
@@ -22,6 +37,8 @@ const AdminHomePage = () => {
     const [scheduledBroadcasts, setScheduledBroadcasts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentBroadcastPage, setCurrentBroadcastPage] = useState(0);
+    const [engagementData, setEngagementData] = useState([]);
+    const [loadingEngagement, setLoadingEngagement] = useState(false);
 
     const BROADCASTS_PER_PAGE = 3;
 
@@ -67,7 +84,21 @@ const AdminHomePage = () => {
     // Fetch scheduled broadcasts
     useEffect(() => {
         fetchScheduledBroadcasts();
+        fetchEngagementData();
     }, []);
+
+    const fetchEngagementData = async () => {
+        try {
+            setLoadingEngagement(true);
+            const response = await axios.get('/analytics/client-engagements');
+            setEngagementData(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error('Error fetching engagement data:', error);
+            setEngagementData([]);
+        } finally {
+            setLoadingEngagement(false);
+        }
+    };
 
     const fetchScheduledBroadcasts = async () => {
         try {
@@ -134,18 +165,67 @@ const AdminHomePage = () => {
         );
     };
 
-    // Engagement chart data
-    const engagementData = [
-        { month: 'Jan', value: 65 },
-        { month: 'Feb', value: 59 },
-        { month: 'Mar', value: 80 },
-        { month: 'Apr', value: 81 },
-        { month: 'May', value: 56 },
-        { month: 'Jun', value: 55 },
-        { month: 'Jul', value: 40 }
-    ];
+    // Prepare scatter plot data
+    const getScatterPlotData = () => {
+        return {
+            datasets: [{
+                label: 'Users',
+                data: engagementData.map(user => ({
+                    x: user.engagingTime || 0, // Engagement time in seconds
+                    y: user.clicks || 0, // Click rate (using clicks as y-axis)
+                    label: user.name || 'Unknown User'
+                })),
+                backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                borderColor: 'rgba(99, 102, 241, 1)',
+                borderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+            }]
+        };
+    };
 
-    const maxValue = Math.max(...engagementData.map(item => item.value));
+    const scatterPlotOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const dataPoint = context.raw;
+                        return `${dataPoint.label}: ${Math.floor(dataPoint.x / 60)}m ${dataPoint.x % 60}s, ${dataPoint.y} clicks`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                position: 'bottom',
+                title: {
+                    display: true,
+                    text: 'Engagement Time (seconds)'
+                },
+                ticks: {
+                    callback: function(value) {
+                        const minutes = Math.floor(value / 60);
+                        const seconds = value % 60;
+                        return `${minutes}m ${seconds}s`;
+                    }
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Click Rate'
+                },
+                beginAtZero: true
+            }
+        }
+    };
 
     return (
 
@@ -255,7 +335,7 @@ const AdminHomePage = () => {
     {/* Dashboard Metrics */ }
     < div className = "max-w-7xl mx-auto" >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-            {/* Engagement Chart */}
+            {/* User Engagement Scatter Plot */}
         <motion.div
             className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
@@ -265,44 +345,57 @@ const AdminHomePage = () => {
         >
             <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Engagement Statistics</h2>
-                    <div className="flex items-center text-sm text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                        <span className="h-2 w-2 bg-indigo-600 rounded-full mr-2"></span>
-                        Last 7 Months
+                    <h2 className="text-xl font-bold text-gray-900">User Engagement Analysis</h2>
+                    <div className="flex items-center space-x-2">
+                        <div className="flex items-center text-sm text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                            <span className="h-2 w-2 bg-indigo-600 rounded-full mr-2"></span>
+                            Live Data
+                        </div>
+                        <button
+                            onClick={fetchEngagementData}
+                            disabled={loadingEngagement}
+                            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition disabled:opacity-50"
+                            aria-label="Refresh data"
+                        >
+                            <RefreshCw className={`h-4 w-4 text-gray-700 ${loadingEngagement ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
                 </div>
                 <div className="relative h-64">
-                    <div className="absolute inset-0 flex flex-col justify-end">
-                        <div className="flex items-end h-48 space-x-2 px-4">
-                            {engagementData.map((item, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${(item.value / maxValue) * 100}%` }}
-                                    transition={{ duration: 0.8, delay: index * 0.1 }}
-                                    className="w-10 bg-gradient-to-t from-indigo-500 to-indigo-300 rounded-t-lg relative group"
-                                >
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.8 }}
-                                        className="absolute -top-6 left-0 right-0 text-center text-xs text-gray-600 font-medium"
-                                    >
-                                        {item.value}
-                                    </motion.div>
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 1 }}
-                                        className="absolute -bottom-6 left-0 right-0 text-center text-xs text-gray-600"
-                                    >
-                                        {item.month}
-                                    </motion.div>
-                                    <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {item.value} engagements
-                                    </div>
-                                </motion.div>
-                            ))}
+                    {loadingEngagement ? (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                        </div>
+                    ) : engagementData.length > 0 ? (
+                        <Scatter data={getScatterPlotData()} options={scatterPlotOptions} />
+                    ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Users className="h-12 w-12 text-gray-300 mb-2" />
+                            <p className="text-gray-500 text-sm">No engagement data available</p>
+                            <p className="text-gray-400 text-xs">Click refresh to load data</p>
+                        </div>
+                    )}
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                            <p className="text-xs text-gray-500">Total Users</p>
+                            <p className="text-lg font-semibold text-gray-900">{engagementData.length}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Avg. Engagement</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                                {engagementData.length > 0 
+                                    ? `${Math.floor(engagementData.reduce((sum, user) => sum + (user.engagingTime || 0), 0) / engagementData.length / 60)}m`
+                                    : '0m'
+                                }
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Total Clicks</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                                {engagementData.reduce((sum, user) => sum + (user.clicks || 0), 0)}
+                            </p>
                         </div>
                     </div>
                 </div>

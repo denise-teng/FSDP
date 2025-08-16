@@ -3,7 +3,7 @@ import axios from '../lib/axios';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { Line, Bar, Pie } from 'react-chartjs-2';
+import { Line, Bar, Pie, Scatter, Doughnut, PolarArea, Radar, Bubble } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,9 +12,11 @@ import {
   PointElement,
   LineElement,
   ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,9 +43,11 @@ ChartJS.register(
   PointElement,
   LineElement,
   ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default function AnalyticsTab() {
@@ -78,7 +82,12 @@ export default function AnalyticsTab() {
   const [newChartConfig, setNewChartConfig] = useState({
     title: '',
     type: 'line',
-    metric: 'clicks',
+    xAxis: 'name',
+    yAxis: 'clicks',
+    sizeAxis: '', // For bubble/scatter plots - represents circle size
+    colorAxis: '', // For additional dimension - represents color coding
+    groupBy: '',
+    aggregation: 'none',
     timeRange: 'monthly'
   });
 
@@ -255,42 +264,391 @@ export default function AnalyticsTab() {
     toast.success('User activity analysis exported successfully!');
   };
 
+  const exportChartData = (chart) => {
+    try {
+      let exportData = [];
+      
+      if (chart.type === 'scatter') {
+        // For scatter plots, export x,y coordinates and additional dimensions
+        exportData = chart.data.datasets[0].data.map((point, index) => {
+          const entry = {
+            'User': point.label || `Point ${index + 1}`,
+            [`${getAxisLabel(chart.config.xAxis)} (X-Axis)`]: point.x,
+            [`${getAxisLabel(chart.config.yAxis)} (Y-Axis)`]: point.y
+          };
+          
+          if (chart.config.sizeAxis && point.sizeValue !== undefined) {
+            entry[`${getAxisLabel(chart.config.sizeAxis)} (Size)`] = point.sizeValue;
+          }
+          
+          if (chart.config.colorAxis && point.colorValue !== undefined) {
+            entry[`${getAxisLabel(chart.config.colorAxis)} (Color)`] = point.colorValue;
+          }
+          
+          return entry;
+        });
+      } else if (['pie', 'doughnut', 'polarArea'].includes(chart.type)) {
+        // For circular charts, export labels and values
+        exportData = chart.data.labels.map((label, index) => ({
+          'Category': label,
+          'Value': chart.data.datasets[0].data[index]
+        }));
+      } else if (chart.type === 'radar') {
+        // For radar charts, export each user's metrics
+        exportData = chart.data.datasets.map(dataset => {
+          const entry = { 'User': dataset.label };
+          chart.data.labels.forEach((label, index) => {
+            entry[label] = dataset.data[index];
+          });
+          return entry;
+        });
+      } else {
+        // For standard charts (line, bar), export labels and values
+        exportData = chart.data.labels.map((label, index) => ({
+          [chart.config.xAxis || 'Label']: label,
+          [chart.config.yAxis || 'Value']: chart.data.datasets[0].data[index]
+        }));
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Chart Data');
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data_blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      saveAs(data_blob, `${chart.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_chart_data.xlsx`);
+      toast.success('Chart data exported successfully!');
+    } catch (error) {
+      console.error('Error exporting chart data:', error);
+      toast.error('Failed to export chart data');
+    }
+  };
+
   const createNewChart = () => {
     if (!newChartConfig.title) {
       toast.error('Please enter a chart title');
       return;
     }
 
-    const chartData = {
-      labels: data.map(entry => entry.name),
-      datasets: [{
-        label: newChartConfig.metric === 'clicks' ? 'Clicks' : 
-               newChartConfig.metric === 'engagingTime' ? 'Engaging Time (seconds)' : 'Replies',
-        data: data.map(entry => entry[newChartConfig.metric] || 0),
-        backgroundColor: newChartConfig.type === 'pie' 
-          ? ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
-          : 'rgba(54, 162, 235, 0.6)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 2
-      }]
-    };
+    // Choose the correct dataset based on whether activityScore is needed
+    const needsActivityScore = [
+      newChartConfig.xAxis,
+      newChartConfig.yAxis,
+      newChartConfig.sizeAxis,
+      newChartConfig.colorAxis
+    ].some(axis => axis === 'activityScore' || axis === 'userClassification' || axis === 'daysSinceLastActivity');
+    
+    const chartDataSource = needsActivityScore ? userActivityData : data;
+    
+    console.log('Chart data source decision:', {
+      needsActivityScore,
+      axes: {
+        x: newChartConfig.xAxis,
+        y: newChartConfig.yAxis,
+        size: newChartConfig.sizeAxis,
+        color: newChartConfig.colorAxis
+      },
+      dataSource: needsActivityScore ? 'userActivityData' : 'data',
+      dataLength: chartDataSource.length
+    });
+
+    let chartData = {};
+
+    // Handle different chart types
+    if (newChartConfig.type === 'scatter') {
+      // Enhanced scatter plot with up to 4 dimensions: x, y, size, color
+      const maxSizeValue = newChartConfig.sizeAxis ? Math.max(...chartDataSource.map(entry => entry[newChartConfig.sizeAxis] || 0)) : 1;
+      const colorValues = newChartConfig.colorAxis ? chartDataSource.map(entry => entry[newChartConfig.colorAxis] || 0) : [];
+      const maxColorValue = colorValues.length > 0 ? Math.max(...colorValues) : 1;
+      const minColorValue = colorValues.length > 0 ? Math.min(...colorValues) : 0;
+      
+      // Generate color palette for different values
+      const getColorForValue = (value) => {
+        if (!newChartConfig.colorAxis) return 'rgba(99, 102, 241, 0.6)';
+        
+        // Normalize value to 0-1 range
+        const normalizedValue = maxColorValue > minColorValue ? 
+          (value - minColorValue) / (maxColorValue - minColorValue) : 0;
+        
+        // Create color gradient from blue to red
+        const red = Math.floor(255 * normalizedValue);
+        const blue = Math.floor(255 * (1 - normalizedValue));
+        const green = Math.floor(128 * (1 - Math.abs(normalizedValue - 0.5) * 2));
+        
+        return `rgba(${red}, ${green}, ${blue}, 0.7)`;
+      };
+
+      chartData = {
+        datasets: [{
+          label: `${getAxisLabel(newChartConfig.xAxis)} vs ${getAxisLabel(newChartConfig.yAxis)}`,
+          data: chartDataSource.map(entry => {
+            const sizeValue = newChartConfig.sizeAxis ? (entry[newChartConfig.sizeAxis] || 0) : 5;
+            const normalizedSize = newChartConfig.sizeAxis ? 
+              (sizeValue / maxSizeValue) * 20 + 5 : 8; // Size range: 5-25 pixels
+            
+            const colorValue = newChartConfig.colorAxis ? (entry[newChartConfig.colorAxis] || 0) : 0;
+            
+            return {
+              x: entry[newChartConfig.xAxis] || 0,
+              y: entry[newChartConfig.yAxis] || 0,
+              r: normalizedSize, // Bubble size
+              label: entry.name || 'Unknown',
+              sizeValue: sizeValue,
+              colorValue: colorValue,
+              backgroundColor: getColorForValue(colorValue)
+            };
+          }),
+          backgroundColor: chartDataSource.map(entry => {
+            const colorValue = newChartConfig.colorAxis ? (entry[newChartConfig.colorAxis] || 0) : 0;
+            return getColorForValue(colorValue);
+          }),
+          borderColor: 'rgba(99, 102, 241, 1)',
+          borderWidth: 2,
+          pointRadius: chartDataSource.map(entry => {
+            if (!newChartConfig.sizeAxis) return 8;
+            const sizeValue = entry[newChartConfig.sizeAxis] || 0;
+            return (sizeValue / maxSizeValue) * 15 + 5; // Size range: 5-20 pixels
+          }),
+          pointHoverRadius: chartDataSource.map(entry => {
+            if (!newChartConfig.sizeAxis) return 10;
+            const sizeValue = entry[newChartConfig.sizeAxis] || 0;
+            return (sizeValue / maxSizeValue) * 18 + 7; // Hover size range: 7-25 pixels
+          })
+        }]
+      };
+    } else if (['pie', 'doughnut', 'polarArea'].includes(newChartConfig.type)) {
+      // Circular charts
+      const aggregatedData = aggregateData(chartDataSource, newChartConfig.groupBy || newChartConfig.xAxis, newChartConfig.yAxis, newChartConfig.aggregation);
+      chartData = {
+        labels: aggregatedData.labels,
+        datasets: [{
+          label: getAxisLabel(newChartConfig.yAxis),
+          data: aggregatedData.values,
+          backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+            '#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FF99CC', '#99CCFF'
+          ],
+          borderColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+            '#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FF99CC', '#99CCFF'
+          ],
+          borderWidth: 2
+        }]
+      };
+    } else if (newChartConfig.type === 'bubble') {
+      // Bubble chart - similar to scatter but with bubble sizing
+      const maxSizeValue = newChartConfig.sizeAxis ? Math.max(...chartDataSource.map(entry => entry[newChartConfig.sizeAxis] || 0)) : 1;
+      
+      console.log('Bubble Chart Debug:', {
+        xAxis: newChartConfig.xAxis,
+        yAxis: newChartConfig.yAxis,
+        sizeAxis: newChartConfig.sizeAxis,
+        dataSource: needsActivityScore ? 'userActivityData' : 'data',
+        sampleData: chartDataSource.slice(0, 3),
+        maxSizeValue
+      });
+      
+      chartData = {
+        datasets: [{
+          label: `${getAxisLabel(newChartConfig.xAxis)} vs ${getAxisLabel(newChartConfig.yAxis)}`,
+          data: chartDataSource.map(entry => {
+            const sizeValue = newChartConfig.sizeAxis ? (entry[newChartConfig.sizeAxis] || 0) : 10;
+            const normalizedSize = newChartConfig.sizeAxis ? 
+              (sizeValue / maxSizeValue) * 30 + 5 : 15; // Size range: 5-35 pixels
+            
+            const xValue = entry[newChartConfig.xAxis] || 0;
+            const yValue = entry[newChartConfig.yAxis] || 0;
+            
+            console.log('Data point:', {
+              name: entry.name,
+              xAxis: newChartConfig.xAxis,
+              xValue,
+              yAxis: newChartConfig.yAxis, 
+              yValue,
+              sizeAxis: newChartConfig.sizeAxis,
+              sizeValue
+            });
+            
+            return {
+              x: xValue,
+              y: yValue,
+              r: normalizedSize,
+              label: entry.name || 'Unknown',
+              bubbleValue: sizeValue
+            };
+          }),
+          backgroundColor: 'rgba(255, 99, 132, 0.6)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 2
+        }]
+      };
+    } else if (newChartConfig.type === 'area') {
+      // Area chart - line chart with filled area
+      const processedData = processChartData(chartDataSource, newChartConfig);
+      chartData = {
+        labels: processedData.labels,
+        datasets: [{
+          label: getAxisLabel(newChartConfig.yAxis),
+          data: processedData.values,
+          backgroundColor: 'rgba(75, 192, 192, 0.4)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4
+        }]
+      };
+    } else if (newChartConfig.type === 'heatmap') {
+      // Heatmap - custom visualization
+      const processedData = processChartData(chartDataSource, newChartConfig);
+      chartData = {
+        labels: processedData.labels,
+        datasets: [{
+          label: getAxisLabel(newChartConfig.yAxis),
+          data: processedData.values,
+          backgroundColor: processedData.values.map(value => {
+            const max = Math.max(...processedData.values);
+            const min = Math.min(...processedData.values);
+            const intensity = (value - min) / (max - min);
+            const red = Math.floor(255 * intensity);
+            const blue = Math.floor(255 * (1 - intensity));
+            return `rgb(${red}, 100, ${blue})`;
+          })
+        }]
+      };
+    } else if (newChartConfig.type === 'radar') {
+      // Radar chart
+      const radarData = prepareRadarData(chartDataSource, newChartConfig);
+      chartData = radarData;
+    } else {
+      // Standard charts (line, bar, etc.)
+      const processedData = processChartData(chartDataSource, newChartConfig);
+      chartData = {
+        labels: processedData.labels,
+        datasets: [{
+          label: getAxisLabel(newChartConfig.yAxis),
+          data: processedData.values,
+          backgroundColor: newChartConfig.type === 'line' 
+            ? 'rgba(54, 162, 235, 0.2)'
+            : 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 2,
+          fill: newChartConfig.type === 'line'
+        }]
+      };
+    }
 
     const newChart = {
       id: Date.now(),
       title: newChartConfig.title,
       type: newChartConfig.type,
-      data: chartData
+      data: chartData,
+      config: { ...newChartConfig }
     };
 
     setCharts(prev => [...prev, newChart]);
     setShowChartModal(false);
-    setNewChartConfig({ title: '', type: 'line', metric: 'clicks', timeRange: 'monthly' });
+    setNewChartConfig({ 
+      title: '', 
+      type: 'line', 
+      xAxis: 'name', 
+      yAxis: 'clicks', 
+      sizeAxis: '',
+      colorAxis: '',
+      groupBy: '', 
+      aggregation: 'none',
+      timeRange: 'monthly' 
+    });
     toast.success('Chart created successfully!');
+  };
+
+  // Helper functions for data processing
+  const getAxisLabel = (axis) => {
+    const labels = {
+      'name': 'Name',
+      'clicks': 'Clicks',
+      'engagingTime': 'Engaging Time (seconds)',
+      'replies': 'Replies',
+      'userType': 'User Type',
+      'daysSinceLastActivity': 'Days Since Last Activity',
+      'activityScore': 'Activity Score',
+      'userClassification': 'User Classification'
+    };
+    return labels[axis] || axis;
+  };
+
+  const processChartData = (data, config) => {
+    if (config.groupBy) {
+      return aggregateData(data, config.groupBy, config.yAxis, config.aggregation);
+    } else {
+      return {
+        labels: data.map(entry => entry[config.xAxis] || 'Unknown'),
+        values: data.map(entry => entry[config.yAxis] || 0)
+      };
+    }
+  };
+
+  const aggregateData = (data, groupField, valueField, aggregation) => {
+    const grouped = data.reduce((acc, entry) => {
+      const key = entry[groupField] || 'Unknown';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(entry[valueField] || 0);
+      return acc;
+    }, {});
+
+    const labels = Object.keys(grouped);
+    const values = labels.map(label => {
+      const values = grouped[label];
+      switch (aggregation) {
+        case 'sum':
+          return values.reduce((sum, val) => sum + val, 0);
+        case 'average':
+          return values.reduce((sum, val) => sum + val, 0) / values.length;
+        case 'count':
+          return values.length;
+        case 'max':
+          return Math.max(...values);
+        case 'min':
+          return Math.min(...values);
+        default:
+          return values.reduce((sum, val) => sum + val, 0);
+      }
+    });
+
+    return { labels, values };
+  };
+
+  const prepareRadarData = (data, config) => {
+    // For radar charts, we'll use multiple metrics for comparison
+    const metrics = ['clicks', 'engagingTime', 'replies'];
+    const sampleSize = Math.min(5, data.length); // Limit to 5 users for readability
+    
+    return {
+      labels: metrics.map(metric => getAxisLabel(metric)),
+      datasets: data.slice(0, sampleSize).map((entry, index) => ({
+        label: entry.name || `User ${index + 1}`,
+        data: metrics.map(metric => entry[metric] || 0),
+        backgroundColor: `rgba(${54 + index * 50}, ${162 - index * 20}, ${235 - index * 30}, 0.2)`,
+        borderColor: `rgba(${54 + index * 50}, ${162 - index * 20}, ${235 - index * 30}, 1)`,
+        borderWidth: 2
+      }))
+    };
   };
 
   const deleteChart = (chartId) => {
     setCharts(prev => prev.filter(chart => chart.id !== chartId));
     toast.success('Chart deleted successfully!');
+  };
+
+  const duplicateChart = (chart) => {
+    const duplicatedChart = {
+      ...chart,
+      id: Date.now(),
+      title: `${chart.title} (Copy)`
+    };
+    setCharts(prev => [...prev, duplicatedChart]);
+    toast.success('Chart duplicated successfully!');
   };
 
   const chartOptions = {
@@ -321,6 +679,264 @@ export default function AnalyticsTab() {
         position: 'top'
       }
     }
+  };
+
+  const scatterChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const dataPoint = context.raw;
+            let tooltipText = `${dataPoint.label || 'Unknown'}: (${dataPoint.x}, ${dataPoint.y})`;
+            
+            if (dataPoint.sizeValue !== undefined) {
+              tooltipText += `, Size: ${dataPoint.sizeValue}`;
+            }
+            if (dataPoint.colorValue !== undefined) {
+              tooltipText += `, Color Value: ${dataPoint.colorValue}`;
+            }
+            
+            return tooltipText;
+          },
+          afterLabel: function(context) {
+            const chart = context.chart;
+            if (chart.config.data.datasets[0].pointRadius) {
+              return `Circle Size: ${chart.config.data.datasets[0].pointRadius[context.dataIndex]}px`;
+            }
+            return '';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: 'X Axis'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Y Axis'
+        }
+      }
+    }
+  };
+
+  const radarChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      }
+    },
+    scales: {
+      r: {
+        beginAtZero: true
+      }
+    }
+  };
+
+  const polarAreaOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      }
+    },
+    scales: {
+      r: {
+        beginAtZero: true
+      }
+    }
+  };
+
+  const getBubbleChartOptions = (chartConfig) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const dataPoint = context.raw;
+            let tooltipText = `${dataPoint.label || 'Unknown'}: `;
+            tooltipText += `${getAxisLabel(chartConfig.xAxis)}: ${dataPoint.x}, `;
+            tooltipText += `${getAxisLabel(chartConfig.yAxis)}: ${dataPoint.y}`;
+            if (dataPoint.r !== undefined && chartConfig.sizeAxis) {
+              tooltipText += `, ${getAxisLabel(chartConfig.sizeAxis)}: ${dataPoint.bubbleValue || dataPoint.r}`;
+            }
+            return tooltipText;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: getAxisLabel(chartConfig.xAxis)
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: getAxisLabel(chartConfig.yAxis)
+        }
+      }
+    }
+  });
+
+  const bubbleChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const dataPoint = context.raw;
+            let tooltipText = `${dataPoint.label || 'Unknown'}: (${dataPoint.x}, ${dataPoint.y})`;
+            if (dataPoint.r !== undefined) {
+              tooltipText += `, Bubble Size: ${dataPoint.bubbleValue || dataPoint.r}`;
+            }
+            return tooltipText;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: 'X Axis'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Y Axis'
+        }
+      }
+    }
+  };
+
+  const areaChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top'
+      },
+      filler: {
+        propagate: false
+      }
+    },
+    elements: {
+      point: {
+        radius: 0
+      }
+    },
+    interaction: {
+      intersect: false
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'X Axis'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Y Axis'
+        },
+        stacked: true
+      }
+    }
+  };
+
+  // Custom Heatmap Component
+  const Heatmap = ({ data, options }) => {
+    const { labels, datasets } = data;
+    const values = datasets[0]?.data || [];
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    
+    const getHeatmapColor = (value) => {
+      const intensity = (value - minValue) / (maxValue - minValue);
+      const red = Math.floor(255 * intensity);
+      const blue = Math.floor(255 * (1 - intensity));
+      return `rgb(${red}, 100, ${blue})`;
+    };
+
+    const cellSize = 40;
+    const cols = Math.ceil(Math.sqrt(labels.length));
+    const rows = Math.ceil(labels.length / cols);
+
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center">
+        <div 
+          className="grid gap-1 p-4"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${rows}, ${cellSize}px)`
+          }}
+        >
+          {labels.map((label, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-center text-xs font-medium text-white rounded relative group cursor-pointer"
+              style={{
+                backgroundColor: getHeatmapColor(values[index] || 0),
+                width: `${cellSize}px`,
+                height: `${cellSize}px`
+              }}
+              title={`${label}: ${values[index] || 0}`}
+            >
+              <span className="truncate px-1">{label.substring(0, 6)}</span>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap">
+                {label}: {values[index] || 0}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center mt-4 space-x-2">
+          <span className="text-xs text-gray-600">Low</span>
+          <div className="flex h-4 w-32">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="flex-1 h-full"
+                style={{
+                  backgroundColor: `rgb(${Math.floor(255 * (i / 19))}, 100, ${Math.floor(255 * (1 - i / 19))})`
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-gray-600">High</span>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -430,20 +1046,118 @@ export default function AnalyticsTab() {
                     transition={{ duration: 0.3 }}
                     className="bg-white rounded-xl shadow-md border border-gray-100 p-6"
                   >
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">{chart.title}</h3>
-                      <button
-                        onClick={() => deleteChart(chart.id)}
-                        className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{chart.title}</h3>
+                        {chart.config && (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                              {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)}
+                            </span>
+                            {chart.config.xAxis && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                X: {getAxisLabel(chart.config.xAxis)}
+                              </span>
+                            )}
+                            {chart.config.yAxis && (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                Y: {getAxisLabel(chart.config.yAxis)}
+                              </span>
+                            )}
+                            {chart.config.sizeAxis && (
+                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                                Size: {getAxisLabel(chart.config.sizeAxis)}
+                              </span>
+                            )}
+                            {chart.config.colorAxis && (
+                              <span className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded-full">
+                                Color: {getAxisLabel(chart.config.colorAxis)}
+                              </span>
+                            )}
+                            {chart.config.groupBy && (
+                              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                Grouped by {getAxisLabel(chart.config.groupBy)}
+                              </span>
+                            )}
+                            {chart.config.aggregation && chart.config.aggregation !== 'none' && (
+                              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                                {chart.config.aggregation}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => duplicateChart(chart)}
+                          className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                          title="Duplicate Chart"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => exportChartData(chart)}
+                          className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Export Chart Data"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteChart(chart.id)}
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Chart"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="w-full h-64">
                       {chart.type === 'line' && <Line data={chart.data} options={chartOptions} />}
                       {chart.type === 'bar' && <Bar data={chart.data} options={barChartOptions} />}
                       {chart.type === 'pie' && <Pie data={chart.data} options={pieChartOptions} />}
+                      {chart.type === 'scatter' && <Scatter data={chart.data} options={scatterChartOptions} />}
+                      {chart.type === 'doughnut' && <Doughnut data={chart.data} options={pieChartOptions} />}
+                      {chart.type === 'polarArea' && <PolarArea data={chart.data} options={polarAreaOptions} />}
+                      {chart.type === 'radar' && <Radar data={chart.data} options={radarChartOptions} />}
+                      {chart.type === 'bubble' && <Bubble data={chart.data} options={getBubbleChartOptions(chart.config)} />}
+                      {chart.type === 'area' && <Line data={chart.data} options={areaChartOptions} />}
+                      {chart.type === 'heatmap' && <Heatmap data={chart.data} options={{}} />}
                     </div>
+                    
+                    {/* Multi-dimensional legend for scatter and bubble plots */}
+                    {['scatter', 'bubble'].includes(chart.type) && (chart.config.sizeAxis || chart.config.colorAxis) && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Chart Legend:</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          {chart.config.sizeAxis && (
+                            <div className="flex items-center">
+                              <div className="flex space-x-1 mr-2">
+                                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                                <div className="w-4 h-4 bg-indigo-500 rounded-full"></div>
+                              </div>
+                              <span className="text-gray-600">
+                                {chart.type === 'bubble' ? 'Bubble' : 'Circle'} size = {getAxisLabel(chart.config.sizeAxis)}
+                              </span>
+                            </div>
+                          )}
+                          {chart.config.colorAxis && (
+                            <div className="flex items-center">
+                              <div className="flex mr-2">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
+                                <div className="w-3 h-3 bg-purple-500 rounded-full mr-1"></div>
+                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                              </div>
+                              <span className="text-gray-600">
+                                Color gradient = {getAxisLabel(chart.config.colorAxis)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -1048,7 +1762,7 @@ export default function AnalyticsTab() {
                 </div>
                 
                 {/* Content */}
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Chart Title</label>
                     <input
@@ -1070,20 +1784,183 @@ export default function AnalyticsTab() {
                       <option value="line">Line Chart</option>
                       <option value="bar">Bar Chart</option>
                       <option value="pie">Pie Chart</option>
+                      <option value="doughnut">Doughnut Chart</option>
+                      <option value="scatter">Scatter Plot</option>
+                      <option value="radar">Radar Chart</option>
+                      <option value="polarArea">Polar Area Chart</option>
+                      <option value="bubble">Bubble Chart</option>
+                      <option value="area">Area Chart</option>
+                      <option value="heatmap">Heatmap</option>
                     </select>
                   </div>
 
+                  {/* X-Axis Selection (not for pie, doughnut, radar) */}
+                  {!['pie', 'doughnut', 'radar', 'polarArea', 'heatmap'].includes(newChartConfig.type) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">
+                        {newChartConfig.type === 'scatter' ? 'X-Axis Variable' : 'X-Axis (Labels)'}
+                      </label>
+                      <select
+                        value={newChartConfig.xAxis}
+                        onChange={(e) => setNewChartConfig({ ...newChartConfig, xAxis: e.target.value })}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      >
+                        <option value="name">User Name</option>
+                        <option value="userType">User Type</option>
+                        <option value="userClassification">User Classification</option>
+                        {['scatter', 'bubble'].includes(newChartConfig.type) && (
+                          <>
+                            <option value="clicks">Clicks</option>
+                            <option value="engagingTime">Engaging Time</option>
+                            <option value="replies">Replies</option>
+                            <option value="activityScore">Activity Score</option>
+                            <option value="daysSinceLastActivity">Days Since Last Activity</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Y-Axis Selection */}
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">Metric</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">
+                      {['scatter', 'bubble'].includes(newChartConfig.type) ? 'Y-Axis Variable' : 
+                       ['pie', 'doughnut', 'polarArea'].includes(newChartConfig.type) ? 'Value Variable' : 'Y-Axis (Values)'}
+                    </label>
                     <select
-                      value={newChartConfig.metric}
-                      onChange={(e) => setNewChartConfig({ ...newChartConfig, metric: e.target.value })}
+                      value={newChartConfig.yAxis}
+                      onChange={(e) => setNewChartConfig({ ...newChartConfig, yAxis: e.target.value })}
                       className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
                     >
                       <option value="clicks">Clicks</option>
                       <option value="engagingTime">Engaging Time</option>
                       <option value="replies">Replies</option>
+                      <option value="activityScore">Activity Score</option>
+                      <option value="daysSinceLastActivity">Days Since Last Activity</option>
                     </select>
+                  </div>
+
+                  {/* Size Axis (for scatter and bubble plots) */}
+                  {['scatter', 'bubble'].includes(newChartConfig.type) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">
+                        {newChartConfig.type === 'bubble' ? 'Bubble Size Variable (Required)' : 'Circle Size Variable (Optional)'}
+                        <span className="text-xs text-gray-500 ml-1">- Controls bubble size</span>
+                      </label>
+                      <select
+                        value={newChartConfig.sizeAxis}
+                        onChange={(e) => setNewChartConfig({ ...newChartConfig, sizeAxis: e.target.value })}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      >
+                        <option value="">No Size Mapping</option>
+                        <option value="clicks">Clicks</option>
+                        <option value="engagingTime">Engaging Time</option>
+                        <option value="replies">Replies</option>
+                        <option value="activityScore">Activity Score</option>
+                        <option value="daysSinceLastActivity">Days Since Last Activity</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Color Axis (for scatter and bubble plots) */}
+                  {['scatter', 'bubble'].includes(newChartConfig.type) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">
+                        Color Variable (Optional)
+                        <span className="text-xs text-gray-500 ml-1">- Controls bubble color gradient</span>
+                      </label>
+                      <select
+                        value={newChartConfig.colorAxis}
+                        onChange={(e) => setNewChartConfig({ ...newChartConfig, colorAxis: e.target.value })}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      >
+                        <option value="">No Color Mapping</option>
+                        <option value="clicks">Clicks</option>
+                        <option value="engagingTime">Engaging Time</option>
+                        <option value="replies">Replies</option>
+                        <option value="activityScore">Activity Score</option>
+                        <option value="daysSinceLastActivity">Days Since Last Activity</option>
+                        <option value="userType">User Type</option>
+                        <option value="userClassification">User Classification</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Group By (for aggregation) */}
+                  {!['scatter', 'radar', 'bubble'].includes(newChartConfig.type) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Group By (Optional)</label>
+                      <select
+                        value={newChartConfig.groupBy}
+                        onChange={(e) => setNewChartConfig({ ...newChartConfig, groupBy: e.target.value })}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      >
+                        <option value="">No Grouping</option>
+                        <option value="userType">User Type</option>
+                        <option value="userClassification">User Classification</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Aggregation Method (when grouping is selected) */}
+                  {newChartConfig.groupBy && !['scatter', 'radar'].includes(newChartConfig.type) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Aggregation Method</label>
+                      <select
+                        value={newChartConfig.aggregation}
+                        onChange={(e) => setNewChartConfig({ ...newChartConfig, aggregation: e.target.value })}
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      >
+                        <option value="sum">Sum</option>
+                        <option value="average">Average</option>
+                        <option value="count">Count</option>
+                        <option value="max">Maximum</option>
+                        <option value="min">Minimum</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Data Preview */}
+                  {data.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Data Preview (First 3 Records):</h4>
+                      <div className="text-xs text-gray-700 space-y-1">
+                        {data.slice(0, 3).map((entry, index) => (
+                          <div key={index} className="bg-white p-2 rounded border">
+                            <span className="font-medium">{entry.name}:</span>
+                            <span className="ml-1">
+                              Clicks: {entry.clicks || 0}, 
+                              Time: {Math.floor((entry.engagingTime || 0) / 60)}m, 
+                              Replies: {entry.replies || 0}
+                              {entry.userType && `, Type: ${entry.userType}`}
+                              {entry.userClassification && `, Class: ${entry.userClassification}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chart Type Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Chart Type Info:</h4>
+                    <p className="text-xs text-blue-800">
+                      {newChartConfig.type === 'line' && 'Shows trends over continuous data points'}
+                      {newChartConfig.type === 'bar' && 'Compares different categories or groups'}
+                      {newChartConfig.type === 'pie' && 'Shows proportions of a whole dataset'}
+                      {newChartConfig.type === 'doughnut' && 'Similar to pie chart with a hollow center'}
+                      {newChartConfig.type === 'area' && 'Shows trends with filled areas below the line'}
+                      {newChartConfig.type === 'heatmap' && 'Shows data density and patterns using color intensity'}
+                      {['scatter', 'bubble'].includes(newChartConfig.type) && (
+                        newChartConfig.sizeAxis || newChartConfig.colorAxis ? 
+                        `Multi-dimensional analysis: X-axis (${getAxisLabel(newChartConfig.xAxis)}), Y-axis (${getAxisLabel(newChartConfig.yAxis)})` +
+                        (newChartConfig.sizeAxis ? `, ${newChartConfig.type === 'bubble' ? 'bubble' : 'circle'} size (${getAxisLabel(newChartConfig.sizeAxis)})` : '') +
+                        (newChartConfig.colorAxis ? `, color gradient (${getAxisLabel(newChartConfig.colorAxis)})` : '') :
+                        `Shows correlation between two variables${newChartConfig.type === 'bubble' ? ' with bubble sizes' : ''}. Add size/color dimensions for deeper insights.`
+                      )}
+                      {newChartConfig.type === 'radar' && 'Compares multiple metrics for top 5 users'}
+                      {newChartConfig.type === 'polarArea' && 'Shows data in a circular format with varying radii'}
+                    </p>
                   </div>
 
                   <div className="flex justify-end space-x-3 pt-4">
