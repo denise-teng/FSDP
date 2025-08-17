@@ -60,8 +60,8 @@ const EventCard = ({ event }) => {
       )}
 
       {/* ✅ Light Event Card */}
-      <div className="mt-4 px-5 pb-5 border border-gray-200 rounded-md bg-white text-gray-800 shadow-sm">
-        <h5 className="text-lg font-semibold tracking-tight mb-1">{event.name}</h5>
+      <div className="mt-4 p-5 border border-gray-200 rounded-md bg-white text-gray-800 shadow-sm">
+        <h5 className="text-lg font-semibold tracking-tight mb-2">{event.name}</h5>
         <p className="text-sm mb-1 text-gray-600">Date: {formattedDate()}</p>
 
         {event.startTime && (

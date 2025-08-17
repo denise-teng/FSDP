@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 const bedrockClient = new BedrockRuntimeClient({ region: "ap-southeast-2" });
 
 export async function analyzeMessagesWithBedrock(messages) {
-  const keywords = ["zoom", "discuss", "meet up", "call", "meet"];
+  const keywords = ["zoom", "discuss", "meet up", "call", "meet, consult, consultation, talk"];
 
   const messagesWithIds = messages.map(msg => ({
     ...msg,

@@ -22,6 +22,7 @@ import { useUserStore } from '../stores/useUserStore';
 import { useCartStore } from '../stores/useCartStore';
 import Notifications from './Notifications';
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Navbar = () => {
   const { user, logout } = useUserStore();
@@ -30,6 +31,7 @@ const Navbar = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -50,6 +52,12 @@ const Navbar = () => {
   const isActive = (path) => {
     return location.pathname === path;
   };
+  useEffect(() => {
+  if (!user?._id) return;
+  axios.get(`/api/notifications/${user._id}`)
+    .then(res => setUnreadCount(res.data.length))
+    .catch(() => {});
+}, [user?._id]);
 
   return (
     <header className="fixed top-0 left-0 w-full bg-white bg-opacity-90 backdrop-blur-md shadow-none z-40 transition-all duration-300 border-b border-transparent">
@@ -111,7 +119,7 @@ const Navbar = () => {
                 }`}
               >
                 <Calendar className="mr-1" size={20} />
-                <span className="hidden sm:inline">Manage Calendar</span>
+                <span className="hidden sm:inline">Events</span>
               </Link>
             )}
 
@@ -222,20 +230,32 @@ const Navbar = () => {
             )}
 
             {user && (
-              <div className="relative flex items-center">
-                <button
-                  onClick={() => setShowNotifications((prev) => !prev)}
-                  className="text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center p-2"
-                >
-                  <Bell size={20} />
-                </button>
-                {showNotifications && (
-                  <div className="absolute top-full mt-2 right-0 w-80 z-50">
-                    <Notifications onClose={() => setShowNotifications(false)} />
-                  </div>
-                )}
-              </div>
-            )}
+  <div className="relative flex items-center">
+    <button
+      onClick={() => setShowNotifications(prev => !prev)}
+      className="relative text-gray-700 hover:text-indigo-600 transition duration-300 ease-in-out flex items-center p-2"
+      aria-label={`Notifications${unreadCount ? `: ${unreadCount} unread` : ''}`}
+    >
+      <Bell size={20} />
+      {unreadCount > 0 && (
+        <span
+          className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] leading-none rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center"
+        >
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+    </button>
+
+    {showNotifications && (
+      <div className="absolute top-full mt-2 right-0 w-80 z-50">
+        <Notifications
+          onClose={() => setShowNotifications(false)}
+          onCountChange={setUnreadCount}
+        />
+      </div>
+    )}
+  </div>
+)}
 
             {user ? (
               <button
@@ -305,7 +325,7 @@ const Navbar = () => {
                     }`}
                   >
                     <Calendar className="mr-2" size={20} />
-                    Manage Calendar
+                    Events
                   </Link>
                 )}
 

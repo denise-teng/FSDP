@@ -24,27 +24,31 @@ export const useEventStore = create((set) => ({
             set({loading: false});
         }
     },
-    fetchAllEvents: async() => {
-        set({ loading:true});
-        try {
-            const response = await axios.get("/events");
-            set({ events: response.data, loading: false }); // ✅ save events
-        } catch(error) {
-            set({error: "Failed to fetch events", loading: false});
-            toast.error(error.response.data.error || "Failed to fetch events");
-        }
-    },
+    fetchAllEvents: async (silent = false) => {
+  set({ loading: true });
+  try {
+    const response = await axios.get("/events");
+    set({ events: response.data, loading: false }); // ✅ save events
+  } catch (error) {
+    set({ error: "Failed to fetch events", loading: false });
+    if (!silent) {
+      toast.error(error.response?.data?.error || "Failed to fetch events");
+    }
+  }
+},
 
-    fetchEventByType: async (type) => {
-        set({loading: true});
-        try {
-            const response = await axios.get(`/events/type/${type}`);
-            set({ events: response.data.events, loading: false});
-        } catch(error) {
-            set({ error: "Failed to fetch events", loading: false});
-            toast.error(error.response.data.error || "Failed to fetch events");
-        }
-    },
+fetchEventByType: async (type, silent = false) => {
+  set({ loading: true });
+  try {
+    const response = await axios.get(`/events/type/${type}`);
+    set({ events: response.data.events, loading: false });
+  } catch (error) {
+    set({ error: "Failed to fetch events", loading: false });
+    if (!silent) {
+      toast.error(error.response?.data?.error || "Failed to fetch events");
+    }
+  }
+},
 
     deleteEvent: async (eventId) => {
         set({ loading:true});

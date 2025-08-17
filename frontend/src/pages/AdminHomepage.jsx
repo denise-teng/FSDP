@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Mail, Users, BarChart2, LayoutDashboard, MessageSquare,
     ArrowRight, ChevronDown, X, Check, MapPin, Phone,
@@ -9,16 +9,67 @@ import { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import NearEvents from '../components/NearEvents';
 import { Link } from 'react-router-dom';
+import { useEventStore } from '../stores/useEventStore';
 // Example of tabs
 const tabs = [
     { id: 'contacts', label: 'Contacts', icon: Mail },
     { id: 'quickMessages', label: 'Quick Messages', icon: MessageSquare },
 ];
+// Local YYYY-MM-DD
+const ymd = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+// Parse event.date robustly (handles "YYYY-MM-DD" without UTC shift)
+const parseEventDate = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      const [_, yy, mm, dd] = m;
+      return new Date(Number(yy), Number(mm) - 1, Number(dd));
+    }
+    return new Date(value);
+  }
+  return new Date(value);
+};
+
+// HH:MM -> minutes
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return null;
+  const [h, m] = String(timeStr).split(':').map(Number);
+  return h * 60 + (m || 0);
+};
 
 const AdminHomePage = () => {
     const [currentUpdate, setCurrentUpdate] = useState(0);
     const [isHovering, setIsHovering] = useState(false);
 
+
+    const { events, fetchAllEvents } = useEventStore();
+
+  useEffect(() => {
+    fetchAllEvents?.();
+  }, [fetchAllEvents]);
+
+  // Compute today's events (local)
+  const todayStr = ymd(new Date());
+
+  const todaysEvents = useMemo(() => {
+    if (!events?.length) return [];
+    return events
+      .filter((ev) => {
+        const d = parseEventDate(ev.date);
+        if (!d) return false;
+        // Show admin-visible items (approved/pending/rejected — adjust if you prefer)
+        return ymd(d) === todayStr;
+      })
+      .sort((a, b) => {
+        // sort by startTime if present
+        const am = timeToMinutes(a.startTime) ?? 9999;
+        const bm = timeToMinutes(b.startTime) ?? 9999;
+        return am - bm;
+      });
+  }, [events, todayStr]);
     // Sample updates data
     const updates = [
         {
@@ -259,52 +310,102 @@ whileHover = {{ y: -5 }}
         </div>
 
         <div className="space-y-4">
-            <div className="flex items-start p-3 bg-blue-50 rounded-lg">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900">Follow-up with Client Tay</p>
-                    <p className="text-sm text-gray-500 mt-1 flex items-center">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">10:00 AM</span>
-                        <span className="mx-2">•</span>
-                        <span>15 mins remaining</span>
-                    </p>
-                </div>
+  {todaysEvents.length > 0 ? (
+    todaysEvents.map((ev) => {
+      // Color accents by type (matches your demo palette vibe)
+      const typeBg = {
+        Broadcast: { tile: 'bg-indigo-50', icon: 'bg-indigo-100', iconTint: 'text-indigo-600' },
+        Consultation: { tile: 'bg-blue-50', icon: 'bg-blue-100', iconTint: 'text-blue-600' },
+        Sales: { tile: 'bg-yellow-50', icon: 'bg-yellow-100', iconTint: 'text-yellow-700' },
+        Service: { tile: 'bg-purple-50', icon: 'bg-purple-100', iconTint: 'text-purple-600' },
+        'Policy-updates': { tile: 'bg-red-50', icon: 'bg-red-100', iconTint: 'text-red-600' },
+      }[ev.type] || { tile: 'bg-gray-50', icon: 'bg-gray-100', iconTint: 'text-gray-600' };
+
+      // Build time label
+      const timeLabel =
+        ev.startTime && ev.endTime
+          ? `${ev.startTime} – ${ev.endTime}`
+          : ev.startTime || 'All day';
+
+      // Optional “mins remaining” if event is currently ongoing
+      let extra = null;
+      const now = new Date();
+      const nowStr = ymd(now);
+
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const s = timeToMinutes(ev.startTime);
+      const e = timeToMinutes(ev.endTime);
+
+      if (s != null && e != null && nowStr === todayStr) {
+        if (nowMins < s) {
+          extra = `${s - nowMins} mins to start`;
+        } else if (nowMins >= s && nowMins <= e) {
+          extra = `${e - nowMins} mins remaining`;
+        } else {
+          extra = 'Ended';
+        }
+      }
+
+      // status badge
+      const statusMap = {
+        approved: 'bg-green-100 text-green-800',
+        pending: 'bg-amber-100 text-amber-800',
+        rejected: 'bg-red-100 text-red-800',
+      };
+      const statusBadge = statusMap[ev.status] || 'bg-gray-100 text-gray-700';
+
+      return (
+        <div key={ev._id} className={`flex items-start p-3 rounded-lg ${typeBg.tile}`}>
+          <div className={`flex-shrink-0 h-10 w-10 rounded-full ${typeBg.icon} flex items-center justify-center`}>
+            <Calendar className={`h-5 w-5 ${typeBg.iconTint}`} />
+          </div>
+          <div className="ml-4 flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {ev.name || ev.title || ev.type}
+              </p>
+              <span className={`ml-3 text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusBadge}`}>
+                {ev.status?.toUpperCase() || 'PENDING'}
+              </span>
             </div>
 
-            <div className="flex items-start p-3 bg-indigo-50 rounded-lg">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-indigo-600" />
-                </div>
-                <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900">Tax Briefing Broadcast</p>
-                    <p className="text-sm text-gray-500 mt-1 flex items-center">
-                        <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">4:00 PM</span>
-                    </p>
-                </div>
-            </div>
-
-            <div className="mt-4 h-48 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex flex-col items-center justify-center relative overflow-hidden">
-                <motion.div
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: 1 }}
-                    transition={{
-                        repeat: Infinity,
-                        repeatType: "reverse",
-                        duration: 2
-                    }}
-                    className="z-10"
-                >
-                    <LayoutDashboard className="h-12 w-12 text-blue-400" />
-                </motion.div>
-                <p className="ml-4 text-blue-600 z-10">Calendar integration coming soon</p>
-                <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-blue-200 rounded-full filter blur-xl"></div>
-                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-200 rounded-full filter blur-xl"></div>
-                </div>
-            </div>
+            <p className="text-sm text-gray-500 mt-1 flex items-center flex-wrap gap-x-2 gap-y-1">
+              <span className="bg-white text-gray-700 border border-gray-200 text-xs px-2 py-0.5 rounded-full flex items-center">
+                <Clock className="h-3 w-3 mr-1" />
+                {timeLabel}
+              </span>
+              {ev.location && (
+                <span className="bg-white text-gray-700 border border-gray-200 text-xs px-2 py-0.5 rounded-full flex items-center">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {ev.location}
+                </span>
+              )}
+              {extra && <span className="text-xs text-gray-500">{extra}</span>}
+            </p>
+          </div>
         </div>
+      );
+    })
+  ) : (
+    // Fallback (your existing placeholder)
+    <div className="mt-4 h-48 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex flex-col items-center justify-center relative overflow-hidden">
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ repeat: Infinity, repeatType: 'reverse', duration: 2 }}
+        className="z-10"
+      >
+        <LayoutDashboard className="h-12 w-12 text-blue-400" />
+      </motion.div>
+      <p className="ml-4 text-blue-600 z-10">No events today</p>
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-200 rounded-full filter blur-xl"></div>
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-200 rounded-full filter blur-xl"></div>
+      </div>
+    </div>
+  )}
+</div>
+
     </div>
           </motion.div >
         </div >

@@ -16,9 +16,9 @@ import fs from "fs";
 import cors from "cors";
 import puppeteer from "puppeteer";
 import userRoutes from './routes/user.route.js';  // ✅ adjust the path if needed
+import {  googleCallback } from './controllers/auth.controller.js';
 
 
-// Import routes
 import authRoutes from './routes/auth.route.js';
 import productRoutes from './routes/product.route.js';
 import cartRoutes from './routes/cart.route.js';
@@ -52,6 +52,8 @@ import consultationRoutes from './routes/consultation.routes.js';
 import articlesRoutes from './routes/articles.route.js';
 import summariseContentRoutes from './routes/summarise_content.route.js';
 
+import passport from "passport";
+import './lib/passport.js';
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
 import { analyzeMessagesWithBedrock } from './ai/awsBedrockAnalysis.js';
@@ -85,6 +87,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), {
 app.use('/api/users', userRoutes);  // ✅ now your routes will be live
 
 // ROUTES
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
@@ -107,6 +110,9 @@ app.use("/api/contacts/public", publicContactRoutes);
 app.use("/api/broadcasts", broadcastRoutes);
 app.use("/api/scheduled-broadcasts", scheduledBroadcastRoutes);
 app.use("/api/recent-broadcasts", recentBroadcastRoutes);
+
+
+app.use(passport.initialize());
 
 // 🔁 Utility function
 function getRecentMessages(messages, timeFrame = '2days') {
@@ -228,6 +234,13 @@ async function reuseExistingBrowser() {
     throw error;
   }
 }
+
+app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+// Callback from Google
+app.get('/api/auth/google/callback', googleCallback);
+
+
 
 // 📊 GET: Analyze meeting recommendations
 app.get("/api/analyze-meetings", async (req, res) => {
@@ -400,7 +413,7 @@ connectDB().then(() => {
     console.log(`✅ Server ready at http://localhost:${PORT}`);
   });
 }).catch((error) => {
-  console.log('⚠️ Database connection failed, starting server anyway for testing:', error.message);
+  console.log('Database connection failed, starting server anyway for testing:', error.message);
   app.listen(PORT, () => {
     console.log(`✅ Server ready at http://localhost:${PORT} (without database)`);
   });
