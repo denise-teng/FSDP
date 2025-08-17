@@ -3,7 +3,7 @@ import Subscriber from '../models/subscribe.model.js';
 import sgMail from '@sendgrid/mail';
 import path from 'path';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Helper function to generate file URLs
 const generateFileUrl = (filePath) => {
@@ -22,7 +22,7 @@ const getFileExtension = (filePath) => {
 export const sendNewsletterToSubscribers = async (req, res) => {
   try {
     console.log('Starting newsletter send process...');
-    
+   
     // 1. Validate newsletter exists and is published
     const newsletter = await Newsletter.findById(req.params.id);
     if (!newsletter || newsletter.status !== 'published') {
@@ -54,12 +54,12 @@ export const sendNewsletterToSubscribers = async (req, res) => {
     const baseTemplateData = {
       title: newsletter.title,
       category: newsletter.category,
-      content: Array.isArray(newsletter.content) ? 
-              newsletter.content.join('<br><br>') : 
+      content: Array.isArray(newsletter.content) ?
+              newsletter.content.join('<br><br>') :
               newsletter.content,
-      tags: Array.isArray(newsletter.tags) ? newsletter.tags : 
-            typeof newsletter.tags === 'string' ? 
-            newsletter.tags.split(',').map(tag => tag.trim()) : 
+      tags: Array.isArray(newsletter.tags) ? newsletter.tags :
+            typeof newsletter.tags === 'string' ?
+            newsletter.tags.split(',').map(tag => tag.trim()) :
             [],
       thumbnailUrl: thumbnailUrl,
       fileUrl: fileUrl,
@@ -72,16 +72,16 @@ export const sendNewsletterToSubscribers = async (req, res) => {
     // 5. Send emails in batches using template
     const BATCH_SIZE = 50;
     let successfulSends = 0;
-    const templateId = 'd-2534187eb2f646a795c59081b017b635';
-    
+    const templateId = 'd-24f783e679cd435a88d5888d94555fc0';
+   
     for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
       const batch = subscribers.slice(i, i + BATCH_SIZE);
-      
+     
       try {
         const messages = batch.map(subscriber => ({
           to: subscriber.email,
           from: {
-            email: process.env.SENDGRID_TRANSACTIONAL_FROM,
+            email: 'densie.t2910@gmail.com',
             name: 'Yip Cheu Fong Financial Advisory'
           },
           templateId: templateId,
@@ -103,7 +103,7 @@ export const sendNewsletterToSubscribers = async (req, res) => {
         console.error(`Failed batch ${i}:`, batchError.response?.body?.errors);
         // Track failed sends if needed
       }
-      
+     
       // Add delay between batches
       await new Promise(resolve => setTimeout(resolve, 1000));
     }

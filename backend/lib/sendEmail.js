@@ -69,8 +69,20 @@ export const sendBroadcastEmail = async ({ to, subject, message, from = 'brandie
   };
 
   console.log('Sending broadcast email to:', to);
-  await sgMail.send(msg);
-  console.log('Broadcast email sent successfully to:', to);
+  
+  // Use secondary API key for broadcast emails
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
+  
+  try {
+    await sgMail.send(msg);
+    console.log('✅ Broadcast email sent successfully to:', to, '(using secondary API key)');
+  } catch (error) {
+    console.error('❌ Broadcast email failed:', error.message);
+    throw error;
+  } finally {
+    // Switch back to primary API key for verification emails
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
 };
 
 export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstName, from = 'brandieco2025@gmail.com' }) => {
@@ -106,8 +118,20 @@ export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstN
   };
 
   console.log('Sending scheduled broadcast email to:', to);
-  await sgMail.send(msg);
-  console.log('Scheduled broadcast email sent successfully to:', to);
+  
+  // Use secondary API key for broadcast emails
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
+  
+  try {
+    await sgMail.send(msg);
+    console.log('✅ Scheduled broadcast email sent successfully to:', to, '(using secondary API key)');
+  } catch (error) {
+    console.error('❌ Scheduled broadcast email failed:', error.message);
+    throw error;
+  } finally {
+    // Switch back to primary API key for verification emails
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
 };
 
 export const sendBulkBroadcastEmails = async ({ recipients, subject, message }) => {

@@ -195,8 +195,8 @@ export default function BroadcastAI({ onClose, onBroadcastCreated }) {
                                     </svg>
                                     Communication Channel
                                 </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {['email', 'whatsapp'].map((channelOption) => (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {['email'].map((channelOption) => (
                                         <label key={channelOption} className="relative">
                                             <input
                                                 type="radio"
@@ -327,7 +327,6 @@ export default function BroadcastAI({ onClose, onBroadcastCreated }) {
                                             onChange={(e) => setEditableData({...editableData, channel: e.target.value})}
                                         >
                                             <option value="email">Email</option>
-                                            <option value="whatsapp">WhatsApp</option>
                                         </select>
                                     </div>
                                 </div>

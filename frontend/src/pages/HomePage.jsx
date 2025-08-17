@@ -16,7 +16,7 @@ const handleTags = (tags) => {
 
 const getFileUrl = (path) => {
   if (!path) return '/placeholder-thumbnail.jpg';
-  
+
   // If it's already a full URL or starts with /images/, return as-is
   if (path.startsWith('http') || path.startsWith('/images/') || path.startsWith('/public/')) {
     return path;
@@ -646,7 +646,7 @@ const Footer = () => {
 
 
 const HomePage = () => {
-  const { homepageSlots, fetchNewsletters } = useNewsletterStore();
+  const { homepageSlots, fetchNewsletters, initializeSlots } = useNewsletterStore();
   const [showAll, setShowAll] = useState(false);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -659,26 +659,27 @@ const HomePage = () => {
     ? testimonials
     : testimonials.slice(0, 3);
 
-useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
         await fetchNewsletters();
+        await initializeSlots();
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
-    
+
     // Add event listener for beforeunload to potentially save state
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [fetchNewsletters]);
+  }, [fetchNewsletters, initializeSlots]);
 
   const handleBeforeUnload = () => {
     // Optionally save state to localStorage
@@ -896,15 +897,15 @@ useEffect(() => {
                 {slot ? (
                   <>
                     <div className="h-48 overflow-hidden">
-<img
-  src={getFileUrl(slot.thumbnailPath)}
-  alt={slot.title}
-  className="w-full h-full object-cover transition-transform hover:scale-105"
-  onError={(e) => {
-    e.target.onerror = null;
-    e.target.src = '/placeholder-newsletter.jpg';
-  }}
-/>
+                      <img
+                        src={getFileUrl(slot.thumbnailPath)}
+                        alt={slot.title}
+                        className="w-full h-full object-cover transition-transform hover:scale-105"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-newsletter.jpg';
+                        }}
+                      />
                     </div>
                     <div className="p-6">
                       <div className="flex flex-wrap gap-2 mb-3">
@@ -918,7 +919,7 @@ useEffect(() => {
                         {slot.title}
                       </h3>
                       <a
-                        href={slot.fileUrl}
+                        href={slot.fileUrl || getFileUrl(slot.newsletterFilePath)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"

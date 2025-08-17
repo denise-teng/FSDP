@@ -1,66 +1,152 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDraftStore } from '../stores/useDraftsStore';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const DeletedList = ({ drafts: initialDrafts }) => {
-  const { restoreDraft, permanentlyDeleteDraft } = useDraftStore();
+const DeletedList = () => {
+  const { 
+    deletedDrafts, 
+    restoreDraft, 
+    permanentlyDeleteDraft, 
+    fetchDeletedDrafts,
+    loading,
+    error
+  } = useDraftStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState("all");
   const [restoringId, setRestoringId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  const [localDrafts, setLocalDrafts] = useState(initialDrafts);
+  
+  // Memoize the fetch function to prevent unnecessary recreations
+  const loadData = useCallback(async () => {
+    try {
+      await fetchDeletedDrafts();
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  }, [fetchDeletedDrafts]);
 
-  const filteredDrafts = localDrafts
-    .filter(draft => filterType === "all" || draft.type === filterType)
-    .filter(draft =>
-      draft.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (draft.content && draft.content.some(paragraph =>
-        paragraph.toLowerCase().includes(searchTerm.toLowerCase())
-      ))
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Combined loading state
+  const isLoading = loading || restoringId !== null || deletingId !== null;
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+              <button 
+                onClick={loadData}
+                className="mt-2 text-sm text-red-600 hover:text-red-500 font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
+  }
+
+  if (isLoading && deletedDrafts.length === 0) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredDrafts = deletedDrafts
+    .filter(draft => {
+      // Skip if not actually deleted
+      if (!draft.deletedAt) return false;
+      
+      // Apply type filter
+      if (filterType !== "all" && draft.type !== filterType) return false;
+      
+      // Apply search filter
+      const searchLower = searchTerm.toLowerCase();
+      const contentMatch = draft.content?.some?.(
+        paragraph => paragraph.toLowerCase().includes(searchLower)
+      );
+      
+      return (
+        draft.title.toLowerCase().includes(searchLower) ||
+        contentMatch
+      );
+    })
+    .sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
 
   const handleRestore = async (id) => {
     setRestoringId(id);
     try {
       await restoreDraft(id);
-      setLocalDrafts(localDrafts.filter(draft => draft._id !== id));
       toast.success('Draft restored successfully!');
     } catch (error) {
-      toast.error('Failed to restore draft');
+      toast.error(error.message || 'Failed to restore draft');
     } finally {
       setRestoringId(null);
     }
   };
 
-const handlePermanentDelete = async (id) => {
+  const handlePermanentDelete = async (id) => {
     setDeletingId(id);
     try {
       await permanentlyDeleteDraft(id);
-      // Use functional update to ensure we're working with latest state
-      setLocalDrafts(prevDrafts => prevDrafts.filter(draft => draft._id !== id));
       toast.success('Draft permanently deleted');
       setShowDeleteConfirm(null);
     } catch (error) {
-      if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-      } else if (error.response?.status === 404) {
-        // If draft not found, remove it from local state anyway
-        setLocalDrafts(prevDrafts => prevDrafts.filter(draft => draft._id !== id));
-        toast.error('Draft was already deleted');
-      } else {
-        toast.error('Failed to delete draft');
-      }
+      toast.error(error.message || 'Failed to delete draft');
     } finally {
       setDeletingId(null);
     }
   };
 
+  if (loading && deletedDrafts.length === 0) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Deleted Drafts</h1>
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -90,7 +176,6 @@ const handlePermanentDelete = async (id) => {
         </div>
       </div>
 
-      {/* Deleted Drafts List */}
       <div className="space-y-4">
         {filteredDrafts.length === 0 ? (
           <div className="text-center py-12">
@@ -121,7 +206,6 @@ const handlePermanentDelete = async (id) => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {/* Restore Button with Tooltip */}
                   <div className="relative group">
                     <button
                       onClick={() => handleRestore(draft._id)}
@@ -142,7 +226,6 @@ const handlePermanentDelete = async (id) => {
                     </span>
                   </div>
 
-                  {/* Permanent Delete Button with Tooltip */}
                   <div className="relative group">
                     <button
                       onClick={() => setShowDeleteConfirm(draft._id)}
@@ -162,7 +245,6 @@ const handlePermanentDelete = async (id) => {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
           <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-200/50 text-center max-w-sm w-full">

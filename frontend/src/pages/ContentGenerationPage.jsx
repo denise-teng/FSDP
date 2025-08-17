@@ -6,6 +6,7 @@ import UploadNewsletter from './UploadNewsletter';
 import DraftPage from './DraftsPage';
 import EditHomeSlotPage from './EditHomeSlotPage';
 import EnhanceNewsletterPage from "../components/EnhanceNewsletterPage";
+import ViewSubscriberPage from './ViewSubscriberPage';
 
 const ContentGenerationPage = () => {
   const [activeSubTab, setActiveSubTab] = useState('generate');
@@ -22,6 +23,8 @@ const ContentGenerationPage = () => {
         return <DraftPage />;
       case 'editHomeSlot':
         return <EditHomeSlotPage />;
+      case 'viewSubscribers':
+        return <ViewSubscriberPage />;
       default:
         return <GenerateMessagePage />;
     }
@@ -58,7 +61,8 @@ const ContentGenerationPage = () => {
             { key: 'uploadNewsletter', label: 'Upload Newsletter' },
             { key: 'enhanceNewsletter', label: 'Enhance Newsletter' },
             { key: 'drafts', label: 'Drafts' },
-            { key: 'editHomeSlot', label: 'Edit HomeSlot' }
+            { key: 'editHomeSlot', label: 'Edit HomeSlot' },
+            { key: 'viewSubscribers', label: 'View Subscribers' }
           ].map(tab => (
             <motion.button
               key={tab.key}

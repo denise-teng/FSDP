@@ -2,14 +2,103 @@ import { useEffect, useState } from 'react';
 import axios from '../lib/axios';
 import { toast } from 'react-hot-toast';
 
+// Remove Confirmation Modal Component
+const RemoveConfirmationModal = ({ isOpen, onClose, onConfirm, recipientName, groupName, isFromMultipleGroups }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.081 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {isFromMultipleGroups ? 'Remove from Group' : 'Remove Recipient'}
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">
+            {isFromMultipleGroups 
+              ? `Are you sure you want to remove "${recipientName}" from the "${groupName}" group?`
+              : `Are you sure you want to remove "${recipientName}"? This action cannot be undone.`
+            }
+          </p>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Group Selection Modal Component
+const GroupSelectionModal = ({ isOpen, onClose, onSelectGroup, recipientName, groups }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Select Group to Remove From</h3>
+          <p className="text-sm text-gray-500 mb-6">
+            "{recipientName}" is in multiple groups. Which group would you like to remove them from?
+          </p>
+          <div className="space-y-2 mb-6">
+            {groups.map((group, index) => (
+              <button
+                key={index}
+                onClick={() => onSelectGroup(group)}
+                className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+              >
+                <span className="font-medium text-gray-900">{group}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSelectGroup('all')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+            >
+              Remove from All Groups
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, recipients: propRecipients }) {
   const [recipients, setRecipients] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [editedRow, setEditedRow] = useState({});
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const recipientsPerPage = 10;
+
+  // Remove functionality state
+  const [showGroupSelection, setShowGroupSelection] = useState(false);
+  const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
+  const [recipientToRemove, setRecipientToRemove] = useState(null);
+  const [selectedGroupForRemoval, setSelectedGroupForRemoval] = useState(null);
 
   useEffect(() => {
     if (propRecipients) {
@@ -27,8 +116,8 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
   const fetchAllRecipients = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/contacts/shared-contacts');
-      console.log('✅ Fetched contacts:', res.data);
+      const res = await axios.get('/broadcasts/recipients');
+      console.log('✅ Fetched recipients:', res.data);
       
       // Add auto-generated IDs if they don't exist
       const recipientsWithIds = res.data.map((recipient, index) => ({
@@ -38,39 +127,85 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
       
       setRecipients(recipientsWithIds);
     } catch (err) {
-      console.error('❌ Failed to fetch contacts:', err);
+      console.error('❌ Failed to fetch recipients:', err);
       toast.error('Failed to load recipients');
     } finally {
       setLoading(false);
     }
   };
 
-  const startEdit = (recipient) => {
-    setEditingId(recipient._id);
-    setEditedRow({ ...recipient });
-  };
-
-  const saveEdit = async () => {
-    try {
-      // If this is connected to backend, you could save here
-      setRecipients((prev) =>
-        prev.map((r) => (r._id === editingId ? editedRow : r))
-      );
-      setEditingId(null);
-      toast.success('Recipient updated successfully');
-    } catch (error) {
-      toast.error('Failed to update recipient');
+  const deleteRecipient = async (recipient) => {
+    setRecipientToRemove(recipient);
+    
+    // Check if recipient is in multiple groups
+    if (recipient.broadcastGroup && recipient.broadcastGroup.includes(', ')) {
+      const groups = recipient.broadcastGroup.split(', ').filter(group => group.trim() !== '');
+      if (groups.length > 1) {
+        setShowGroupSelection(true);
+        return;
+      }
     }
+    
+    // If only in one group or no groups, show confirmation directly
+    setSelectedGroupForRemoval(recipient.broadcastGroup || null);
+    setShowRemoveConfirmation(true);
   };
 
-  const deleteRecipient = async (id) => {
+  const handleGroupSelection = (groupName) => {
+    setShowGroupSelection(false);
+    setSelectedGroupForRemoval(groupName);
+    setShowRemoveConfirmation(true);
+  };
+
+  const handleRemoveConfirmation = async () => {
     try {
-      setRecipients((prev) => prev.filter((r) => r._id !== id));
-      if (editingId === id) setEditingId(null);
-      toast.success('Recipient removed successfully');
+      if (!recipientToRemove) return;
+
+      const recipientId = recipientToRemove._id;
+      const isFromMultipleGroups = recipientToRemove.broadcastGroup && recipientToRemove.broadcastGroup.includes(', ');
+
+      if (selectedGroupForRemoval === 'all' || !isFromMultipleGroups) {
+        // Remove recipient from all groups
+        await axios.delete(`/broadcasts/recipients/${recipientId}`);
+        setRecipients(prev => prev.filter(r => r._id !== recipientId));
+        toast.success(`${recipientToRemove.firstName} ${recipientToRemove.lastName} has been removed from all groups`);
+      } else {
+        // Remove from specific group only
+        const encodedGroupName = encodeURIComponent(selectedGroupForRemoval);
+        await axios.delete(`/broadcasts/recipients/${recipientId}/group/${encodedGroupName}`);
+        
+        const currentGroups = recipientToRemove.broadcastGroup.split(', ');
+        const updatedGroups = currentGroups.filter(group => group !== selectedGroupForRemoval);
+        
+        const updatedRecipient = {
+          ...recipientToRemove,
+          broadcastGroup: updatedGroups.length > 0 ? updatedGroups.join(', ') : ''
+        };
+
+        // Update the local state
+        setRecipients(prev => prev.map(r => 
+          r._id === recipientId ? updatedRecipient : r
+        ));
+        
+        toast.success(`${recipientToRemove.firstName} ${recipientToRemove.lastName} has been removed from "${selectedGroupForRemoval}"`);
+      }
+
+      // Reset state
+      setShowRemoveConfirmation(false);
+      setRecipientToRemove(null);
+      setSelectedGroupForRemoval(null);
+      
     } catch (error) {
+      console.error('Failed to remove recipient:', error);
       toast.error('Failed to remove recipient');
     }
+  };
+
+  const handleCloseModals = () => {
+    setShowGroupSelection(false);
+    setShowRemoveConfirmation(false);
+    setRecipientToRemove(null);
+    setSelectedGroupForRemoval(null);
   };
 
   // Filter recipients based on search
@@ -178,136 +313,60 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
                     currentRecipients.map((r, index) => (
                       <tr key={r._id} className="hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 transition-all duration-300">
                         
-                        {editingId === r._id ? (
-                          <>
-                            <td className="p-4">
-                              <input 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                                value={editedRow.firstName || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, firstName: e.target.value })} 
-                                placeholder="First Name"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <input 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                                value={editedRow.lastName || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, lastName: e.target.value })} 
-                                placeholder="Last Name"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <input 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 font-mono"
-                                value={editedRow.phone || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, phone: e.target.value })} 
-                                placeholder="Phone Number"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <input 
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                                value={editedRow.email || ''} 
-                                onChange={(e) => setEditedRow({ ...editedRow, email: e.target.value })} 
-                                placeholder="Email Address"
-                              />
-                            </td>
-                            <td className="p-4">
-                              {selectedBroadcast ? (
-                                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2">
-                                  {editedRow.channel || 'No channel'}
-                                </div>
+                        <td className="p-4">
+                          <div className="font-medium text-gray-900">
+                            {r.firstName || '—'}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-medium text-gray-900">
+                            {r.lastName || '—'}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-mono text-sm text-gray-700 bg-gray-50 rounded px-2 py-1 inline-block">
+                            {r.phone || 'No phone'}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="text-gray-700">
+                            {r.email || 'No email'}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          {selectedBroadcast ? (
+                            // Show channel for specific broadcast
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                              r.channel === 'email' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {r.channel ? r.channel.charAt(0).toUpperCase() + r.channel.slice(1) : 'No channel'}
+                            </span>
+                          ) : (
+                            // Show broadcast groups for "View All"
+                            <div className="flex flex-wrap gap-1">
+                              {r.broadcastGroup ? (
+                                r.broadcastGroup.split(', ').map((group, groupIndex) => (
+                                  <span key={groupIndex} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                    {group}
+                                  </span>
+                                ))
                               ) : (
-                                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-2">
-                                  {editedRow.broadcastGroup || 'No groups assigned'}
-                                </div>
+                                <span className="text-gray-400 text-sm">No groups</span>
                               )}
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="p-4">
-                              <div className="font-medium text-gray-900">
-                                {r.firstName || '—'}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="font-medium text-gray-900">
-                                {r.lastName || '—'}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="font-mono text-sm text-gray-700 bg-gray-50 rounded px-2 py-1 inline-block">
-                                {r.phone || 'No phone'}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="text-gray-700">
-                                {r.email || 'No email'}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              {selectedBroadcast ? (
-                                // Show channel for specific broadcast
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                  r.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                  r.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {r.channel ? r.channel.charAt(0).toUpperCase() + r.channel.slice(1) : 'No channel'}
-                                </span>
-                              ) : (
-                                // Show broadcast groups for "View All"
-                                <div className="flex flex-wrap gap-1">
-                                  {r.broadcastGroup ? (
-                                    r.broadcastGroup.split(', ').map((group, groupIndex) => (
-                                      <span key={groupIndex} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                        {group}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-gray-400 text-sm">No groups</span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                          </>
-                        )}
+                            </div>
+                          )}
+                        </td>
                         
                         {!selectedBroadcast && (
                           <td className="p-4">
                             <div className="flex items-center justify-center space-x-2">
-                              {editingId === r._id ? (
-                                <>
-                                  <button 
-                                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                    onClick={saveEdit}
-                                  >
-                                    Save
-                                  </button>
-                                  <button 
-                                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                    onClick={() => setEditingId(null)}
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button 
-                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                    onClick={() => startEdit(r)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button 
-                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                    onClick={() => deleteRecipient(r._id)}
-                                  >
-                                    Remove
-                                  </button>
-                                </>
-                              )}
+                              <button 
+                                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                                onClick={() => deleteRecipient(r)}
+                              >
+                                Remove
+                              </button>
                             </div>
                           </td>
                         )}
@@ -374,6 +433,25 @@ export default function BroadcastRecipientsModal({ onClose, selectedBroadcast, r
           </div>
         )}
       </div>
+
+      {/* Group Selection Modal */}
+      <GroupSelectionModal
+        isOpen={showGroupSelection}
+        onClose={handleCloseModals}
+        onSelectGroup={handleGroupSelection}
+        recipientName={recipientToRemove ? `${recipientToRemove.firstName} ${recipientToRemove.lastName}` : ''}
+        groups={recipientToRemove?.broadcastGroup ? recipientToRemove.broadcastGroup.split(', ').filter(group => group.trim() !== '') : []}
+      />
+
+      {/* Remove Confirmation Modal */}
+      <RemoveConfirmationModal
+        isOpen={showRemoveConfirmation}
+        onClose={handleCloseModals}
+        onConfirm={handleRemoveConfirmation}
+        recipientName={recipientToRemove ? `${recipientToRemove.firstName} ${recipientToRemove.lastName}` : ''}
+        groupName={selectedGroupForRemoval}
+        isFromMultipleGroups={recipientToRemove?.broadcastGroup ? recipientToRemove.broadcastGroup.includes(', ') : false}
+      />
     </div>
   );
 }

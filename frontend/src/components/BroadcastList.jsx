@@ -62,9 +62,15 @@ export default function BroadcastList() {
 
     const [showManualModal, setShowManualModal] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [broadcastToDelete, setBroadcastToDelete] = useState(null);
     const [deleteType, setDeleteType] = useState('regular'); // 'regular' or 'scheduled'
+    
+    // Edit form state
+    const [editForm, setEditForm] = useState({
+        message: ''
+    });
 
     const titleInputRef = useRef(null);
 
@@ -413,6 +419,36 @@ export default function BroadcastList() {
         }
     };
 
+    const handleEditSubmit = async () => {
+        try {
+            console.log('Editing scheduled broadcast:', selectedBroadcast._id);
+            
+            const response = await axios.put(`/broadcasts/scheduled/${selectedBroadcast._id}`, {
+                message: editForm.message
+            });
+            
+            console.log('Edit response:', response.data);
+            
+            // Update the scheduled broadcasts list
+            setScheduledBroadcasts(prev => prev.map(b => 
+                b._id === selectedBroadcast._id 
+                    ? { ...b, message: editForm.message }
+                    : b
+            ));
+            
+            toast.success('Scheduled broadcast updated successfully');
+            setShowEditModal(false);
+            setSelectedBroadcast(null);
+            setEditForm({ message: '' });
+            
+        } catch (err) {
+            console.error('Edit error:', err);
+            console.error('Error response:', err.response?.data);
+            const errorMessage = err.response?.data?.error || err.message;
+            toast.error(`Failed to update broadcast: ${errorMessage}`);
+        }
+    };
+
     const handleCloseModal = () => {
         setShowDeleteModal(false);
         setBroadcastToDelete(null);
@@ -573,7 +609,6 @@ export default function BroadcastList() {
                         >
                             <option value="all">All Channels</option>
                             <option value="email">Email</option>
-                            <option value="whatsapp">WhatsApp</option>
                         </select>
 
                         {activeTab === 'manual' && (
@@ -666,7 +701,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         b.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                                        b.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {b.channel?.charAt(0).toUpperCase() + b.channel?.slice(1)}
@@ -769,7 +803,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         b.channel === 'email' ? 'bg-blue-100 text-blue-800' :
-                                                        b.channel === 'whatsapp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {b.channel?.charAt(0).toUpperCase() + b.channel?.slice(1)}
@@ -810,7 +843,8 @@ export default function BroadcastList() {
                                                                 <button
                                                                     onClick={() => {
                                                                         setSelectedBroadcast(b);
-                                                                        setShowScheduleModal(true);
+                                                                        setEditForm({ message: b.message || '' });
+                                                                        setShowEditModal(true);
                                                                     }}
                                                                     className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
                                                                 >
@@ -822,19 +856,9 @@ export default function BroadcastList() {
                                                                 >
                                                                     Cancel
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setBroadcastToDelete(b._id);
-                                                                        setDeleteType('scheduled');
-                                                                        setShowDeleteModal(true);
-                                                                    }}
-                                                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-3 py-1.5 rounded-lg text-white text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
-                                                                >
-                                                                    Delete
-                                                                </button>
                                                             </>
                                                         )}
-                                                        {(b.status === 'Sent' || b.status === 'Failed' || b.status === 'Processing') && (
+                                                        {(b.status === 'Sent' || b.status === 'Failed' || b.status === 'Partially Sent') && (
                                                             <div className="flex gap-2 items-center">
                                                                 {b.status === 'Sent' && (
                                                                     <span className="text-green-600 text-sm font-medium">✓ Completed</span>
@@ -842,8 +866,8 @@ export default function BroadcastList() {
                                                                 {b.status === 'Failed' && (
                                                                     <span className="text-red-600 text-sm font-medium">✗ Failed</span>
                                                                 )}
-                                                                {b.status === 'Processing' && (
-                                                                    <span className="text-blue-600 text-sm font-medium">⏳ Processing</span>
+                                                                {b.status === 'Partially Sent' && (
+                                                                    <span className="text-yellow-600 text-sm font-medium">⚠ Partially Sent</span>
                                                                 )}
                                                                 <button
                                                                     onClick={() => {
@@ -855,6 +879,11 @@ export default function BroadcastList() {
                                                                 >
                                                                     Delete
                                                                 </button>
+                                                            </div>
+                                                        )}
+                                                        {b.status === 'Processing' && (
+                                                            <div className="flex gap-2 items-center">
+                                                                <span className="text-blue-600 text-sm font-medium">⏳ Processing</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -893,7 +922,7 @@ export default function BroadcastList() {
                                     </h3>
                                     <p className="text-purple-600 mt-1">Previously sent broadcast messages</p>
                                     <p className="text-purple-500 text-sm mt-2 italic">
-                                        💡 "Delivered" means emails were successfully queued by SendGrid. Emails may appear in spam folders - this is normal for new senders.
+                                        💡 "Completed" means emails were successfully queued by SendGrid. Emails may appear in spam folders - this is normal for new senders.
                                     </p>
                                 </div>
                                 <button
@@ -937,7 +966,6 @@ export default function BroadcastList() {
                                                 <td className="p-4 text-sm">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                                         m.channel === 'Email' ? 'bg-blue-100 text-blue-800' :
-                                                        m.channel === 'WhatsApp' ? 'bg-green-100 text-green-800' :
                                                         'bg-purple-100 text-purple-800'
                                                     }`}>
                                                         {m.channel}
@@ -1035,6 +1063,47 @@ export default function BroadcastList() {
                 </Modal>
             )}
 
+            {showEditModal && (
+                <Modal title="Edit Scheduled Broadcast" onClose={() => {
+                    setShowEditModal(false);
+                    setSelectedBroadcast(null);
+                    setEditForm({ message: '' });
+                }}>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                            <textarea
+                                value={editForm.message}
+                                onChange={(e) => setEditForm({ message: e.target.value })}
+                                placeholder="Enter your message..."
+                                rows="6"
+                                className="w-full p-3 border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end gap-4">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setSelectedBroadcast(null);
+                                    setEditForm({ message: '' });
+                                }}
+                                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg font-medium transition-colors duration-200"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleEditSubmit}
+                                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-300 transform hover:scale-105 shadow-md"
+                            >
+                                Update
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {showManualModal && (
                 <Modal title="Add Manual Broadcast" onClose={() => setShowManualModal(false)}>
                     <form onSubmit={handleManualSubmit} className="space-y-6">
@@ -1070,7 +1139,6 @@ export default function BroadcastList() {
                                 required
                             >
                                 <option value="Email">Email</option>
-                                <option value="WhatsApp">WhatsApp</option>
                             </select>
                         </div>
                         <div>

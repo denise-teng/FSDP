@@ -10,13 +10,13 @@ const getBaseUrl = () => {
 const normalizeImagePath = (path) => {
   if (!path) return '/placeholder-image.jpg';
   if (path.startsWith('http') || path.startsWith('/')) return path;
-  
+ 
   // Handle uploaded files
   const cleanPath = String(path)
     .replace(/^[\\/]+/, '')
     .replace(/\\/g, '/')
     .replace(/^uploads\//, '');
-    
+   
   return `${getBaseUrl()}/uploads/${cleanPath}`;
 };
 
@@ -44,62 +44,54 @@ export const useNewsletterStore = create((set) => ({
 
 initializeSlots: async () => {
   try {
-    const res = await axios.get('/newsletters/slots');
-    console.log('Raw slots data from backend:', res.data); // Add this to inspect the actual response
-    
-    const filteredSlots = (res.data || Array(3).fill(null)).map(slot => {
-      if (!slot || slot.status !== 'published') return null;
-      console.log('Original slot thumbnailPath:', slot.thumbnailPath); // Debug the original path
-      const normalizedSlot = {
-        ...slot,
-        thumbnailUrl: normalizeImagePath(slot.thumbnailPath),
-        fileUrl: normalizeImagePath(slot.filePath)
-      };
-      console.log('Normalized slot:', normalizedSlot); // Debug the normalized result
-      return normalizedSlot;
-    });
-    set({ homepageSlots: filteredSlots });
-  } catch (error) {
-    console.error('Error loading slots:', error);
-    set({ homepageSlots: Array(3).fill(null) });
+    const res = await axios.get('/newsletters/slots'); // should return an array of length 3
+    const slots = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null]);
+    const normalized = slots.map(s => s ? ({
+      ...s,
+      thumbnailUrl: normalizeImagePath(s.thumbnailPath),
+      fileUrl: normalizeImagePath(s.newsletterFilePath),
+    }) : null);
+    set({ homepageSlots: normalized });
+  } catch (err) {
+    console.error('Error loading slots:', err);
+    set({ homepageSlots: [null, null, null] });
   }
 },
 
 
-  updateHomepageSlot: async (slotIndex, newsletter) => {
-    try {
-      console.log('[FRONTEND] Making request to /newsletters/slots', {
-        slotIndex,
-        newsletterId: newsletter._id
-      });
 
+  // stores/useNewsletterStore.js
+updateHomepageSlot: async (slotIndex, newsletter) => {
+  try {
+    if (!newsletter?._id) throw new Error('Missing newsletter._id');
 
-      const response = await axios.post('/newsletters/slots', {
-        slotIndex,
-        newsletter
-      });
+    console.log('[FRONTEND] PUT /newsletters/slots', { slotIndex, newsletterId: newsletter._id });
 
-      // Debugging - log successful response
-      console.log('[FRONTEND] Request successful:', response.data);
+    const res = await axios.put('/newsletters/slots', {
+      slotIndex,
+      newsletterId: newsletter._id,
+    });
 
-      set(state => {
-        const updatedSlots = [...state.homepageSlots];
-        updatedSlots[slotIndex] = newsletter;
-        return { homepageSlots: updatedSlots };
-      });
+    const serverSlots = Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null];
 
-      return response.data;
-    } catch (error) {
-      // Enhanced error logging
-      console.error('[FRONTEND] Error saving slots:', {
-        error: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: error.config
-      });
-      throw error;
-    }
-  },
+    const normalized = serverSlots.map(s => s ? ({
+      ...s,
+      thumbnailUrl: normalizeImagePath(s.thumbnailPath),
+      fileUrl: normalizeImagePath(s.newsletterFilePath),
+    }) : null);
+
+    set({ homepageSlots: normalized });
+    return { ok: true };
+  } catch (error) {
+    console.error('[FRONTEND] Error saving slots:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    throw error;
+  }
+},
+
 
   // In useNewsletterStore.js
   createNewsletter: async (formData) => {

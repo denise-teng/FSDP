@@ -51,6 +51,7 @@ const getImageUrl = (path) => {
       await updateHomepageSlot(slotIndex, newsletter);
       toast.success(`Slot ${slotIndex + 1} updated successfully!`);
       setViewMode('slots');
+      console.log('Selecting slot', slotIndex, 'newsletterId', newsletter._id);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update slot');
     } finally {

@@ -20,9 +20,12 @@ const draftSchema = new mongoose.Schema({
     type: [String], // Unlimited tags
     default: []
   },
+  // In your draft.model.js
   sendTo: {
-    type: [String], // Channels to send to (e.g., Email, SMS)
-    default: []
+    type: [String],
+    default: ['Email'], // Set Email as default
+    enum: ['Email'], // Remove other options if you want only Email
+    required: true
   },
   audience: {
     type: [String], // Target audience (e.g., Young Adults, Students)
@@ -36,7 +39,7 @@ const draftSchema = new mongoose.Schema({
   },
   newsletterFilePath: {
     type: String,
-    required: function() { return this.status === 'published'; },
+    required: function () { return this.status === 'published'; },
     validate: {
       validator: (v) => v && v.trim() !== '',
       message: 'Newsletter file path is required when published.'
@@ -44,7 +47,7 @@ const draftSchema = new mongoose.Schema({
   },
   thumbnailPath: {
     type: String,
-    required: function() { return this.status === 'published'; },
+    required: function () { return this.status === 'published'; },
     validate: {
       validator: (v) => v && v.trim() !== '',
       message: 'Thumbnail path is required when published.'
@@ -62,12 +65,13 @@ const draftSchema = new mongoose.Schema({
   },
   deletedAt: {
     type: Date,
-    default: null
+    default: null,
+    index: true
   }
 }, { timestamps: true });
 
 draftSchema.index({ deletedAt: 1 });
-draftSchema.index({ title: 'text' }); 
+draftSchema.index({ title: 'text' });
 const Draft = mongoose.model('Draft', draftSchema);
 
 export default Draft;

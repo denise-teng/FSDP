@@ -150,21 +150,21 @@ export const deleteDraft = async (req, res) => {
 
 export const getDeletedDrafts = async (req, res) => {
   try {
-    const { search } = req.query;
-
-    let query = { deletedAt: { $ne: null } };
-
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const deletedDrafts = await Draft.find(query).sort({ deletedAt: -1 });
-    res.json(deletedDrafts);
+    console.log('Fetching deleted drafts...');
+    const drafts = await Draft.find({ 
+      deletedAt: { $ne: null } 
+    })
+    .sort({ deletedAt: -1 })
+    .lean(); // Use lean() for better performance
+    
+    console.log('Fetched deleted drafts count:', drafts.length);
+    res.json(drafts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch deleted drafts' });
+    console.error('Error fetching deleted drafts:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch deleted drafts',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -257,3 +257,25 @@ export const editDraft = async (req, res) => {
 };
 
 
+// controllers/draft.controller.js
+export const getDraftById = async (req, res) => {
+  try {
+    const draft = await Draft.findById(req.params.id).lean();
+    if (!draft) {
+      return res.status(404).json({ success: false, message: 'Draft not found' });
+    }
+    // Optional: add a friendly download URL like newsletters do
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    if (draft.newsletterFilePath) {
+      draft.downloadUrl = `${baseUrl}/${draft.newsletterFilePath.replace(/\\/g, '/')}`;
+    }
+    if (draft.thumbnailPath) {
+      draft.thumbnailUrl = `${baseUrl}/${draft.thumbnailPath.replace(/\\/g, '/')}`;
+    }
+
+    return res.json({ success: true, data: draft });
+  } catch (error) {
+    console.error('getDraftById error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch draft' });
+  }
+};
