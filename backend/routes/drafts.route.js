@@ -3,9 +3,7 @@ import multer from 'multer';
 import Draft from '../models/draft.model.js';  // Add this import
 import Newsletter from '../models/newsletter.model.js'; // Also import Newsletter if needed
 import path from 'path';  // For handling file paths
-import { 
-  sendNewsletterToSubscribers
-} from '../controllers/publishNewsletter.controller.js';
+import axios from 'axios';
 import fs from 'fs';
 import {
   createDraft,
@@ -16,6 +14,8 @@ import {
   restoreDraft,
   permanentlyDeleteDraft
 } from '../controllers/draft.controller.js';
+import { sendGeneratedToSubscribers } from '../controllers/publishGeneratedMessages.controller.js';
+
 
 // Ensure uploads directory exists (this is crucial for multer to work properly)
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -161,5 +161,9 @@ router.post('/:id/publish',
     }
   }
 );
+
+// Send a generated draft to subscribers (email) without converting to newsletter
+router.post('/:id/send', sendGeneratedToSubscribers);
+
 
 export default router;

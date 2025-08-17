@@ -9,7 +9,7 @@ import UpdateHomepageModal from './UpdateHomepageModal';
 import UploadCard from "./UploadCard";
 import { useDraftStore } from "../stores/useDraftsStore";
 
-const sendToOptions = ["Email", "WhatsApp", "SMS"];
+const sendToOptions = ["Email"];
 const audienceSegments = ["Young Adults", "Professionals", "Retirees", "Students"];
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -51,16 +51,16 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
   };
 
 
-  const [form, setForm] = useState({
-    title: "",
-    tags: "",
-    sendTo: [],
-    audience: [],
-    category: "Financial Planning", // Default or empty string
-    content: "",                   // Required field
-    newsletterFile: null,
-    thumbnail: null,
-  });
+const [form, setForm] = useState({
+  title: "",
+  tags: "",
+  sendTo: ["Email"], // Default to Email selected
+  audience: [],
+  category: "Financial Planning",
+  content: "",
+  newsletterFile: null,
+  thumbnail: null,
+});
 
   const [existingFile, setExistingFile] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
@@ -234,39 +234,31 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
   };
 
   const validateForm = () => {
-    const newErrors = {};
+  const newErrors = {};
 
-    if (!form.title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (form.title.length > 100) {
-      newErrors.title = "Title cannot exceed 100 characters";
-    }
+  if (!form.title.trim()) {
+    newErrors.title = "Title is required";
+  } else if (form.title.length > 100) {
+    newErrors.title = "Title cannot exceed 100 characters";
+  }
 
-    if (!form.tags.trim()) {
-      newErrors.tags = "Tags are required";
-    }
+  if (!form.tags.trim()) {
+    newErrors.tags = "Tags are required";
+  }
 
-    const cleanedSendTo = form.sendTo.filter(item => item);
-    if (cleanedSendTo.length === 0) {
-      newErrors.sendTo = "Please select at least one channel";
-    }
+  if (form.audience.length === 0) {
+    newErrors.audience = "Please select at least one audience segment";
+  }
 
-    if (form.audience.length === 0) {
-      newErrors.audience = "Please select at least one audience segment";
-    }
+  if (!editMode && !form.newsletterFile) {
+    newErrors.newsletterFile = "Newsletter file is required";
+  }
 
-    if (!editMode && !form.newsletterFile) {
-      newErrors.newsletterFile = "Newsletter file is required";
-    }
-
-    if (form.sendTo.includes("Homepage") && !form.thumbnail && !existingThumbnail) {
-      newErrors.thumbnail = "Thumbnail is required for homepage newsletters";
-    }
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const resetForm = () => {
     // Don't reset if we're in edit mode
@@ -400,78 +392,85 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
 
 
   const handlePublish = async () => {
-    setShowOverlay(true);
-    if (!validateForm()) {
-      toast.error("Please fix validation errors before publishing");
-      setShowOverlay(false);
-      return;
+  setShowOverlay(true);
+  if (!validateForm()) {
+    toast.error("Please fix validation errors before publishing");
+    setShowOverlay(false);
+    return;
+  }
+  try {
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("category", form.category);
+    formData.append("status", "published");
+    formData.append("type", "newsletter");
+    formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
+    formData.append("sendTo", JSON.stringify(form.sendTo));
+    formData.append("audience", JSON.stringify(form.audience));
+    formData.append("content", JSON.stringify([form.content]));
+    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
+    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
+
+    let response;
+    if (editMode && !isDraft) {
+      // Use the store method for newsletter updates
+      response = await updateNewsletter(newsletterId, formData);
+    } else if (isDraft && editMode) {
+      // Handle draft promotion to newsletter
+      response = await axios.post(`/drafts/${newsletterId}/publish`, formData);
+    } else {
+      // Create new newsletter
+      response = await createNewsletter(formData);
     }
-    try {
-      const formData = new FormData();
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("status", "published");
-      formData.append("type", "newsletter");
-      formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
-      formData.append("sendTo", JSON.stringify(form.sendTo));
-      formData.append("audience", JSON.stringify(form.audience));
-      formData.append("content", JSON.stringify([form.content]));
-      if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-      if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
 
-      let response;
-      if (form.sendTo.includes("Email")) {
-        setIsSending(true);
-        try {
-          await axios.post(`/newsletters/${response.data._id}/send`);
-          toast.success("Newsletter sent to subscribers!");
-        } catch (sendError) {
-          console.error("Sending failed but newsletter was published", sendError);
-          toast.error("Published but failed to send to subscribers");
-        } finally {
-          setIsSending(false);
-        }
+    // Send email if needed
+    if (form.sendTo.includes("Email")) {
+      setIsSending(true);
+      try {
+        await axios.post(`/newsletters/${response._id}/send`);
+        toast.success("Newsletter sent to subscribers!");
+      } catch (sendError) {
+        console.error("Sending failed but newsletter was published", sendError);
+        toast.error("Published but failed to send to subscribers");
+      } finally {
+        setIsSending(false);
       }
-
-      await Promise.all([
-        useNewsletterStore.getState().fetchNewsletters(),
-        isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
-      ]);
-
-      // refresh current context
-      if (isDraft) {
-        // you were on /drafts/:id, now promote to newsletter and refresh on edit-newsletter page
-        refreshCurrentView(`/edit-newsletter/${response.data._id}`);
-      } else if (editMode) {
-        // you were editing a newsletter -> stay and refresh
-        refreshCurrentView(); // same route
-      } else {
-        // you were on upload page -> clear and refresh upload
-        resetForm();
-        refreshCurrentView(); // same route
-      }
-
-      toast.success(
-        isDraft ? "Published successfully!" :
-          editMode ? "Updated successfully!" : "Created successfully!"
-      );
-
-      onSuccess?.();
-
-    } catch (err) {
-      console.error("Publish error:", err);
-      toast.error(
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to publish newsletter"
-      );
-    } finally {
-      setShowOverlay(false);
     }
-  };
 
+    await Promise.all([
+      useNewsletterStore.getState().fetchNewsletters(),
+      isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
+    ]);
 
+    // Handle success navigation
+    if (isDraft) {
+      refreshCurrentView(`/edit-newsletter/${response._id}`);
+    } else if (editMode) {
+      refreshCurrentView();
+    } else {
+      resetForm();
+      refreshCurrentView();
+    }
+
+    toast.success(
+      isDraft ? "Published successfully!" :
+        editMode ? "Updated successfully!" : "Created successfully!"
+    );
+
+    onSuccess?.();
+
+  } catch (err) {
+    console.error("Publish error:", err);
+    toast.error(
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to publish newsletter"
+    );
+  } finally {
+    setShowOverlay(false);
+  }
+};
 
 
   // Helper function to create FormData

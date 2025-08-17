@@ -3,7 +3,8 @@ import { useDraftStore } from "../stores/useDraftsStore";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from 'axios';  // Add this line at the top with other imports
+// import axios from 'axios';  // Add this line at the top with other imports
+import axiosInstance from "../lib/axios";
 
 const formatList = (val) => {
   if (Array.isArray(val)) return val.join(", ");
@@ -30,7 +31,7 @@ const getFileUrl = (path) => {
   return `${baseUrl}/uploads/${cleanPath}`;
 };
 
-const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess }) => {
+const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess, onDeleteSuccess }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -44,37 +45,95 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess 
   const handlePublish = async () => {
     setIsPublishing(true);
     try {
-      const response = await axios.post(
-        `/api/drafts/${draft._id}/publish`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'multipart/form-data'
+      if (isGenerated) {
+        // Always send via Email for generated messages
+        const resp = await axiosInstance.post(
+          `drafts/${draft._id}/send`,
+          {},
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
           }
+        );
+
+        // Enhanced success message
+        toast.success(
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span>
+              Sent to {resp.data.sent} subscribers via Email
+              {resp.data.sent < resp.data.total && (
+                <span className="text-yellow-600"> ({resp.data.total - resp.data.sent} failed)</span>
+              )}
+            </span>
+          </div>,
+          { duration: 5000 }
+        );
+      } else {
+        // Newsletter publishing logic
+        const response = await axiosInstance.post(
+          `drafts/${draft._id}/publish`,
+          {},
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        let successMessage = `"${draft.title}" published successfully!`;
+        if (response.data.emailError) {
+          successMessage += ' (Emails partially sent)';
+        } else if (draft.sendTo.includes('Email')) {
+          successMessage += ' (Emails queued for delivery)';
         }
-      );
 
-      let successMessage = `"${draft.title}" published successfully!`;
-
-      if (response.data.emailError) {
-        successMessage += ' (Emails partially sent)';
-      } else if (draft.sendTo.includes('Email')) {
-        successMessage += ' Emails are being sent to subscribers!';
+        toast.success(successMessage, {
+          duration: 4000,
+          icon: <Upload className="w-5 h-5 text-green-500" />
+        });
       }
 
-      toast.success(successMessage);
       setShowPublishConfirm(false);
-
-      if (onPublishSuccess) {
-        onPublishSuccess(response.data);
-      }
+      onPublishSuccess?.(); // Refresh draft list if needed
     } catch (error) {
       console.error("Publish failed:", error);
-      const errorMsg = error.response?.data?.error ||
+      const errorMsg = error.response?.data?.message ||
+        error.response?.data?.error ||
         error.message ||
-        "Failed to publish draft";
-      toast.error(errorMsg);
+        'Failed to send message';
+
+      // Enhanced error toast with retry option
+      toast.error(
+        (t) => (
+          <div className="flex items-start">
+            <svg className="w-5 h-5 mr-2 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-medium">Sending failed</p>
+              <p className="text-sm">{errorMsg}</p>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  handlePublish();
+                }}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Try Again
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: 8000 }
+      );
     } finally {
       setIsPublishing(false);
     }
@@ -173,34 +232,37 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess 
             </span>
           </div>
 
-          {/* Edit Button */}
-          <div className="relative group">
-            <button
-              onClick={onEdit}
-              className="p-2 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 transition-colors duration-300"
-            >
-              <PencilLine className="w-5 h-5" />
-            </button>
-            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              Edit
-            </span>
-          </div>
-
-          {/* Publish Button - Hidden for generated messages */}
+          {/* Edit Button - Only for non-generated newsletters */}
           {!isGenerated && (
             <div className="relative group">
               <button
-                onClick={() => setShowPublishConfirm(true)}
-                disabled={loading}
-                className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors duration-300 disabled:opacity-50"
+                onClick={onEdit}
+                className="p-2 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 transition-colors duration-300"
               >
-                <Upload className="w-5 h-5" />
+                <PencilLine className="w-5 h-5" />
               </button>
               <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Publish
+                Edit
               </span>
             </div>
           )}
+
+
+          {/* Publish/Send Button - Allow for all drafts */}
+          <div className="relative group">
+            <button
+              onClick={() => setShowPublishConfirm(true)}
+              disabled={loading}
+              className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors duration-300 disabled:opacity-50"
+            >
+              <Upload className="w-5 h-5" />
+            </button>
+            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              {isGenerated ? 'Send' : 'Publish'}
+            </span>
+          </div>
+
+
 
           {/* Delete Button */}
           <div className="relative group">
@@ -248,16 +310,21 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess 
         </div>
       )}
 
-      {/* Publish Confirmation Modal */}
-      {showPublishConfirm && !isGenerated && (
+      {/* Publish/Send Confirmation Modal */}
+      {showPublishConfirm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
           <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-200/50 text-center max-w-sm w-full">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
               <Upload className="h-6 w-6 text-green-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Publish Draft</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              {isGenerated ? 'Send Message' : 'Publish Draft'}
+            </h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to publish <span className="font-medium">{draft.title}</span>?
+              {isGenerated
+                ? <>Are you sure you want to <span className="font-medium">send</span> <span className="font-medium">{draft.title}</span> to your subscribers?</>
+                : <>Are you sure you want to <span className="font-medium">publish</span> <span className="font-medium">{draft.title}</span>?</>
+              }
             </p>
             <div className="flex justify-center gap-3">
               <button
@@ -271,9 +338,9 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSucces, onDeleteSuccess 
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Publishing...
+                    {isGenerated ? 'Sending...' : 'Publishing...'}
                   </span>
-                ) : "Publish"}
+                ) : (isGenerated ? 'Send' : 'Publish')}
               </button>
               <button
                 onClick={() => setShowPublishConfirm(false)}

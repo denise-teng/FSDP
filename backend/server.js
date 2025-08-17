@@ -52,7 +52,7 @@ import consultationRoutes from './routes/consultation.routes.js';
 import articlesRoutes from './routes/articles.route.js';
 import summariseContentRoutes from './routes/summarise_content.route.js';
 import subscribeRoutes from './routes/subscribe.route.js'; 
-
+import publishGeneratedRoutes from './routes/publishGeneratedMessages.route.js';
 
 import { scrapeWhatsApp } from './scraper/scrapeWhatsApp.js';
 import { analyzeMessagesWithBedrock } from './ai/awsBedrockAnalysis.js';
@@ -109,6 +109,7 @@ app.use("/api/broadcasts", broadcastRoutes);
 app.use("/api/scheduled-broadcasts", scheduledBroadcastRoutes);
 app.use("/api/recent-broadcasts", recentBroadcastRoutes);
 app.use('/api/subscribe', subscribeRoutes);
+app.use('/api/publish-generate', publishGeneratedRoutes);
 
 // 🔁 Utility function
 function getRecentMessages(messages, timeFrame = '2days') {
