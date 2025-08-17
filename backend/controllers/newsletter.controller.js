@@ -119,12 +119,12 @@ export const updateNewsletter = async (req, res) => {
       content: convertToArray(req.body.content),
       category: req.body.category,
       status: req.body.status || 'published',
-      ...(req.files?.newsletterFile?.[0] && {
-        newsletterFilePath: normalizePath(req.files.newsletterFile[0].path)
-      }),
-      ...(req.files?.thumbnail?.[0] && {
-        thumbnailPath: normalizePath(req.files.thumbnail[0].path)
-      })
+...(req.files?.newsletterFile?.[0] && {
+  newsletterFilePath: normalizePath(req.files.newsletterFile[0])
+}),
+...(req.files?.thumbnail?.[0] && {
+  thumbnailPath: normalizePath(req.files.thumbnail[0])
+})
     };
 
     const updated = await Newsletter.findByIdAndUpdate(

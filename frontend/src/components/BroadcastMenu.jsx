@@ -31,14 +31,24 @@ export default function BroadcastMenu({ isOpen, onClose, contactId }) {
 
   const handleAddToList = async (broadcastId) => {
     try {
-      await axios.post('/broadcasts/add-contact', {
+      console.log('Debug: handleAddToList called with:', {
+        broadcastId,
+        contactId,
+        broadcastIdType: typeof broadcastId,
+        contactIdType: typeof contactId
+      });
+      
+      const response = await axios.post('/broadcasts/add-contact', {
         broadcastId,
         contactId
       });
+      
+      console.log('Success response:', response.data);
       toast.success('Contact added to broadcast list');
       onClose();
     } catch (err) {
       console.error('Error adding contact to broadcast:', err);
+      console.error('Error response:', err.response?.data);
       toast.error('Failed to add contact to broadcast list');
     }
   };

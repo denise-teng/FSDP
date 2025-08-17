@@ -109,9 +109,6 @@ app.use("/api/quick-messages", quickMessageRoutes);
 app.use("/api/potential-clients", potentialClientRoutes);
 app.use("/api", replySuggestionAiRoutes);
 app.use("/api/contacts/public", publicContactRoutes);
-app.use("/api/broadcasts", broadcastRoutes);
-app.use("/api/scheduled-broadcasts", scheduledBroadcastRoutes);
-app.use("/api/recent-broadcasts", recentBroadcastRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 app.use('/api/publish-generate', publishGeneratedRoutes);
 
@@ -159,13 +156,11 @@ app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts/recent', recentBroadcastRoutes); // Recent Broadcasts (must come before general broadcasts route)
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
-app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 app.post('/api/subscribe', subscribeRoutes); // Changed from /subscribe to /api/subscribe
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use('/api/articles', articlesRoutes);
-app.use('/api/content', summariseContentRoutes);
-app.use('/api/subscribe', subscribeRoutes); 
+app.use('/api/content', summariseContentRoutes); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -179,6 +174,7 @@ const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
 
 // 📥 Scraping Function
 async function reuseExistingBrowser() {

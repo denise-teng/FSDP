@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import axios from '../lib/axios';
 import toast from 'react-hot-toast';
 
+// Normalize API responses to a document or array of documents
+const extractDoc = (res) => {
+  // if GET /newsletters returns an array
+  if (Array.isArray(res?.data)) return res.data;
+  // if controller used { success, data }
+  if (res?.data?.data) return res.data.data;
+  // if controller returned a raw document
+  return res?.data;
+};
+
 
 const getBaseUrl = () => {
   return 'http://localhost:5000';  // Change to your actual backend URL
@@ -10,13 +20,13 @@ const getBaseUrl = () => {
 const normalizeImagePath = (path) => {
   if (!path) return '/placeholder-image.jpg';
   if (path.startsWith('http') || path.startsWith('/')) return path;
- 
+
   // Handle uploaded files
   const cleanPath = String(path)
     .replace(/^[\\/]+/, '')
     .replace(/\\/g, '/')
     .replace(/^uploads\//, '');
-   
+
   return `${getBaseUrl()}/uploads/${cleanPath}`;
 };
 
@@ -42,55 +52,55 @@ export const useNewsletterStore = create((set) => ({
 
   setNewsletters: (newsletters) => set({ newsletters }),
 
-initializeSlots: async () => {
-  try {
-    const res = await axios.get('/newsletters/slots'); // should return an array of length 3
-    const slots = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null]);
-    const normalized = slots.map(s => s ? ({
-      ...s,
-      thumbnailUrl: normalizeImagePath(s.thumbnailPath),
-      fileUrl: normalizeImagePath(s.newsletterFilePath),
-    }) : null);
-    set({ homepageSlots: normalized });
-  } catch (err) {
-    console.error('Error loading slots:', err);
-    set({ homepageSlots: [null, null, null] });
-  }
-},
+  initializeSlots: async () => {
+    try {
+      const res = await axios.get('/newsletters/slots'); // should return an array of length 3
+      const slots = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null]);
+      const normalized = slots.map(s => s ? ({
+        ...s,
+        thumbnailUrl: normalizeImagePath(s.thumbnailPath),
+        fileUrl: normalizeImagePath(s.newsletterFilePath),
+      }) : null);
+      set({ homepageSlots: normalized });
+    } catch (err) {
+      console.error('Error loading slots:', err);
+      set({ homepageSlots: [null, null, null] });
+    }
+  },
 
 
 
   // stores/useNewsletterStore.js
-updateHomepageSlot: async (slotIndex, newsletter) => {
-  try {
-    if (!newsletter?._id) throw new Error('Missing newsletter._id');
+  updateHomepageSlot: async (slotIndex, newsletter) => {
+    try {
+      if (!newsletter?._id) throw new Error('Missing newsletter._id');
 
-    console.log('[FRONTEND] PUT /newsletters/slots', { slotIndex, newsletterId: newsletter._id });
+      console.log('[FRONTEND] PUT /newsletters/slots', { slotIndex, newsletterId: newsletter._id });
 
-    const res = await axios.put('/newsletters/slots', {
-      slotIndex,
-      newsletterId: newsletter._id,
-    });
+      const res = await axios.put('/newsletters/slots', {
+        slotIndex,
+        newsletterId: newsletter._id,
+      });
 
-    const serverSlots = Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null];
+      const serverSlots = Array.isArray(res.data?.slots) ? res.data.slots : [null, null, null];
 
-    const normalized = serverSlots.map(s => s ? ({
-      ...s,
-      thumbnailUrl: normalizeImagePath(s.thumbnailPath),
-      fileUrl: normalizeImagePath(s.newsletterFilePath),
-    }) : null);
+      const normalized = serverSlots.map(s => s ? ({
+        ...s,
+        thumbnailUrl: normalizeImagePath(s.thumbnailPath),
+        fileUrl: normalizeImagePath(s.newsletterFilePath),
+      }) : null);
 
-    set({ homepageSlots: normalized });
-    return { ok: true };
-  } catch (error) {
-    console.error('[FRONTEND] Error saving slots:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-    throw error;
-  }
-},
+      set({ homepageSlots: normalized });
+      return { ok: true };
+    } catch (error) {
+      console.error('[FRONTEND] Error saving slots:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
+    }
+  },
 
 
   // In useNewsletterStore.js
@@ -101,27 +111,17 @@ updateHomepageSlot: async (slotIndex, newsletter) => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const newNewsletter = res.data.newsletter;
+      const doc = extractDoc(res);
       const status = formData.get('status') || 'published'; // Default to published if not specified
 
       set((prev) => ({
-        newsletters: status === 'published'
-          ? [newNewsletter, ...prev.newsletters]
-          : prev.newsletters,
-        drafts: status === 'draft'
-          ? [newNewsletter, ...prev.drafts || []]
-          : prev.drafts || [],
+        newsletters: status === 'published' ? [doc, ...(prev.newsletters || [])] : (prev.newsletters || []),
+        drafts: status === 'draft' ? [doc, ...(prev.drafts || [])] : (prev.drafts || []),
         loading: false,
       }));
 
-      toast.success(
-        status === 'draft'
-          ? 'Draft saved successfully!'
-          : 'Newsletter published successfully!',
-        { id: 'create-success' }
-      );
-
-      return newNewsletter;
+      toast.success(status === 'draft' ? 'Draft saved successfully!' : 'Newsletter published successfully!', { id: 'create-success' });
+      return doc;                              // <-- return the doc with _id
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to save newsletter');
       set({ loading: false });
@@ -132,13 +132,15 @@ updateHomepageSlot: async (slotIndex, newsletter) => {
   fetchNewsletters: async () => {
     set({ loading: true });
     try {
-      const res = await axios.get('/newsletters');  // Make sure the URL is correct
-      set({ newsletters: res.data, loading: false });  // Update state with fetched newsletters
+      const res = await axios.get('/newsletters');
+      const list = extractDoc(res);            // array
+      set({ newsletters: Array.isArray(list) ? list : [], loading: false });
     } catch (error) {
       toast.error('Failed to fetch newsletters');
       set({ loading: false });
     }
   },
+
 
   deleteNewsletter: async (id) => {
     set({ loading: true });
@@ -161,18 +163,17 @@ updateHomepageSlot: async (slotIndex, newsletter) => {
       const res = await axios.put(`/newsletters/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      const doc = extractDoc(res);             // updated doc
       set((prev) => ({
-        newsletters: prev.newsletters.map((n) =>
-          n._id === id ? res.data.newsletter : n
-        ),
+        newsletters: (prev.newsletters || []).map((n) => (n._id === id ? doc : n)),
         loading: false,
       }));
       toast.success('Newsletter updated!');
+      return doc;                              // return it so callers have _id
     } catch (error) {
-      toast.error(
-        error.response?.data?.error || 'Failed to update newsletter'
-      );
+      toast.error(error.response?.data?.error || 'Failed to update newsletter');
       set({ loading: false });
+      throw error;
     }
-  }
+  },
 }));

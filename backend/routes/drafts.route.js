@@ -81,21 +81,15 @@ router.get('/', getDrafts);
 // Add this near the other routes
 router.get('/:id', async (req, res) => {
   try {
-    const drafts = await getDrafts(); // Optional if you store in-memory or DB
-    const draftId = req.params.id;
-    const draft = await Draft.findById(draftId);
-
-
-    if (!draft) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
-
+    const draft = await Draft.findById(req.params.id);
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
     res.json(draft);
-  } catch (error) {
-    console.error('Error fetching draft by ID:', error);
+  } catch (e) {
+    console.error('Error fetching draft by ID:', e);
     res.status(500).json({ error: 'Server error while fetching draft' });
   }
 });
+
 
 
 // PUT route for editing an existing draft (with file updates)
@@ -110,57 +104,49 @@ router.put('/:id',
 // DELETE route for deleting a draft by ID
 router.delete('/:id', deleteDraft);
 
-router.post('/:id/publish', 
-  upload.fields([
-    { name: 'newsletterFile', maxCount: 1 },
-    { name: 'thumbnail', maxCount: 1 }
-  ]),
-  async (req, res) => {
-    try {
-      console.log('Finding draft...');
-      const draft = await Draft.findById(req.params.id);
-      if (!draft) {
-        return res.status(404).json({ error: 'Draft not found' });
-      }
+router.post('/:id/publish', upload.fields([
+  { name: 'newsletterFile', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const draft = await Draft.findById(req.params.id);
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
 
-      console.log('Creating newsletter from draft...');
-      const newsletter = await Newsletter.create({
-        title: draft.title,
-        content: draft.content,
-        tags: draft.tags,
-        sendTo: draft.sendTo,
-        audience: draft.audience,
-        category: draft.category,
-        status: 'published',
-        newsletterFilePath: req.files?.newsletterFile?.[0]?.path || draft.newsletterFilePath,
-        thumbnailPath: req.files?.thumbnail?.[0]?.path || draft.thumbnailPath
-      });
+    // ✅ require a file (either newly uploaded or already on the draft)
+    const finalFilePath = req.files?.newsletterFile?.[0]
+      ? `uploads/${req.files.newsletterFile[0].filename}`
+      : draft.newsletterFilePath;
 
-      console.log('Deleting original draft...');
-      await Draft.findByIdAndDelete(req.params.id);
-
-      // Send to subscribers if Email is selected
-      if (newsletter.sendTo.includes('Email')) {
-        console.log('Sending to subscribers...');
-        await axios.post(`${process.env.BACKEND_URL}/api/newsletters/${newsletter._id}/send`, {}, {
-          headers: {
-            'Authorization': `Bearer ${req.headers.authorization?.split(' ')[1]}`
-          }
-        });
-      }
-
-      console.log('Publish successful!');
-      res.status(201).json(newsletter);
-    } catch (error) {
-      console.error('Publish error:', error);
-      res.status(500).json({ 
-        error: 'Failed to publish draft',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        emailError: error.message.includes('send') ? 'Published but failed to send emails' : undefined
+    if (!finalFilePath) {
+      return res.status(400).json({ 
+        error: 'Newsletter file is required to publish this draft. Please upload a PDF/DOCX.' 
       });
     }
+
+    const finalThumbPath = req.files?.thumbnail?.[0]
+      ? `uploads/${req.files.thumbnail[0].filename}`
+      : draft.thumbnailPath;
+
+    const newsletter = await Newsletter.create({
+      title: draft.title,
+      content: draft.content,
+      tags: draft.tags,
+      sendTo: draft.sendTo,
+      audience: draft.audience,
+      category: draft.category,
+      status: 'published',
+      newsletterFilePath: finalFilePath,
+      thumbnailPath: finalThumbPath,
+    });
+
+    await Draft.findByIdAndDelete(req.params.id);
+    return res.status(201).json(newsletter);
+  } catch (err) {
+    console.error('Publish error:', err);
+    return res.status(500).json({ error: 'Failed to publish draft' });
   }
-);
+});
+
 
 // Send a generated draft to subscribers (email) without converting to newsletter
 router.post('/:id/send', sendGeneratedToSubscribers);

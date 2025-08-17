@@ -1,67 +1,124 @@
 // CalendarView.jsx
-import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { useEventStore } from '../stores/useEventStore';
-import CreateEventForm from './CreateEventForm';
-import EventCard from './EventCard';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Search, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import { useEventStore } from "../stores/useEventStore";
+import CreateEventForm from "./CreateEventForm";
+import EventCard from "./EventCard";
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+} from "lucide-react";
 
-const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Local YYYY-MM-DD from Date object
+// ---- Helpers ----
 const ymd = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  d
+    ? [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0"),
+      ].join("-")
+    : "";
 
-// Parse event.date robustly (avoids UTC shift with plain "YYYY-MM-DD")
 const parseEventDate = (value) => {
   if (!value) return null;
-  if (typeof value === 'string') {
-    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) {
-      const [_, yy, mm, dd] = m;
-      return new Date(Number(yy), Number(mm) - 1, Number(dd));
-    }
-    return new Date(value);
+  if (typeof value === "string") {
+    if (value.includes("T")) return value.split("T")[0]; // strip time
+    return value; // already YYYY-MM-DD
   }
-  return new Date(value);
+  if (value instanceof Date) return ymd(value);
+  return null;
 };
 
-const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
+// Extract MM-DD
+const mdFromYmd = (dstr) => {
+  const parts = dstr?.split("-");
+  if (!parts || parts.length < 3) return "";
+  return `${parts[1]}-${parts[2]}`;
+};
+
+// Compare if event matches the given calendar day
+const matchesDay = ({ event, cellYmd, cellYear, cellMonth, cellDay }) => {
+  const evYmd = parseEventDate(event.date);
+  if (!evYmd) return false;
+
+  if (event.isPermanent) {
+    const evMD = mdFromYmd(evYmd);
+    const cellMD = `${String(cellMonth + 1).padStart(2, "0")}-${String(
+      cellDay
+    ).padStart(2, "0")}`;
+
+    // Handle leap years: if Feb 29 permanent event, show on Feb 28 in non-leap years
+    if (evMD === "02-29") {
+      const isLeap =
+        (cellYear % 4 === 0 && cellYear % 100 !== 0) || cellYear % 400 === 0;
+      if (isLeap) return cellMD === "02-29";
+      return cellMD === "02-28";
+    }
+
+    return evMD === cellMD;
+  }
+
+  return evYmd === cellYmd;
+};
+
+const CalendarView = ({ mode = "admin", onDateSelect, adminEvents = [] }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [showForm, setShowForm] = useState(false);
-  const [filterType, setFilterType] = useState(mode === 'admin' ? '' : 'Consultation');
-  const [searchName, setSearchName] = useState('');
+  const [filterType, setFilterType] = useState(
+    mode === "admin" ? "" : "Consultation"
+  );
+  const [searchName, setSearchName] = useState("");
   const { events, fetchAllEvents, updateEvent } = useEventStore();
 
   useEffect(() => {
     fetchAllEvents(true);
   }, [fetchAllEvents]);
 
-  // Month-scope events
+  // Month-scope events (normal events only; permanent handled in matchesDay)
   const monthEvents = useMemo(() => {
     if (!events?.length) return [];
     return events.filter((ev) => {
-      const d = parseEventDate(ev.date);
-      return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      const dStr = parseEventDate(ev.date);
+      if (!dStr) return false;
+
+      const [yy, mm] = dStr.split("-");
+      if (ev.isPermanent) {
+        // keep all permanent events (will be matched by month/day later)
+        return Number(mm) - 1 === currentMonth;
+      }
+      return Number(mm) - 1 === currentMonth && Number(yy) === currentYear;
     });
   }, [events, currentMonth, currentYear]);
 
   const handleApprove = async (eventId) => {
-    await updateEvent(eventId, { status: 'approved' });
+    await updateEvent(eventId, { status: "approved" });
     fetchAllEvents();
   };
 
   const handleReject = async (eventId) => {
-    await updateEvent(eventId, { status: 'rejected' });
+    await updateEvent(eventId, { status: "rejected" });
     fetchAllEvents();
   };
 
   const getEventColorsForDay = (day) => {
+    const dayYmd = ymd(new Date(currentYear, currentMonth, day));
     const dayEvents = monthEvents.filter((event) => {
-      const d = parseEventDate(event.date);
-      if (!d) return false;
+      const matches = matchesDay({
+        event,
+        cellYmd: dayYmd,
+        cellYear: currentYear,
+        cellMonth: currentMonth,
+        cellDay: day,
+      });
+
+      if (!matches) return false;
 
       const matchesType = filterType ? event.type === filterType : true;
       const matchesSearch = searchName
@@ -69,25 +126,25 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
         : true;
 
       return (
-        d.getDate() === day &&
+        matches &&
         matchesType &&
         matchesSearch &&
-        (mode === 'admin' || event.status === 'approved')
+        (mode === "admin" || event.status === "approved")
       );
     });
 
     const eventColors = {
-      Broadcast: 'bg-blue-500',
-      Consultation: 'bg-green-500',
-      Sales: 'bg-yellow-500',
-      Service: 'bg-purple-500',
-      'Policy-updates': 'bg-red-500',
-      AdminBlock: 'bg-gray-600',
+      Broadcast: "bg-blue-500",
+      Consultation: "bg-green-500",
+      Sales: "bg-yellow-500",
+      Service: "bg-purple-500",
+      "Policy-updates": "bg-red-500",
+      AdminBlock: "bg-gray-600",
     };
 
-    const colors = dayEvents.slice(0, 3).map(
-      (event) => eventColors[event.type] || 'bg-gray-500'
-    );
+    const colors = dayEvents
+      .slice(0, 3)
+      .map((event) => eventColors[event.type] || "bg-gray-500");
 
     return { colors, totalEvents: dayEvents.length };
   };
@@ -115,23 +172,28 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
     const selectedYmd = ymd(selectedDate);
 
     return events.filter((ev) => {
-      const d = parseEventDate(ev.date);
-      if (!d) return false;
+      const matches = matchesDay({
+        event: ev,
+        cellYmd: selectedYmd,
+        cellYear: selectedDate.getFullYear(),
+        cellMonth: selectedDate.getMonth(),
+        cellDay: selectedDate.getDate(),
+      });
+      if (!matches) return false;
 
-      const evYmd = ymd(d);
       const matchesType = filterType ? ev.type === filterType : true;
       const matchesSearch = searchName
         ? ev.name?.toLowerCase().includes(searchName.toLowerCase())
         : true;
 
-      if (mode === 'admin') {
-        return evYmd === selectedYmd && matchesType && matchesSearch;
+      if (mode === "admin") {
+        return matches && matchesType && matchesSearch;
       }
 
       return (
-        evYmd === selectedYmd &&
-        ev.type === 'Consultation' &&
-        ev.status === 'approved' &&
+        matches &&
+        ev.type === "Consultation" &&
+        ev.status === "approved" &&
         matchesType &&
         matchesSearch
       );
@@ -141,40 +203,43 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
-  const calendarDays = Array.from({ length: firstDayOfWeek + daysInMonth }, (_, i) => {
-    const day = i - firstDayOfWeek + 1;
-    if (i < firstDayOfWeek) return <div key={`empty-${i}`}></div>;
+  const calendarDays = Array.from(
+    { length: firstDayOfWeek + daysInMonth },
+    (_, i) => {
+      const day = i - firstDayOfWeek + 1;
+      if (i < firstDayOfWeek) return <div key={`empty-${i}`}></div>;
 
-    const { colors } = getEventColorsForDay(day);
-    const isSelected =
-      selectedDate &&
-      selectedDate.getDate() === day &&
-      selectedDate.getMonth() === currentMonth &&
-      selectedDate.getFullYear() === currentYear;
+      const { colors } = getEventColorsForDay(day);
+      const isSelected =
+        selectedDate &&
+        selectedDate.getDate() === day &&
+        selectedDate.getMonth() === currentMonth &&
+        selectedDate.getFullYear() === currentYear;
 
-    return (
-      <div
-        key={day}
-        onClick={() => {
-          const newDate = new Date(currentYear, currentMonth, day);
-          setSelectedDate(newDate);
-          onDateSelect?.(newDate);
-        }}
-        className={`cursor-pointer relative rounded-md border ${
-          isSelected ? 'bg-emerald-100 border-emerald-400' : 'bg-white'
-        } hover:bg-emerald-50`}
-      >
-        <span className="relative z-10 text-black font-medium">{day}</span>
-        {colors.length > 0 && (
-          <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-start">
-            {colors.map((color, idx) => (
-              <div key={idx} className={`${color} w-full h-1/6`} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  });
+      return (
+        <div
+          key={day}
+          onClick={() => {
+            const newDate = new Date(currentYear, currentMonth, day);
+            setSelectedDate(newDate);
+            onDateSelect?.(newDate);
+          }}
+          className={`cursor-pointer relative rounded-md border ${
+            isSelected ? "bg-emerald-100 border-emerald-400" : "bg-white"
+          } hover:bg-emerald-50`}
+        >
+          <span className="relative z-10 text-black font-medium">{day}</span>
+          {colors.length > 0 && (
+            <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-start">
+              {colors.map((color, idx) => (
+                <div key={idx} className={`${color} w-full h-1/6`} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+  );
 
   return (
     <motion.div
@@ -183,7 +248,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      {/* ===== Header Card (matches your Contact Management card) ===== */}
+      {/* ===== Header Card ===== */}
       <div className="relative overflow-hidden rounded-3xl bg-white border border-indigo-50 shadow-md">
         <div className="p-6 sm:p-8">
           <div className="flex items-start justify-between gap-6">
@@ -193,15 +258,15 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
                   <CalendarIcon className="h-5 w-5" />
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-[#5b4ae2]">
-                  {mode === 'admin' ? 'Contact Management · Calendar' : 'Book Consultation'}
+                  {mode === "admin"
+                    ? "Contact Management · Calendar"
+                    : "Book Consultation"}
                 </h1>
               </div>
               <p className="mt-2 text-sm text-gray-500">
                 Manage events, send reminders, and review consultations.
               </p>
             </div>
-
-            {/* badge like your header icon */}
             <div className="shrink-0">
               <div className="relative">
                 <div className="h-12 w-12 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow">
@@ -212,7 +277,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
             </div>
           </div>
 
-          {/* Controls row (styled pills) */}
+          {/* Controls */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Month nav */}
             <div className="flex items-center gap-2">
@@ -223,9 +288,9 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
                 <ChevronLeft className="h-4 w-4" /> Prev
               </button>
               <div className="rounded-full bg-indigo-50/70 px-4 py-2 text-sm font-semibold text-indigo-700 border border-indigo-100">
-                {new Date(currentYear, currentMonth).toLocaleString('default', {
-                  month: 'long',
-                  year: 'numeric',
+                {new Date(currentYear, currentMonth).toLocaleString("default", {
+                  month: "long",
+                  year: "numeric",
                 })}
               </div>
               <button
@@ -238,7 +303,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
 
             <div className="flex-1" />
 
-            {/* Search pill */}
+            {/* Search */}
             <div className="relative w-full sm:w-auto sm:min-w-[260px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -250,7 +315,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
               />
             </div>
 
-            {/* Filter pill */}
+            {/* Filter */}
             <div className="relative">
               <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <select
@@ -264,14 +329,15 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
                 <option value="Sales">Sales</option>
                 <option value="Service">Service</option>
                 <option value="Policy-updates">Policy Updates</option>
-                <option value="AdminBlock">Admin Block</option>
+         
               </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">▾</span>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                ▾
+              </span>
             </div>
           </div>
         </div>
 
-        {/* ===== DO NOT CHANGE: your original grid markup stays as-is ===== */}
         {/* Weekdays */}
         <div className="grid grid-cols-7 text-gray-700 text-sm gap-px bg-gray-100 [&>div]:p-2 text-center font-semibold uppercase">
           {weekdays.map((day) => (
@@ -286,7 +352,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
       </div>
 
       {/* Admin Add Event */}
-      {selectedDate && mode === 'admin' && (
+      {selectedDate && mode === "admin" && (
         <div className="text-center">
           <button
             onClick={() => setShowForm(true)}
@@ -301,7 +367,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
       {selectedDate && selectedEvents.length > 0 && (
         <div className="rounded-3xl border border-indigo-50 bg-white p-5 sm:p-6 shadow">
           <h3 className="text-lg font-semibold text-[#5b4ae2] mb-3">
-            Events on {selectedDate.toDateString()}
+            Events on {ymd(selectedDate)}
           </h3>
           <div className="space-y-3">
             {selectedEvents.map((event) => (

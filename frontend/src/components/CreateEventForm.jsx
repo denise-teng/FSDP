@@ -25,9 +25,17 @@ const CreateEventForm = ({ selectedDate, onClose, defaults = {} }) => {
     if (selectedDate) {
       const localDate = new Date(selectedDate);
       localDate.setHours(0, 0, 0, 0);
+
+      // ✅ Fix: store as YYYY-MM-DD (not ISO UTC)
+      const ymd = [
+        localDate.getFullYear(),
+        String(localDate.getMonth() + 1).padStart(2, "0"),
+        String(localDate.getDate()).padStart(2, "0"),
+      ].join("-");
+
       setNewEvent((prev) => ({
         ...prev,
-        date: localDate.toISOString().split("T")[0],
+        date: ymd,
       }));
     }
   }, [selectedDate]);
@@ -35,13 +43,26 @@ const CreateEventForm = ({ selectedDate, onClose, defaults = {} }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const payload = {
+      name: newEvent.name.trim(),
+      description: newEvent.description?.trim() || "",
+      date: newEvent.date, // ✅ keep YYYY-MM-DD
+      type: newEvent.type,
+      location: typeof newEvent.location === "string" ? newEvent.location : "",
+      startTime: newEvent.startTime || "",
+      endTime: newEvent.endTime || "",
+      isPermanent: newEvent.isPermanent || false,
+    };
+
+    console.log("📦 Submitting event payload:", payload);
+
     try {
-      await createEvent(newEvent);
+      await createEvent(payload);
       await fetchAllEvents();
       toast.success("Event created successfully");
       onClose();
     } catch (err) {
-      console.error("Error creating event:", err);
+      console.error("❌ Error creating event:", err);
       toast.error("Failed to create event");
     }
   };
@@ -110,17 +131,20 @@ const CreateEventForm = ({ selectedDate, onClose, defaults = {} }) => {
             }
           />
 
-          {/* Date (optional) */}
+          {/* Date */}
           <input
             type="date"
             className="p-2 border rounded w-full"
-            value={newEvent.date}
+            value={newEvent.date || ""}
             onChange={(e) =>
-              setNewEvent({ ...newEvent, date: e.target.value })
+              setNewEvent((prev) => ({
+                ...prev,
+                date: e.target.value, // ✅ keep YYYY-MM-DD
+              }))
             }
           />
 
-          {/* Time fields (optional) */}
+          {/* Time fields */}
           <div className="grid grid-cols-2 gap-4">
             <input
               type="time"
@@ -152,11 +176,11 @@ const CreateEventForm = ({ selectedDate, onClose, defaults = {} }) => {
             <span>Set as Permanent Event</span>
           </label>
 
-          {/* Location picker (optional) */}
+          {/* Location picker */}
           <div className="h-[350px]">
             <LocationPicker
               onLocationSelect={(loc) =>
-                setNewEvent((prev) => ({ ...prev, location: loc }))
+                setNewEvent((prev) => ({ ...prev, location: loc.name }))
               }
               defaultValue={defaults.location}
             />
