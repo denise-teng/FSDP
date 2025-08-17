@@ -3,7 +3,33 @@ import Event from '../models/event.model.js';
 import Notification from '../models/Notification.model.js';
 import User from '../models/user.model.js';
 
-// POST /api/consultations/consultation-request
+// helper functions
+function timeToMinutes(str) {
+  if (!str) return 0;
+  let s = String(str).trim();
+
+  const ampm = /am|pm/i.test(s) ? s.match(/am|pm/i)[0].toLowerCase() : null;
+  s = s.replace(/\s?(am|pm)/i, '');
+
+  const parts = s.split(':').map(Number);
+  let h = parts[0] ?? 0;
+  let m = parts[1] ?? 0;
+
+  if (ampm) {
+    if (ampm === 'pm' && h < 12) h += 12;
+    if (ampm === 'am' && h === 12) h = 0;
+  }
+  return h * 60 + m;
+}
+
+function overlaps(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && aEnd > bStart;
+}
+
+function normalizeEnd(start, end) {
+  return end || start;
+}
+
 export const submitConsultationRequest = async (req, res) => {
   try {
     const {
@@ -17,7 +43,39 @@ export const submitConsultationRequest = async (req, res) => {
       userId,
     } = req.body;
 
-    // Create the consultation request
+    if (!date || !startTime) {
+      return res.status(400).json({ error: 'Date and start time are required' });
+    }
+
+    // normalize new request times
+    const newStart = timeToMinutes(startTime);
+    const newEnd = timeToMinutes(normalizeEnd(startTime, endTime));
+
+    // 🔑 normalize the date into a start-of-day and end-of-day range
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // fetch events on the same day (range, not equality)
+    const sameDayEvents = await Event.find({
+      date: { $gte: dayStart, $lte: dayEnd },
+    });
+
+    // check overlap
+    const conflict = sameDayEvents.find(ev => {
+      const evStart = timeToMinutes(ev.startTime);
+      const evEnd = timeToMinutes(normalizeEnd(ev.startTime, ev.endTime));
+      return overlaps(newStart, newEnd, evStart, evEnd);
+    });
+
+    if (conflict) {
+      return res.status(409).json({
+        error: `This consultation time is unavailable. Please choose another time.`,
+      });
+    }
+
     const request = await ConsultationRequest.create({
       name,
       description,
@@ -27,19 +85,17 @@ export const submitConsultationRequest = async (req, res) => {
       location,
       email,
       userId,
-      status: 'pending', // This is critical for filtering
+      status: 'pending',
     });
 
-    // Notify the requesting user
+    // notifications (same as before)...
     if (userId) {
       await Notification.create({
         userId,
-        text: `✅ Your consultation request has been submitted.`,
+        text: `Your consultation request has been submitted.`,
         trigger: '/consultation-status',
       });
     }
-
-    // Notify all admins about the new request
     const admins = await User.find({ role: 'admin' });
     await Promise.all(
       admins.map((admin) =>
@@ -58,6 +114,7 @@ export const submitConsultationRequest = async (req, res) => {
   }
 };
 
+
 // DELETE /api/consultations/consultation-request/:id
 export const deleteConsultationRequest = async (req, res) => {
   try {
@@ -74,7 +131,6 @@ export const deleteConsultationRequest = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete consultation request' });
   }
 };
-
 
 // PATCH /api/consultations/consultation-request/:id/approve
 export const approveConsultationRequest = async (req, res) => {
@@ -99,15 +155,13 @@ export const approveConsultationRequest = async (req, res) => {
 
     // Notify the user about approval
     if (request.userId) {
-  await Notification.create({
-    userId: request.userId,
-    text: `✅ Your consultation "${request.name}" has been approved!`,
-    trigger: '/calendar',
-    forAdmin: false, // ✅ ADD THIS LINE
-  });
-}
-
-
+      await Notification.create({
+        userId: request.userId,
+        text: `Your consultation "${request.name}" has been approved!`,
+        trigger: '/calendar',
+        forAdmin: false,
+      });
+    }
 
     // Remove the request from pending
     await ConsultationRequest.findByIdAndDelete(id);

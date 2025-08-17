@@ -16,9 +16,9 @@ import fs from "fs";
 import cors from "cors";
 import puppeteer from "puppeteer";
 import userRoutes from './routes/user.route.js';  // ✅ adjust the path if needed
+import {  googleCallback } from './controllers/auth.controller.js';
 
 
-// Import routes
 import authRoutes from './routes/auth.route.js';
 import productRoutes from './routes/product.route.js';
 import cartRoutes from './routes/cart.route.js';
@@ -51,6 +51,9 @@ import enhanceNewsletterRoutes from './routes/enhanceNewsletter.route.js';
 import consultationRoutes from './routes/consultation.routes.js';
 import articlesRoutes from './routes/articles.route.js';
 import summariseContentRoutes from './routes/summarise_content.route.js';
+
+import passport from "passport";
+import './lib/passport.js';
 import subscribeRoutes from './routes/subscribe.route.js'; 
 import publishGeneratedRoutes from './routes/publishGeneratedMessages.route.js';
 
@@ -86,6 +89,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads"), {
 app.use('/api/users', userRoutes);  // ✅ now your routes will be live
 
 // ROUTES
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
@@ -105,11 +109,11 @@ app.use("/api/quick-messages", quickMessageRoutes);
 app.use("/api/potential-clients", potentialClientRoutes);
 app.use("/api", replySuggestionAiRoutes);
 app.use("/api/contacts/public", publicContactRoutes);
-app.use("/api/broadcasts", broadcastRoutes);
-app.use("/api/scheduled-broadcasts", scheduledBroadcastRoutes);
-app.use("/api/recent-broadcasts", recentBroadcastRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 app.use('/api/publish-generate', publishGeneratedRoutes);
+
+
+app.use(passport.initialize());
 
 // 🔁 Utility function
 function getRecentMessages(messages, timeFrame = '2days') {
@@ -152,13 +156,11 @@ app.use('/api/contacts/public', publicContactRoutes);
 app.use('/api/broadcasts/recent', recentBroadcastRoutes); // Recent Broadcasts (must come before general broadcasts route)
 app.use('/api/broadcasts', broadcastRoutes); // Broadcast Groups/Lists
 app.use('/api/scheduled-broadcasts', scheduledBroadcastRoutes); // Scheduled broadcasts
-app.use('/api/recent-broadcasts', recentBroadcastRoutes); // New route for recent broadcasts
 app.post('/api/subscribe', subscribeRoutes); // Changed from /subscribe to /api/subscribe
 app.use('/api/enhance-newsletter', enhanceNewsletterRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use('/api/articles', articlesRoutes);
-app.use('/api/content', summariseContentRoutes);
-app.use('/api/subscribe', subscribeRoutes); 
+app.use('/api/content', summariseContentRoutes); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -233,6 +235,13 @@ async function reuseExistingBrowser() {
     throw error;
   }
 }
+
+app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+// Callback from Google
+app.get('/api/auth/google/callback', googleCallback);
+
+
 
 // 📊 GET: Analyze meeting recommendations
 app.get("/api/analyze-meetings", async (req, res) => {
@@ -405,7 +414,7 @@ connectDB().then(() => {
     console.log(`✅ Server ready at http://localhost:${PORT}`);
   });
 }).catch((error) => {
-  console.log('⚠️ Database connection failed, starting server anyway for testing:', error.message);
+  console.log('Database connection failed, starting server anyway for testing:', error.message);
   app.listen(PORT, () => {
     console.log(`✅ Server ready at http://localhost:${PORT} (without database)`);
   });

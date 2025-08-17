@@ -13,7 +13,7 @@ const VerifyEmail = () => {
       const data = params.get('data');
 
       if (!data) {
-        toast.error('Invalid verification link');
+        
         return;
       }
 

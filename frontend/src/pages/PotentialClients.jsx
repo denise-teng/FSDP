@@ -8,6 +8,7 @@ import WhatsAppReplyTabsModal from '../components/WhatsAppReplyTabsModal';
 import FinalMessageEditModal from '../components/FinalMessageEditModal';
 import EmailReplyModal from '../components/EmailReplyModal';
 import KeywordsModal from '../components/KeywordsModal';
+import BroadcastMenu from '../components/BroadcastMenu';
 
 export default function PotentialClientsPage() {
   const [search, setSearch] = useState('');
@@ -20,6 +21,8 @@ export default function PotentialClientsPage() {
   const [contactEmail, setContactEmail] = useState('');
   const [activeMessage, setActiveMessage] = useState({ name: '', message: '', phone: '', subject: '' });
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
+  const [showBroadcastMenu, setShowBroadcastMenu] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState(null);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,8 +140,8 @@ export default function PotentialClientsPage() {
                 onChange={(e) => setSubjectFilter(e.target.value)}
               >
                 <option value="">📋 Select Subject Type</option>
-                <option value="General Inquiry">� General Inquiry</option>
-                <option value="Investment Strategy Discussion">� Investment Strategy Discussion</option>
+                <option value="General Inquiry">  General Inquiry</option>
+                <option value="Investment Strategy Discussion">  Investment Strategy Discussion</option>
                 <option value="Retirement Planning Consultation">🏖️ Retirement Planning Consultation</option>
                 <option value="Estate/Legacy Planning">🏛️ Estate/Legacy Planning</option>
                 <option value="Insurance Policy Review">🛡️ Insurance Policy Review</option>
@@ -231,7 +234,16 @@ export default function PotentialClientsPage() {
                       <td className="p-4">
                         <div className="flex items-center space-x-1">
                           <Star className="w-6 h-6 text-yellow-400" />
-                          <button className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-2.5 py-1 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md">
+                          <button 
+                            onClick={() => {
+                              setSelectedContactId(c.contactId);
+                              setShowBroadcastMenu(true);
+                            }} 
+                            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-2.5 py-1 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md flex items-center gap-1"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
                             Broadcast
                           </button>
                           <button
@@ -492,6 +504,16 @@ export default function PotentialClientsPage() {
       <KeywordsModal
         isOpen={showKeywordsModal}
         onClose={() => setShowKeywordsModal(false)}
+      />
+
+      {/* Broadcast Menu */}
+      <BroadcastMenu
+        isOpen={showBroadcastMenu}
+        onClose={() => {
+          setShowBroadcastMenu(false);
+          setSelectedContactId(null);
+        }}
+        contactId={selectedContactId}
       />
     </div>
   );

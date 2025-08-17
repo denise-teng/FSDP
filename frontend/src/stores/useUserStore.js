@@ -89,6 +89,30 @@ export const useUserStore = create((set, get) => ({
     }
   },
 
+
+  googleAuth: async (navigate) => {
+  set({ loading: true });
+  try {
+    // This will be handled by the redirect from Google
+    await get().checkAuth();
+    set({ loading: false });
+    
+    if (navigate) {
+      const user = get().user;
+      if (user?.role === "admin") {
+        navigate("/admin-home");
+      } else {
+        navigate("/user-home");
+      }
+    }
+  } catch (error) {
+    set({ loading: false });
+    toast.error(error.response?.data?.message || "Google authentication failed");
+  }
+},
+
+
+
   refreshToken: async () => {
     if (get().checkingAuth) return;
 
@@ -152,3 +176,4 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+

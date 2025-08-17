@@ -778,9 +778,11 @@ const HomePage = () => {
               insurance and wealth strategies. Known for patience, integrity, and putting clients first.
               Let&apos;s chat over coffee!&quot;
             </blockquote>
+            <Link to = '/booking'>
             <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-medium hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center mx-auto">
               Schedule Consultation <ArrowRight className="ml-2 h-4 w-4" />
             </button>
+            </Link>
           </motion.div>
         </div>
       </section>

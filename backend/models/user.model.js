@@ -15,23 +15,23 @@ email:{
 },
 password: {
     type: String,
-    required: [true, 'password is required'],
-    minlength: [6, 'Password must be at least 6 characters long']
-},
-cartItems: [
-{
-quantity:{
-    type: Number,
-    default: 1
-},
-product: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-}
+    required: function () {
+      // `this` refers to the document being created
+      return !this.isGoogleAuth; 
+    }
+  },
+ 
 
-}
-
-],
+  isGoogleAuth: {
+    type: Boolean,
+    default: false
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  
 role: {
     type: String,
     enum: ['customer', 'admin'],
@@ -55,7 +55,7 @@ try {
 } catch (error) {
 next(error)
 }
-z
+
 })
 
 userSchema.methods.comparePassword = async function (password) {

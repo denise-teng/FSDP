@@ -6,17 +6,19 @@ import LocationPicker from "./LocationPicker";
 
 const types = ["Broadcast", "Consultation", "Sales", "Service", "Policy-updates"];
 
-const CreateEventForm = ({ selectedDate, onClose }) => {
+
+  const CreateEventForm = ({ selectedDate, onClose, defaults = {} }) => {
   const [newEvent, setNewEvent] = useState({
-    name: "",
-    description: "",
+    name: defaults.title || "",
+    description: defaults.description || "",
     date: selectedDate,
-    type: "",
-    location: "",
-    startTime: "",
-    endTime: "",
-    isPermanent: false,
+    type: defaults.type || "",
+    location: defaults.location || "",
+    startTime: defaults.startTime || "",
+    endTime: defaults.endTime || "",
+    isPermanent: defaults.isPermanent || false,
   });
+
 
   const { createEvent, fetchAllEvents } = useEventStore();
   const [location, setLocation] = useState(null);
@@ -100,7 +102,7 @@ const CreateEventForm = ({ selectedDate, onClose }) => {
               }
             }}
             className="w-full px-4 py-2 rounded-md border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
+            
           />
           <small className="text-gray-400">
             {newEvent.description.trim().split(/\s+/).filter(Boolean).length}/200 words

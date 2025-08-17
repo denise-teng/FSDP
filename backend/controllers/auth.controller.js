@@ -5,6 +5,9 @@ import { sendVerificationEmail } from '../lib/sendEmail.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../lib/sendPasswordResetEmail.js';
+import passport from 'passport';
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
@@ -69,9 +72,7 @@ export const completeSignup = async (req, res) => {
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: 'User already exists. Please log in.' });
-    }
+    
 
     const newUser = new User({
       name,
@@ -88,7 +89,7 @@ export const completeSignup = async (req, res) => {
     res.status(201).json({ message: 'Account verified and created' });
   } catch (err) {
     console.error('Complete Signup Error:', err.message);
-    res.status(400).json({ message: 'Invalid or expired verification link' });
+ 
   }
 };
 
@@ -249,3 +250,78 @@ export const getUsers = async (req, res) => {
     res.status(500).json({ message: 'Error fetching users' });
   }
 };
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET, 
+  process.env.GOOGLE_CALLBACK_URL  
+);
+
+export const googleCallback = async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    // Exchange code for tokens
+    const { tokens } = await client.getToken(code);
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const { email, name, sub: googleId } = ticket.getPayload();
+
+    // Find or create user
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        isVerified: true,
+        isGoogleAuth: true,
+        googleId,
+        role: 'customer'
+      });
+    } else if (!user.isGoogleAuth) {
+      user.isGoogleAuth = true;
+      user.googleId = googleId;
+      await user.save();
+    }
+
+    // Generate JWT tokens
+    const accessToken = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Set cookies
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 15 * 60 * 1000
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    // Redirect to frontend
+  res.redirect(user.role === 'admin'
+  ? `http://localhost:5173/admin-home`
+  : `http://localhost:5173/user-home`
+);
+
+  } catch (error) {
+    console.error('Google callback failed:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
+  }
+};
+

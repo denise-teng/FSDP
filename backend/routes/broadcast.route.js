@@ -506,18 +506,18 @@ router.post('/add-contact', async (req, res) => {
             return res.status(404).json({ message: 'Broadcast not found' });
         }
 
-        const contact = await Contact.findById(contactId);
+        const contact = await Contact.findOne({ contactId: contactId });
         if (!contact) {
             return res.status(404).json({ message: 'Contact not found' });
         }
 
-        // Check if contact is already in the broadcast recipients
-        if (broadcast.recipients.includes(contactId)) {
+        // Check if contact is already in the broadcast recipients (using MongoDB _id)
+        if (broadcast.recipients.includes(contact._id)) {
             return res.status(400).json({ message: 'Contact already exists in this broadcast list' });
         }
 
-        // Add contact to broadcast recipients
-        broadcast.recipients.push(contactId);
+        // Add contact to broadcast recipients (using MongoDB _id)
+        broadcast.recipients.push(contact._id);
         await broadcast.save();
 
         res.json({ 
