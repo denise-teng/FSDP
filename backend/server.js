@@ -173,6 +173,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+
 // 📥 Scraping Function
 async function reuseExistingBrowser() {
   try {

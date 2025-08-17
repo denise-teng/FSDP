@@ -19,7 +19,7 @@ const UploadList = () => {
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full -translate-y-16 translate-x-16 opacity-60"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-100 to-pink-100 rounded-full translate-y-12 -translate-x-12 opacity-40"></div>
-         
+
           <div className="relative">
             <h2 className="text-4xl font-bold mb-3">
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -44,15 +44,17 @@ const UploadList = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              {newsletters
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              {(newsletters ?? [])
+                .filter(n => n && (n._id || n.id))
+                .sort((a, b) => new Date(b?.createdAt ?? 0) - new Date(a?.createdAt ?? 0))
                 .map((upload) => (
                   <UploadCard
-                    key={upload._id}
+                    key={upload._id ?? upload.id}
                     upload={upload}
                     onPreview={(item) => setPreviewUpload(item)}
                   />
                 ))}
+
             </div>
           )}
         </div>

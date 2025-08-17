@@ -1,9 +1,9 @@
 import Draft from '../models/draft.model.js';
 import path from 'path';
 
-const getDraftsQuery = { 
+const getDraftsQuery = {
   status: "draft",
-  deletedAt: null 
+  deletedAt: null
 };
 
 // Helper function to ensure array structure for tags, sendTo, audience, and content
@@ -36,7 +36,7 @@ export const createDraft = async (req, res) => {
     const ensureArray = (data) => {
       if (!data) return [];
       if (Array.isArray(data)) return data.map(String);
-      
+
       // Handle JSON strings
       if (typeof data === 'string') {
         try {
@@ -59,8 +59,13 @@ export const createDraft = async (req, res) => {
       category: req.body.category || 'General',
       status: "draft",
       type: req.body.type || "generated",
-      newsletterFilePath: req.files?.newsletterFile?.[0]?.path?.replace(/\\/g, '/'),
-      thumbnailPath: req.files?.thumbnail?.[0]?.path?.replace(/\\/g, '/')
+      newsletterFilePath: req.files?.newsletterFile?.[0]
+        ? `uploads/${req.files.newsletterFile[0].filename}`
+        : undefined,
+      thumbnailPath: req.files?.thumbnail?.[0]
+        ? `uploads/${req.files.thumbnail[0].filename}`
+        : undefined,
+
     };
 
     console.log('PROCESSED DRAFT DATA:', draftData);
@@ -72,7 +77,7 @@ export const createDraft = async (req, res) => {
 
     // Create the draft
     const draft = await Draft.create(draftData);
-    
+
     res.status(201).json({
       message: 'Draft created successfully!',
       draft
@@ -84,7 +89,7 @@ export const createDraft = async (req, res) => {
       stack: error.stack,
       errors: error.errors
     });
-    
+
     res.status(400).json({
       error: "Validation failed",
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -114,21 +119,21 @@ export const deleteDraft = async (req, res) => {
       _id: req.params.id,
       deletedAt: null
     });
-    
+
     if (!existingDraft) {
-      return res.status(404).json({ 
-        message: 'Draft not found or already deleted' 
+      return res.status(404).json({
+        message: 'Draft not found or already deleted'
       });
     }
 
     // Soft delete with timestamp only (don't change status)
     const updatedDraft = await Draft.findByIdAndUpdate(
       req.params.id,
-      { 
-        $set: { 
+      {
+        $set: {
           deletedAt: new Date()
           // Remove status update since it's not in your schema
-        } 
+        }
       },
       { new: true }
     );
@@ -151,17 +156,17 @@ export const deleteDraft = async (req, res) => {
 export const getDeletedDrafts = async (req, res) => {
   try {
     console.log('Fetching deleted drafts...');
-    const drafts = await Draft.find({ 
-      deletedAt: { $ne: null } 
+    const drafts = await Draft.find({
+      deletedAt: { $ne: null }
     })
-    .sort({ deletedAt: -1 })
-    .lean(); // Use lean() for better performance
-    
+      .sort({ deletedAt: -1 })
+      .lean(); // Use lean() for better performance
+
     console.log('Fetched deleted drafts count:', drafts.length);
     res.json(drafts);
   } catch (error) {
     console.error('Error fetching deleted drafts:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch deleted drafts',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -200,61 +205,48 @@ export const permanentlyDeleteDraft = async (req, res) => {
   }
 };
 
-// Edit an existing draft
 export const editDraft = async (req, res) => {
   try {
-    const { title, content, category, type } = req.body;
+    const { title, content, category /*, status, type */ } = req.body;
 
-    // Validate category field
     const validCategories = ['Financial Planning', 'Insurance', 'Estate Planning', 'Tax Relief'];
-    const validType = ['draft', 'newsletter'];
-
     if (!validCategories.includes(category)) {
-      return res.status(400).json({
-        error: `Invalid category. Must be one of: ${validCategories.join(', ')}`
-      });
+      return res.status(400).json({ error: `Invalid category. Must be one of: ${validCategories.join(', ')}` });
     }
 
-    if (!validType.includes(type)) {
-      return res.status(400).json({
-        error: `Invalid type. Must be one of: ${validType.join(', ')}`,
-      });
-    }
-
-    // Update the draft data
-    const updateData = {
-      title,
-      content,
-      category,
-      type: type === 'newsletter' ? 'newsletter' : 'draft', // Use 'newsletter' if type is passed as 'newsletter'
-      ...(req.files?.newsletterFile && {
-        newsletterFilePath: `uploads/${req.files.newsletterFile[0].filename}`,
-      }),
-      ...(req.files?.thumbnail && {
-        thumbnailPath: `uploads/${req.files.thumbnail[0].filename}`,
-      }),
+    // optional: normalize arrays if you allow editing them
+    const toArr = (v) => {
+      if (!v) return [];
+      if (Array.isArray(v)) return v;
+      try { const p = JSON.parse(v); return Array.isArray(p) ? p : [String(p)]; } catch { return String(v).split(',').map(s=>s.trim()).filter(Boolean); }
     };
 
-    // Update the draft or newsletter
+    const updateData = {
+      ...(title !== undefined && { title }),
+      ...(content !== undefined && { content: toArr(content) }),
+      ...(category !== undefined && { category }),
+      ...(req.body.tags !== undefined && { tags: toArr(req.body.tags) }),
+      ...(req.body.sendTo !== undefined && { sendTo: toArr(req.body.sendTo) }),
+      ...(req.body.audience !== undefined && { audience: toArr(req.body.audience) }),
+      ...(req.files?.newsletterFile && { newsletterFilePath: `uploads/${req.files.newsletterFile[0].filename}` }),
+      ...(req.files?.thumbnail && { thumbnailPath: `uploads/${req.files.thumbnail[0].filename}` }),
+      // Do NOT set `type` to 'draft' (invalid). Don’t flip status here either.
+    };
+
     const draft = await Draft.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
-      runValidators: true, // Ensure any validations are run
+      runValidators: true,
     });
 
-    if (!draft) {
-      return res.status(404).json({ message: 'Draft not found' });
-    }
+    if (!draft) return res.status(404).json({ message: 'Draft not found' });
 
-    // Return the updated draft
-    res.status(200).json({
-      message: type === 'newsletter' ? 'Newsletter published successfully' : 'Draft updated successfully',
-      draft,
-    });
+    res.status(200).json({ message: 'Draft updated successfully', draft });
   } catch (error) {
     console.error("Error updating draft:", error);
     res.status(500).json({ error: "Failed to update draft" });
   }
 };
+
 
 
 // controllers/draft.controller.js
