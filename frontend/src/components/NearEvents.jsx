@@ -3,18 +3,15 @@ import { useEffect, useMemo } from "react";
 import { Calendar, Clock, MapPin } from "lucide-react";
 import { useEventStore } from "../stores/useEventStore";
 
-// ===== Helpers =====
+/* ---------- Helpers ---------- */
+const startOfDay = (d) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
 const parseEventDate = (value) => {
   if (!value) return null;
-  if (typeof value === "string") {
-    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) {
-      const [_, yy, mm, dd] = m;
-      return new Date(Number(yy), Number(mm) - 1, Number(dd));
-    }
-    return new Date(value);
-  }
-  return new Date(value);
+  const d = new Date(value);
+  if (isNaN(d)) return null;
+  return startOfDay(d); // normalize to midnight
 };
 
 const timeToMinutes = (timeStr) => {
@@ -23,7 +20,7 @@ const timeToMinutes = (timeStr) => {
   return h * 60 + (m || 0);
 };
 
-// ===== Component =====
+/* ---------- Component ---------- */
 const NearEvents = () => {
   const { events, fetchAllEvents } = useEventStore();
 
@@ -31,22 +28,25 @@ const NearEvents = () => {
     fetchAllEvents?.();
   }, [fetchAllEvents]);
 
-  // Compute events in next 7 days
   const nearEvents = useMemo(() => {
     if (!events?.length) return [];
-    const today = new Date();
-    const cutoff = new Date();
+
+    const today = startOfDay(new Date());
+    const cutoff = startOfDay(new Date());
     cutoff.setDate(today.getDate() + 7);
 
     return events
       .filter((ev) => {
         const d = parseEventDate(ev.date);
-        return d && d >= today && d <= cutoff && ev.status === "approved";
+        if (!d) return false;
+        // ✅ Only check date, ignore status
+        return d >= today && d <= cutoff;
       })
       .sort((a, b) => {
         const da = parseEventDate(a.date);
         const db = parseEventDate(b.date);
         if (!da || !db) return 0;
+
         if (da.getTime() === db.getTime()) {
           return (
             (timeToMinutes(a.startTime) ?? 9999) -
@@ -60,8 +60,9 @@ const NearEvents = () => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-3">
-        Upcoming Events (Next 7 Days)
+        Near Events (Next 7 Days)
       </h3>
+
       {nearEvents.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {nearEvents.map((ev) => {
@@ -105,31 +106,19 @@ const NearEvents = () => {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 flex items-center">
-                    <Calendar className="h-3 w-3 mr-1 text-gray-400" />{" "}
+                    <Calendar className="h-3 w-3 mr-1 text-gray-400" />
                     {dateLabel}
                   </p>
                   <p className="text-xs text-gray-500 flex items-center">
-                    <Clock className="h-3 w-3 mr-1 text-gray-400" /> {timeLabel}
+                    <Clock className="h-3 w-3 mr-1 text-gray-400" />
+                    {timeLabel}
                   </p>
                   {ev.location && (
                     <p className="text-xs text-gray-500 flex items-center">
-                      <MapPin className="h-3 w-3 mr-1 text-gray-400" />{" "}
+                      <MapPin className="h-3 w-3 mr-1 text-gray-400" />
                       {ev.location}
                     </p>
                   )}
-                </div>
-                <div className="mt-2 flex justify-end">
-                  <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full ${
-                      ev.status === "approved"
-                        ? "bg-green-100 text-green-700"
-                        : ev.status === "pending"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {ev.status}
-                  </span>
                 </div>
               </div>
             );
@@ -137,7 +126,7 @@ const NearEvents = () => {
         </div>
       ) : (
         <p className="text-gray-500 text-sm italic">
-          No upcoming events in the next week.
+          No near events in the next week.
         </p>
       )}
     </div>

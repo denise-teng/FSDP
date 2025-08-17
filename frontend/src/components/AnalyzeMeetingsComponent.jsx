@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import CreateEventForm from "./CreateEventForm";
+import { Users, Loader2, CalendarDays, Clock, Phone, Trash2, Reply, CalendarPlus } from "lucide-react";
 
 const normalizePhone = (raw, defaultCc = "+65") => {
   if (!raw) return "";
@@ -297,68 +298,52 @@ const sendReply = async () => {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  return (
-    <div className="flex justify-center p-6 bg-gray-100 min-h-screen">
-      <div className="w-full max-w-3xl bg-white text-gray-900 rounded-xl shadow-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-blue-600">Interested Clients</h2>
+    return (
+    <div className="min-h-screen w-full bg-[#F6F7FF] py-8 px-4 md:px-8">
+      {/* ===== Header ===== */}
+      <div className="mx-auto max-w-5xl">
+        <div className="relative overflow-hidden rounded-3xl bg-white p-6 shadow-[0_10px_30px_-12px_rgba(76,29,149,0.15)]">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-violet-500/20 via-fuchsia-400/10 to-transparent blur-3xl" />
+          <div className="flex items-center gap-4">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg">
+              <Users className="h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Analysis</p>
+              <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-violet-700">
+                Interested Clients
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Scan flagged WhatsApp messages, suggest meetings, and reply instantly.
+              </p>
+            </div>
+          </div>
           {lastUpdated && (
-            <span className="text-sm text-gray-500">
+            <p className="mt-4 text-xs text-slate-500">
               Last updated: {lastUpdated.toLocaleTimeString()}
-            </span>
+            </p>
           )}
         </div>
+      </div>
 
-        <div className="flex flex-col space-y-4 mb-6">
-          <div className="flex items-center space-x-2 relative">
-            <label htmlFor="contacts" className="text-sm font-medium text-gray-700">
-              Contacts to scan:
-            </label>
-
-            {/* Input with suggestions */}
-            <div className="relative flex-1">
+      {/* ===== Body ===== */}
+      <div className="mx-auto mt-8 max-w-5xl">
+        <div className="rounded-3xl bg-white p-6 shadow-[0_8px_28px_-10px_rgba(76,29,149,0.12)] space-y-6">
+          {/* Input + Analyze */}
+          <div className="flex flex-col gap-3">
+            <label className="text-sm font-semibold text-violet-700">Contacts to scan</label>
+            <div className="relative">
               <input
-                id="contacts"
                 ref={inputRef}
-                type="text"
                 value={inputContacts}
-                onChange={(e) => {
-                  setInputContacts(e.target.value);
-                  const val = e.target.value;
-                  const lastComma = val.lastIndexOf(',');
-                  const token = (lastComma === -1 ? val : val.slice(lastComma + 1)).trim();
-                  setShowSuggest(token.length > 0);
-                  setHighlightIndex(-1);
-                }}
-                onFocus={() => setShowSuggest(currentToken.length > 0 && tokenSuggestions.length > 0)}
-                onKeyDown={(e) => {
-                  if (!showSuggest || tokenSuggestions.length === 0) return;
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setHighlightIndex((i) => (i + 1) % tokenSuggestions.length);
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setHighlightIndex((i) => (i - 1 + tokenSuggestions.length) % tokenSuggestions.length);
-                  } else if (e.key === 'Enter' || e.key === 'Tab') {
-                    if (highlightIndex >= 0) {
-                      e.preventDefault();
-                      insertSuggestion(tokenSuggestions[highlightIndex]);
-                    } else if (e.key === 'Enter' && tokenSuggestions[0]) {
-                      e.preventDefault();
-                      insertSuggestion(tokenSuggestions[0]);
-                    }
-                  } else if (e.key === 'Escape') {
-                    setShowSuggest(false);
-                  }
-                }}
-                className="bg-gray-100 border border-gray-300 text-gray-800 px-3 py-2 rounded text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Type a name and pick from suggestions"
+                onChange={(e) => setInputContacts(e.target.value)}
+                placeholder="Type a name and pick from suggestions…"
+                className="w-full rounded-2xl border border-violet-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-violet-100"
               />
-
               {showSuggest && tokenSuggestions.length > 0 && (
                 <ul
                   ref={suggestRef}
-                  className="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                  className="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-2xl border border-violet-100 bg-white shadow-lg"
                 >
                   {tokenSuggestions.map((name, idx) => (
                     <li
@@ -367,8 +352,11 @@ const sendReply = async () => {
                         e.preventDefault();
                         insertSuggestion(name);
                       }}
-                      onMouseEnter={() => setHighlightIndex(idx)}
-                      className={`px-3 py-2 text-sm cursor-pointer ${idx === highlightIndex ? 'bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
+                      className={`px-3 py-2 text-sm cursor-pointer ${
+                        idx === highlightIndex
+                          ? "bg-violet-600 text-white"
+                          : "hover:bg-violet-50"
+                      }`}
                     >
                       {name}
                     </li>
@@ -376,141 +364,139 @@ const sendReply = async () => {
                 </ul>
               )}
             </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
             <button
               onClick={handleAnalyzeMessages}
               disabled={loading}
-              className={`px-5 py-2 rounded-full font-semibold text-white transition flex items-center justify-center text-sm ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+              className="inline-flex w-max items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 focus:ring-4 focus:ring-violet-200 disabled:opacity-50"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Analyzing...
-                </>
-              ) : (
-                'Analyze messages'
-              )}
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Analyze Messages
             </button>
           </div>
-        </div>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded">
-            <p>{error}</p>
-          </div>
-        )}
+          {/* Error */}
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
-        {filteredMessages.length > 0 ? (
-          <ul className="space-y-6">
-            {Object.entries(groupMessagesByContact(filteredMessages)).map(([contact, messages]) => {
-              const phones = nameToPhones.get(contact) || [];
-              const prettyPhone = phones[0] || null;
-              return (
-                <li key={contact} className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-700">{contact}</h3>
-                      {recommendedTimes[contact] && (
-                        <p className="text-sm text-green-600 mt-1">
-                          🕒 Recommended meeting time: <strong>{recommendedTimes[contact]}</strong>
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-600 mt-1">
-                        {prettyPhone ? `📱 ${prettyPhone}` : '📱 No saved phone'}
-                      </p>
-                    </div>
+          {/* Messages */}
+          {filteredMessages.length > 0 ? (
+            <ul className="space-y-6">
+              {Object.entries(groupMessagesByContact(filteredMessages)).map(
+                ([contact, messages]) => {
+                  const phones = nameToPhones.get(contact) || [];
+                  const prettyPhone = phones[0] || null;
 
-                    <div className="flex gap-2">
-                      <button
-                    className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded"
-                    onClick={() => {
-                      const first = contact.split(" ")[0] || contact;
-
-                      // Default event title and date/time
-                      const title = `Meeting with ${contact}`;
-                      const startTime = toHHMM(recommendedTimes[contact]);
-
-                      let date = new Date();
-                      if (recommendedTimes[contact]) {
-                        // try to parse recommended time into today’s date
-                        const parsed = new Date(`${ymd(new Date())} ${recommendedTimes[contact]}`);
-                        if (!isNaN(parsed)) date = parsed;
-                      }
-
-                      setEventDefaults({ title, date, startTime });
-                      setEventOpen(true);
-                    }}
-                  >
-                    Create Event
-                  </button>
-
-                    </div>
-                  </div>
-
-                  <ul className="space-y-3 mt-3">
-                    {messages.map((message) => (
-                      <li
-                        key={message.id ?? `${contact}-${message.timestamp}-${message.text.slice(0, 10)}`}
-                        className="bg-white border border-gray-200 rounded-md p-3"
-                      >
-                        <div className="flex justify-between items-start">
-                          <p className="text-gray-800 whitespace-pre-wrap">{message.text}</p>
-                          <div className="flex space-x-2">
-                            <button
-                              className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300 rounded"
-                              onClick={() => {
-                                const first = contact.split(' ')[0] || contact;
-                                const rec = recommendedTimes[contact] ? ` Are you free ${recommendedTimes[contact]}?` : "";
-                                openReplyForContact(contact, `Hi ${first},${rec} `);
-                              }}
-
-                              disabled={!prettyPhone}
-                            >
-                              Reply
-                            </button>
-                            <button
-                              className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded"
-                              onClick={() => handleDeleteMessage(message.id)}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                  return (
+                    <li
+                      key={contact}
+                      className="rounded-2xl border border-violet-100 bg-gradient-to-b from-white to-violet-50/40 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-slate-800">{contact}</h3>
+                          {recommendedTimes[contact] && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              <Clock className="mr-1 inline h-3.5 w-3.5 text-violet-500" />
+                              Recommended: {recommendedTimes[contact]}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-slate-500">
+                            <Phone className="mr-1 inline h-3.5 w-3.5 text-violet-500" />
+                            {prettyPhone || "No saved phone"}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {message.meta
-                            ? message.meta.match(/\[(.*?)\]/)?.[1] || 'Unknown Time'
-                            : new Date(message.timestamp).toLocaleString()}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div className="text-center py-10">
-            <p className="text-gray-400 italic">No meeting requests found.</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Enter contacts and click the button to scan for meeting requests.
-            </p>
-          </div>
-        )}
+                        <button
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                          onClick={() => {
+                            const title = `Meeting with ${contact}`;
+                            const startTime = toHHMM(recommendedTimes[contact]);
+                            let date = new Date();
+                            if (recommendedTimes[contact]) {
+                              const parsed = new Date(
+                                `${ymd(new Date())} ${recommendedTimes[contact]}`
+                              );
+                              if (!isNaN(parsed)) date = parsed;
+                            }
+                            setEventDefaults({ title, date, startTime });
+                            setEventOpen(true);
+                          }}
+                        >
+                          <CalendarDays className="h-3.5 w-3.5" /> Create Event
+                        </button>
+                      </div>
+
+                      <ul className="mt-3 space-y-2">
+                        {messages.map((message) => (
+                          <li
+                            key={
+                              message.id ??
+                              `${contact}-${message.timestamp}-${message.text.slice(
+                                0,
+                                10
+                              )}`
+                            }
+                            className="rounded-xl border border-violet-100 bg-white p-3 text-sm shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-slate-700 whitespace-pre-wrap">
+                                {message.text}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                                  onClick={() => {
+                                    const first = contact.split(" ")[0] || contact;
+                                    const rec = recommendedTimes[contact]
+                                      ? ` Are you free ${recommendedTimes[contact]}?`
+                                      : "";
+                                    openReplyForContact(contact, `Hi ${first},${rec} `);
+                                  }}
+                                  disabled={!prettyPhone}
+                                >
+                                  <Reply className="h-3 w-3 inline" /> Reply
+                                </button>
+                                <button
+                                  className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                >
+                                  <Trash2 className="h-3 w-3 inline" /> Delete
+                                </button>
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-400">
+                              {message.meta
+                                ? message.meta.match(/\[(.*?)\]/)?.[1] || "Unknown Time"
+                                : new Date(message.timestamp).toLocaleString()}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                }
+              )}
+            </ul>
+          ) : (
+            <div className="text-center py-10 text-sm text-slate-500">
+              No meeting requests found. Enter contacts and analyze.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ===== Reply Modal ===== */}
       {replyOpen && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-lg font-semibold">Reply to {replyContactName}</h4>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-violet-700">
+                Reply to {replyContactName}
+              </h4>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-500 hover:text-slate-700"
                 onClick={() => setReplyOpen(false)}
               >
                 ✕
@@ -519,30 +505,34 @@ const sendReply = async () => {
 
             {replyPhones.length > 1 && (
               <div className="mb-3">
-                <label className="block text-sm text-gray-700 mb-1">Choose number</label>
+                <label className="mb-1 block text-sm text-slate-600">
+                  Choose number
+                </label>
                 <select
                   value={selectedPhone}
                   onChange={(e) => setSelectedPhone(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-violet-200 px-3 py-2 text-sm focus:ring-4 focus:ring-violet-100"
                 >
-                  {replyPhones.map(p => (
-                    <option key={p} value={p}>{p}</option>
+                  {replyPhones.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
                   ))}
                 </select>
               </div>
             )}
-
             {replyPhones.length === 1 && (
-              <p className="text-xs text-gray-600 mb-2">📱 {selectedPhone}</p>
+              <p className="mb-2 text-xs text-slate-500">📱 {selectedPhone}</p>
             )}
-
             {replyPhones.length === 0 && (
-              <p className="text-xs text-red-600 mb-2">No phone saved for this contact.</p>
+              <p className="mb-2 text-xs text-red-600">
+                No phone saved for this contact.
+              </p>
             )}
 
             <textarea
               rows={4}
-              className="w-full border rounded px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-violet-200 px-3 py-2 text-sm focus:ring-4 focus:ring-violet-100"
               placeholder="Type your message…"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
@@ -550,39 +540,40 @@ const sendReply = async () => {
 
             <div className="mt-4 flex justify-end gap-2">
               <button
-                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 onClick={() => setReplyOpen(false)}
                 disabled={sending}
               >
                 Cancel
               </button>
               <button
-                className={`px-4 py-2 text-sm text-white rounded ${sending ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 onClick={sendReply}
                 disabled={sending || replyPhones.length === 0}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
               >
-                {sending ? 'Sending…' : 'Send'}
+                {sending ? "Sending…" : "Send"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-
+      {/* ===== Event Modal ===== */}
       {eventOpen && (
-  <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
-    <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-5">
-      <CreateEventForm
-        selectedDate={eventDefaults.date}
-        onClose={() => setEventOpen(false)}
-        mode="admin"
-        defaults={{ eventDefaults }}
-      />
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <CreateEventForm
+              selectedDate={eventDefaults.date}
+              onClose={() => setEventOpen(false)}
+              mode="admin"
+              defaults={{ eventDefaults }}
+            />
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
-</div>  // main container
-);
+  );
+
 };
    
 

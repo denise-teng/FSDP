@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useEventStore } from '../stores/useEventStore';
 import CreateEventForm from './CreateEventForm';
 import EventCard from './EventCard';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Search, Filter } from 'lucide-react';
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -15,13 +16,11 @@ const ymd = (d) =>
 const parseEventDate = (value) => {
   if (!value) return null;
   if (typeof value === 'string') {
-    // If it's already YYYY-MM-DD, construct local date
     const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) {
       const [_, yy, mm, dd] = m;
       return new Date(Number(yy), Number(mm) - 1, Number(dd));
     }
-    // Fallback: let Date parse ISO
     return new Date(value);
   }
   return new Date(value);
@@ -40,7 +39,7 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
     fetchAllEvents(true);
   }, [fetchAllEvents]);
 
-  // Always compute a locally-filtered list for the visible month
+  // Month-scope events
   const monthEvents = useMemo(() => {
     if (!events?.length) return [];
     return events.filter((ev) => {
@@ -48,8 +47,6 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
       return d && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
   }, [events, currentMonth, currentYear]);
-
-  
 
   const handleApprove = async (eventId) => {
     await updateEvent(eventId, { status: 'approved' });
@@ -61,42 +58,39 @@ const CalendarView = ({ mode = 'admin', onDateSelect, adminEvents = [] }) => {
     fetchAllEvents();
   };
 
-const getEventColorsForDay = (day) => {
+  const getEventColorsForDay = (day) => {
+    const dayEvents = monthEvents.filter((event) => {
+      const d = parseEventDate(event.date);
+      if (!d) return false;
 
+      const matchesType = filterType ? event.type === filterType : true;
+      const matchesSearch = searchName
+        ? event.name?.toLowerCase().includes(searchName.toLowerCase().trim())
+        : true;
 
-  const dayEvents = monthEvents.filter((event) => {
-    const d = parseEventDate(event.date);
-    if (!d) return false;
+      return (
+        d.getDate() === day &&
+        matchesType &&
+        matchesSearch &&
+        (mode === 'admin' || event.status === 'approved')
+      );
+    });
 
-    const matchesType = filterType ? event.type === filterType : true;
-    const matchesSearch = searchName
-      ? event.name.toLowerCase().includes(searchName.toLowerCase().trim())
-      : true;
+    const eventColors = {
+      Broadcast: 'bg-blue-500',
+      Consultation: 'bg-green-500',
+      Sales: 'bg-yellow-500',
+      Service: 'bg-purple-500',
+      'Policy-updates': 'bg-red-500',
+      AdminBlock: 'bg-gray-600',
+    };
 
-    return (
-      d.getDate() === day &&
-      matchesType &&
-      matchesSearch &&
-      (mode === 'admin' || event.status === 'approved')
+    const colors = dayEvents.slice(0, 3).map(
+      (event) => eventColors[event.type] || 'bg-gray-500'
     );
-  });
 
-  const eventColors = {
-    Broadcast: 'bg-blue-500',
-    Consultation: 'bg-green-500',
-    Sales: 'bg-yellow-500',
-    Service: 'bg-purple-500',
-    'Policy-updates': 'bg-red-500',
-    AdminBlock: 'bg-gray-600',
+    return { colors, totalEvents: dayEvents.length };
   };
-
-  const colors = dayEvents.slice(0, 3).map(
-    (event) => eventColors[event.type] || 'bg-gray-500'
-  );
-
-  return { colors, totalEvents: dayEvents.length };
-};
-
 
   const handleNextMonth = () => {
     if (currentMonth === 11) {
@@ -116,37 +110,33 @@ const getEventColorsForDay = (day) => {
     }
   };
 
-const selectedEvents = useMemo(() => {
-  if (!selectedDate || !events) return [];
-  const selectedYmd = ymd(selectedDate);
+  const selectedEvents = useMemo(() => {
+    if (!selectedDate || !events) return [];
+    const selectedYmd = ymd(selectedDate);
 
-  return events.filter((ev) => {
-    const d = parseEventDate(ev.date);
-    if (!d) return false;
+    return events.filter((ev) => {
+      const d = parseEventDate(ev.date);
+      if (!d) return false;
 
-    const evYmd = ymd(d);
+      const evYmd = ymd(d);
+      const matchesType = filterType ? ev.type === filterType : true;
+      const matchesSearch = searchName
+        ? ev.name?.toLowerCase().includes(searchName.toLowerCase())
+        : true;
 
-    // --- FILTER + SEARCH ---
-    const matchesType = filterType ? ev.type === filterType : true;
-    const matchesSearch = searchName
-      ? ev.name?.toLowerCase().includes(searchName.toLowerCase())
-      : true;
+      if (mode === 'admin') {
+        return evYmd === selectedYmd && matchesType && matchesSearch;
+      }
 
-    if (mode === 'admin') {
-      return evYmd === selectedYmd && matchesType && matchesSearch;
-    }
-
-    return (
-      evYmd === selectedYmd &&
-      ev.type === 'Consultation' &&
-      ev.status === 'approved' &&
-      matchesType &&
-      matchesSearch
-    );
-  });
-}, [selectedDate, events, mode, filterType, searchName]);
-
-
+      return (
+        evYmd === selectedYmd &&
+        ev.type === 'Consultation' &&
+        ev.status === 'approved' &&
+        matchesType &&
+        matchesSearch
+      );
+    });
+  }, [selectedDate, events, mode, filterType, searchName]);
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
@@ -168,7 +158,7 @@ const selectedEvents = useMemo(() => {
         onClick={() => {
           const newDate = new Date(currentYear, currentMonth, day);
           setSelectedDate(newDate);
-          onDateSelect?.(newDate); // keep user booking page synced
+          onDateSelect?.(newDate);
         }}
         className={`cursor-pointer relative rounded-md border ${
           isSelected ? 'bg-emerald-100 border-emerald-400' : 'bg-white'
@@ -188,91 +178,129 @@ const selectedEvents = useMemo(() => {
 
   return (
     <motion.div
-      className="bg-gray-100 shadow-lg rounded-lg overflow-hidden max-w-4xl mx-auto p-6"
+      className="space-y-6 max-w-6xl mx-auto"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
+      transition={{ duration: 0.4 }}
     >
-      <h1 className="text-3xl font-bold text-blue-600 mb-2">
-        {mode === 'admin' ? 'CALENDAR MANAGEMENT' : 'BOOK CONSULTATION'}
-      </h1>
+      {/* ===== Header Card (matches your Contact Management card) ===== */}
+      <div className="relative overflow-hidden rounded-3xl bg-white border border-indigo-50 shadow-md">
+        <div className="p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="inline-grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow">
+                  <CalendarIcon className="h-5 w-5" />
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#5b4ae2]">
+                  {mode === 'admin' ? 'Contact Management · Calendar' : 'Book Consultation'}
+                </h1>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Manage events, send reminders, and review consultations.
+              </p>
+            </div>
 
-      <div className="flex items-center justify-between mb-4 text-gray-700 font-medium">
-        <button
-          className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full px-4 py-1 text-sm"
-          onClick={handlePrevMonth}
-        >
-          Prev
-        </button>
-        <h2>
-          {new Date(currentYear, currentMonth).toLocaleString('default', {
-            month: 'long',
-            year: 'numeric',
-          })}
-        </h2>
-        <button
-          className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full px-4 py-1 text-sm"
-          onClick={handleNextMonth}
-        >
-          Next
-        </button>
-      </div>
+            {/* badge like your header icon */}
+            <div className="shrink-0">
+              <div className="relative">
+                <div className="h-12 w-12 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow">
+                  <CalendarIcon className="h-5 w-5" />
+                </div>
+                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-amber-400 ring-4 ring-white" />
+              </div>
+            </div>
+          </div>
 
-          <div className="flex items-center justify-between mb-4 gap-4">
-  {/* Search by name */}
-  <input
-    type="text"
-    placeholder="Search events by name..."
-    value={searchName}
-    onChange={(e) => setSearchName(e.target.value)}
-    className="flex-1 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-400"
-  />
+          {/* Controls row (styled pills) */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Month nav */}
+            <div className="flex items-center gap-2">
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:border-indigo-300"
+                onClick={handlePrevMonth}
+              >
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </button>
+              <div className="rounded-full bg-indigo-50/70 px-4 py-2 text-sm font-semibold text-indigo-700 border border-indigo-100">
+                {new Date(currentYear, currentMonth).toLocaleString('default', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </div>
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:border-indigo-300"
+                onClick={handleNextMonth}
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
 
-  {/* Filter by type */}
-  <select
-    value={filterType}
-    onChange={(e) => setFilterType(e.target.value)}
-    className="px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-400"
-  >
-    <option value="">All Types</option>
-    <option value="Broadcast">Broadcast</option>
-    <option value="Consultation">Consultation</option>
-    <option value="Sales">Sales</option>
-    <option value="Service">Service</option>
-    <option value="Policy-updates">Policy Updates</option>
-    <option value="AdminBlock">Admin Block</option>
-  </select>
-</div>
+            <div className="flex-1" />
 
+            {/* Search pill */}
+            <div className="relative w-full sm:w-auto sm:min-w-[260px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name…"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                className="w-full rounded-full border border-indigo-100 bg-white pl-9 pr-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+              />
+            </div>
 
-      {/* Weekdays */}
-      <div className="grid grid-cols-7 text-gray-700 text-sm gap-px bg-gray-100 [&>div]:p-2 text-center font-semibold uppercase">
-        {weekdays.map((day) => (
-          <div key={day}>{day}</div>
-        ))}
-      </div>
+            {/* Filter pill */}
+            <div className="relative">
+              <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="appearance-none rounded-full border border-indigo-100 bg-white pl-9 pr-8 py-2.5 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="">All Types</option>
+                <option value="Broadcast">Broadcast</option>
+                <option value="Consultation">Consultation</option>
+                <option value="Sales">Sales</option>
+                <option value="Service">Service</option>
+                <option value="Policy-updates">Policy Updates</option>
+                <option value="AdminBlock">Admin Block</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">▾</span>
+            </div>
+          </div>
+        </div>
 
-      {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-px bg-gray-100 [&>div]:p-4 [&>div]:text-gray-800 text-center">
-        {calendarDays}
+        {/* ===== DO NOT CHANGE: your original grid markup stays as-is ===== */}
+        {/* Weekdays */}
+        <div className="grid grid-cols-7 text-gray-700 text-sm gap-px bg-gray-100 [&>div]:p-2 text-center font-semibold uppercase">
+          {weekdays.map((day) => (
+            <div key={day}>{day}</div>
+          ))}
+        </div>
+
+        {/* Days Grid */}
+        <div className="grid grid-cols-7 gap-px bg-gray-100 [&>div]:p-4 [&>div]:text-gray-800 text-center">
+          {calendarDays}
+        </div>
       </div>
 
       {/* Admin Add Event */}
       {selectedDate && mode === 'admin' && (
-        <div className="text-gray-800 mt-6 text-center">
+        <div className="text-center">
           <button
             onClick={() => setShowForm(true)}
-            className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-1 rounded text-sm font-medium"
+            className="rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-5 py-2 text-sm font-semibold text-white shadow hover:shadow-md"
           >
-            Add Event
+            + Add Event
           </button>
         </div>
       )}
 
       {/* Selected Day Events */}
       {selectedDate && selectedEvents.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+        <div className="rounded-3xl border border-indigo-50 bg-white p-5 sm:p-6 shadow">
+          <h3 className="text-lg font-semibold text-[#5b4ae2] mb-3">
             Events on {selectedDate.toDateString()}
           </h3>
           <div className="space-y-3">
@@ -290,7 +318,7 @@ const selectedEvents = useMemo(() => {
       )}
 
       {/* Event Form */}
-      {showForm && (  
+      {showForm && (
         <CreateEventForm
           selectedDate={selectedDate}
           onClose={() => setShowForm(false)}
