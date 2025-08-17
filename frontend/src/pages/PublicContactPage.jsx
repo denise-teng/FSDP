@@ -140,57 +140,57 @@ const PublicContactPage = () => {
 
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
         {/* Contact Information Card */}
-        <div className="flex-1 bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-2xl shadow-xl border border-gray-800 text-white">
-          <h2 className="text-3xl font-bold text-white mb-6">
-            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+        <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-8">
+          <h2 className="text-3xl font-bold mb-6">
+            <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
               Contact Information
             </span>
           </h2>
           
-          <p className="text-gray-300 text-lg mb-8 italic">
+          <p className="text-gray-600 text-lg mb-8 italic">
             Start the chat to begin planning your financial future wisely.
           </p>
 
           <div className="space-y-6">
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-lg">
                 <Mail className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-300">Email</h3>
-                <a href="mailto:someone@example.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">
-                  someone@example.com
+                <h3 className="text-lg font-medium text-gray-700">Email</h3>
+                <a href="mailto:yipchuefong@gmail.com" className="text-purple-600 hover:text-purple-700 transition-colors">
+                  yipchuefong@gmail.com
                 </a>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-lg">
                 <Phone className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-300">Phone</h3>
-                <p className="text-gray-200">+65 1234 5678</p>
+                <h3 className="text-lg font-medium text-gray-700">Phone</h3>
+                <p className="text-gray-600">+65 1234 5678</p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-lg">
                 <MapPin className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-300">Location</h3>
-                <p className="text-gray-200">Singapore</p>
+                <h3 className="text-lg font-medium text-gray-700">Location</h3>
+                <p className="text-gray-600">Singapore</p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-lg">
                 <Clock className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-gray-300">Availability</h3>
-                <p className="text-gray-200">9:00 AM - 6:00 PM</p>
+                <h3 className="text-lg font-medium text-gray-700">Availability</h3>
+                <p className="text-gray-600">9:00 AM - 6:00 PM</p>
               </div>
             </div>
           </div>

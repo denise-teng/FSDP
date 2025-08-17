@@ -8,7 +8,7 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
 
   const msg = {
     to,
-    from: 'brandieco2025@gmail.com', // ✅ this one is verified
+    from: 'densie.t2910@gmail.com', // ✅ this one is verified
 
     subject: 'Verify Your Email',
     html: `
@@ -38,7 +38,8 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
   console.log('Email sent successfully');
 };
 
-export const sendBroadcastEmail = async ({ to, subject, message, from = 'brandieco2025@gmail.com' }) => {
+
+export const sendBroadcastEmail = async ({ to, subject, message, from = 'densie.t2910@gmail.com' }) => {
   const msg = {
     to,
     from,
@@ -50,14 +51,12 @@ export const sendBroadcastEmail = async ({ to, subject, message, from = 'brandie
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; margin-bottom: 30px;">
             <h1 style="color: white; text-align: center; margin: 0; font-size: 28px;">📢 Broadcast Message</h1>
           </div>
-          
           <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; border-left: 4px solid #667eea;">
             <h2 style="color: #333; margin-top: 0;">${subject}</h2>
             <div style="white-space: pre-line; font-size: 16px; line-height: 1.6;">
               ${message}
             </div>
           </div>
-
           <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f3f4; border-radius: 8px;">
             <p style="color: #666; font-size: 14px; margin: 0;">
               This message was sent via Brandie Broadcast System
@@ -69,27 +68,25 @@ export const sendBroadcastEmail = async ({ to, subject, message, from = 'brandie
   };
 
   console.log('Sending broadcast email to:', to);
-  
-  // Use secondary API key for broadcast emails
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
-  
   try {
     await sgMail.send(msg);
-    console.log('✅ Broadcast email sent successfully to:', to, '(using secondary API key)');
+    console.log('✅ Broadcast email sent successfully to:', to);
   } catch (error) {
     console.error('❌ Broadcast email failed:', error.message);
+    if (error.response?.body?.errors) {
+      console.error('SendGrid Error:', error.response.body.errors[0]?.message || 'Unknown error');
+    }
     throw error;
-  } finally {
-    // Switch back to primary API key for verification emails
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   }
 };
 
-export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstName, from = 'brandieco2025@gmail.com' }) => {
+export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstName, from = 'densie.t2910@gmail.com' }) => {
+  const displayName = firstName || 'Valued Customer';
+
   const msg = {
     to,
     from,
-    subject: `Hi ${firstName}, ${subject}`,
+    subject: `Hi ${displayName}, ${subject}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -97,16 +94,14 @@ export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstN
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; margin-bottom: 30px;">
             <h1 style="color: white; text-align: center; margin: 0; font-size: 28px;">📅 Scheduled Broadcast Message</h1>
           </div>
-          
           <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; border-left: 4px solid #667eea;">
             <h2 style="color: #333; margin-top: 0;">${subject}</h2>
-            <p style="color: #333; margin-bottom: 20px;">Dear ${firstName},</p>
+            <p style="color: #333; margin-bottom: 20px;">Dear ${displayName},</p>
             <div style="white-space: pre-line; font-size: 16px; line-height: 1.6;">
               ${message}
             </div>
             <p style="color: #333; margin-top: 20px;">Best regards,<br>Your Team</p>
           </div>
-
           <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f1f3f4; border-radius: 8px;">
             <p style="color: #666; font-size: 14px; margin: 0;">
               This message was sent via Brandie Broadcast System
@@ -118,49 +113,53 @@ export const sendScheduledBroadcastEmail = async ({ to, subject, message, firstN
   };
 
   console.log('Sending scheduled broadcast email to:', to);
-  
-  // Use secondary API key for broadcast emails
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY_2);
-  
+  console.log('Using sender email:', from);
+  console.log('First name provided:', firstName, '-> Using:', displayName);
+  console.log('Subject:', `Hi ${displayName}, ${subject}`);
+
+  if (!to || !subject || !message) {
+    throw new Error('Missing required parameters: to, subject, or message');
+  }
+
   try {
     await sgMail.send(msg);
-    console.log('✅ Scheduled broadcast email sent successfully to:', to, '(using secondary API key)');
+    console.log('✅ Scheduled broadcast email sent successfully to:', to);
   } catch (error) {
     console.error('❌ Scheduled broadcast email failed:', error.message);
+    if (error.response?.body?.errors) {
+      console.error('SendGrid Error:', error.response.body.errors[0]?.message || 'Unknown error');
+    }
     throw error;
-  } finally {
-    // Switch back to primary API key for verification emails
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   }
 };
 
 export const sendBulkBroadcastEmails = async ({ recipients, subject, message }) => {
   const results = [];
-  
+
   for (const recipient of recipients) {
     try {
       await sendBroadcastEmail({
         to: recipient.email,
         subject,
-        message
+        message,
       });
       results.push({
         recipient: recipient._id,
         email: recipient.email,
         status: 'sent',
-        sentAt: new Date()
+        sentAt: new Date(),
       });
     } catch (error) {
-      console.error(`Failed to send email to ${recipient.email}:`, error);
+      console.error(`Failed to send email to ${recipient.email}:`, error.message);
       results.push({
         recipient: recipient._id,
         email: recipient.email,
         status: 'failed',
         error: error.message,
-        sentAt: new Date()
+        sentAt: new Date(),
       });
     }
   }
-  
+
   return results;
 };

@@ -70,18 +70,28 @@ const SignUpPage = () => {
 
   return (
     <div className="flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#eef1fd] min-h-screen">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+      >
         <h2 className="mt-6 text-center text-3xl font-extrabold text-indigo-600">
           Create your account
         </h2>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+      >
         <div className="bg-white py-8 px-6 shadow-md sm:rounded-lg sm:px-10 w-full max-w-md mx-auto mt-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* NAME */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-500">
                   <User className="h-5 w-5" />
@@ -92,7 +102,7 @@ const SignUpPage = () => {
                   required
                   value={formData.name}
                   onChange={handleNameChange}
-                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="John Doe"
                 />
               </div>
@@ -101,7 +111,9 @@ const SignUpPage = () => {
 
             {/* EMAIL */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-500">
                   <Mail className="h-5 w-5" />
@@ -112,7 +124,7 @@ const SignUpPage = () => {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="you@example.com"
                 />
               </div>
@@ -120,7 +132,9 @@ const SignUpPage = () => {
 
             {/* PASSWORD */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-500">
                   <Lock className="h-5 w-5" />
@@ -131,7 +145,7 @@ const SignUpPage = () => {
                   required
                   value={formData.password}
                   onChange={handlePasswordChange}
-                  className="block w-full px-3 py-2 pl-10 bg-white border text-gray-900 border-indigo-300 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="********"
                 />
               </div>
@@ -140,7 +154,9 @@ const SignUpPage = () => {
 
             {/* CONFIRM PASSWORD */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-500">
                   <Lock className="h-5 w-5" />
@@ -151,7 +167,7 @@ const SignUpPage = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="block w-full px-3 text-gray-700 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 pl-10 bg-white border border-indigo-300 rounded-md shadow-sm placeholder-gray-500 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="********"
                 />
               </div>
@@ -191,8 +207,7 @@ const SignUpPage = () => {
             <div className="mt-6">
               <button
                 type="button"
-                onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}
-
+                onClick={() => (window.location.href = 'http://localhost:5000/api/auth/google')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <FcGoogle className="h-5 w-5 mr-2" />

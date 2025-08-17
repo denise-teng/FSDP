@@ -72,9 +72,7 @@ export const completeSignup = async (req, res) => {
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: 'User already exists. Please log in.' });
-    }
+    
 
     const newUser = new User({
       name,
@@ -91,7 +89,7 @@ export const completeSignup = async (req, res) => {
     res.status(201).json({ message: 'Account verified and created' });
   } catch (err) {
     console.error('Complete Signup Error:', err.message);
-    res.status(400).json({ message: 'Invalid or expired verification link' });
+ 
   }
 };
 
