@@ -306,6 +306,15 @@ const Footer = () => {
   const [subscriptionError, setSubscriptionError] = useState(null);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(null);
 
+  useEffect(() => {
+    if (localStorage.getItem('newsletterSubscribed') === '1') {
+      setSubscribed(true);
+    }
+    const onSub = () => setSubscribed(true);
+    window.addEventListener('newsletter-subscribed', onSub);
+    return () => window.removeEventListener('newsletter-subscribed', onSub);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -313,30 +322,36 @@ const Footer = () => {
     setSubscriptionSuccess(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/subscribe', {
+      const res = await fetch('http://localhost:5000/api/subscribe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error(data.message || 'Subscription failed');
       }
 
-      setSubscriptionSuccess(data.message || 'Subscription successful! Please check your email.');
+      setSubscriptionSuccess(
+        data?.message ||
+        (data?.code === 'ALREADY_SUBSCRIBED'
+          ? 'You are already subscribed'
+          : 'Subscription successful! Please check your email.')
+      );
       setSubscribed(true);
       setEmail('');
-    } catch (error) {
-      setSubscriptionError(error.message || 'Failed to process subscription. Please try again later.');
-      console.error('Subscription error:', error);
+      localStorage.setItem('newsletterSubscribed', '1');
+window.dispatchEvent(new Event('newsletter-subscribed'));
+
+    } catch (err) {
+      setSubscriptionError(err.message || 'Failed to process subscription');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // Handle navigation - works with or without React Router
   const navigateTo = (path) => {
@@ -402,7 +417,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="tel:+6588058250"
+                href="tel:+65 12345678"
                 className="flex items-center hover:text-white transition-colors"
               >
                 <Phone className="w-4 h-4 mr-2" />
@@ -654,7 +669,14 @@ const HomePage = () => {
   const [subscriptionError, setSubscriptionError] = useState(null);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(null);
 
-
+useEffect(() => {
+  if (localStorage.getItem('newsletterSubscribed') === '1') {
+    setSubscribed(true);
+  }
+  const onSub = () => setSubscribed(true);
+  window.addEventListener('newsletter-subscribed', onSub);
+  return () => window.removeEventListener('newsletter-subscribed', onSub);
+}, []);
   const visibleTestimonials = showAll
     ? testimonials
     : testimonials.slice(0, 3);
@@ -689,9 +711,8 @@ const HomePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
-    setSuccess(null);
     setSubscriptionError(null); // Clear previous subscription errors
+    setSubscriptionSuccess(null);
 
     try {
       const response = await fetch('http://localhost:5000/api/subscribe', {
@@ -714,6 +735,9 @@ const HomePage = () => {
       } else {
         setSuccess(data.message || 'Subscription successful! Please check your email.');
         setSubscribed(true);
+        localStorage.setItem('newsletterSubscribed', '1');
+        window.dispatchEvent(new Event('newsletter-subscribed'));
+
         setEmail('');
       }
     } catch (error) {
@@ -778,10 +802,10 @@ const HomePage = () => {
               insurance and wealth strategies. Known for patience, integrity, and putting clients first.
               Let&apos;s chat over coffee!&quot;
             </blockquote>
-            <Link to = '/booking'>
-            <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-medium hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center mx-auto">
-              Schedule Consultation <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
+            <Link to='/booking'>
+              <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-medium hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center mx-auto">
+                Schedule Consultation <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
             </Link>
           </motion.div>
         </div>
