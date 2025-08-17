@@ -326,7 +326,7 @@ export default function ContactPage() {
                           )}
                           <button 
                             onClick={() => {
-                              setSelectedContactId(c._id);
+                              setSelectedContactId(c.contactId);
                               setShowBroadcastMenu(true);
                             }} 
                             className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-2.5 py-1 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md flex items-center gap-1"

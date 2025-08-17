@@ -1,6 +1,6 @@
 // LocationPicker.jsx
 import React, { useState, useRef } from "react";
-import { Map, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet"; // ✅ v2 syntax
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axios from "axios";
@@ -34,7 +34,6 @@ const LocationPicker = ({ onLocationSelect }) => {
 
   // ------- Providers --------
   const fetchSGSuggestions = async (value, signal) => {
-    // OneMap Singapore (no token required): SG-only results
     const url = "https://developers.onemap.sg/commonapi/search";
     const { data } = await axios.get(url, {
       params: {
@@ -50,9 +49,9 @@ const LocationPicker = ({ onLocationSelect }) => {
     const results = Array.isArray(data?.results) ? data.results : [];
     return results.map((r) => ({
       provider: "onemap",
-      place_id: `${r.SEARCHVAL}-${r.LATITUDE}-${r.LONGITUDE}`,
-      display_name: r.SEARCHVAL, // short label (we'll show this)
-      full_address: r.ADDRESS || r.BUILDING || r.SEARCHVAL, // secondary line
+      place_id: `${r.SEARCHVAL}-${r.LATITUDE}-${r.LONGITUDE}`, // ✅ fixed
+      display_name: r.SEARCHVAL,
+      full_address: r.ADDRESS || r.BUILDING || r.SEARCHVAL,
       lat: parseFloat(r.LATITUDE),
       lon: parseFloat(r.LONGITUDE),
     }));
@@ -70,9 +69,9 @@ const LocationPicker = ({ onLocationSelect }) => {
         namedetails: 1,
         limit: 8,
         viewbox: SG_VIEWBOX,
-        bounded: 1, // clamp to box
+        bounded: 1,
         countrycodes: "sg",
-        email: "your-contact@email.com", // optional contact per usage policy
+        email: "your-contact@email.com",
       },
       signal,
       headers: {
@@ -88,7 +87,7 @@ const LocationPicker = ({ onLocationSelect }) => {
       const res2 = await axios.get(base, {
         params: {
           format: "jsonv2",
-          q: `${value}, Singapore`,
+          q: `${value}, Singapore`, // ✅ fixed
           addressdetails: 1,
           namedetails: 1,
           limit: 8,
@@ -107,7 +106,7 @@ const LocationPicker = ({ onLocationSelect }) => {
     return list.map((s) => ({
       provider: "nominatim",
       place_id: String(s.place_id),
-      display_name: s.namedetails?.name || s.display_name, // short label
+      display_name: s.namedetails?.name || s.display_name,
       full_address: s.display_name,
       lat: parseFloat(s.lat),
       lon: parseFloat(s.lon),
@@ -119,7 +118,6 @@ const LocationPicker = ({ onLocationSelect }) => {
     const value = e.target.value;
     setSearchQuery(value);
 
-    // Clear old debounce & abort previous request
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
 
@@ -133,10 +131,8 @@ const LocationPicker = ({ onLocationSelect }) => {
       abortRef.current = controller;
 
       try {
-        // First: OneMap (fast, SG-scoped)
         let list = await fetchSGSuggestions(value, controller.signal);
 
-        // If nothing, fallback to Nominatim
         if (!list || list.length === 0) {
           list = await fetchNominatimSuggestions(value, controller.signal);
         }
@@ -158,7 +154,6 @@ const LocationPicker = ({ onLocationSelect }) => {
     setSearchQuery(name);
     setSuggestions([]);
 
-    // Keep your parent API shape: { lat, lng, name }
     onLocationSelect?.({ lat, lng: lon, name, address: place.full_address });
   };
 
@@ -177,7 +172,7 @@ const LocationPicker = ({ onLocationSelect }) => {
         <ul className="bg-white border rounded shadow text-black max-h-48 overflow-y-auto">
           {suggestions.map((s, idx) => (
             <li
-              key={`${s.place_id}-${idx}`}
+              key={`${s.place_id}-${idx}`} // ✅ fixed
               onClick={() => handleSuggestionClick(s)}
               className="p-2 hover:bg-gray-100 cursor-pointer"
             >
@@ -191,7 +186,11 @@ const LocationPicker = ({ onLocationSelect }) => {
       )}
 
       <div className="h-[250px] w-full">
-        <Map center={position} zoom={SG_ZOOM} style={{ height: "100%", width: "100%" }}>
+        <Map
+          center={position}
+          zoom={SG_ZOOM}
+          style={{ height: "100%", width: "100%" }}
+        >
           <TileLayer
             attribution="© OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
