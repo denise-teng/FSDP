@@ -8,11 +8,17 @@ const newsletterSchema = new mongoose.Schema({
   },
   newsletterFilePath: {
     type: String,
-    required: [true, 'Newsletter file path is required']
+    required: function() { return this.status === 'published'; },
+    validate: {
+      validator: function(v) {
+        // Only validate if status is published
+        return this.status !== 'published' || (v && v.trim() !== '');
+      },
+      message: 'Newsletter file path is required when published'
+    }
   },
   thumbnailPath: {
-    type: String,
-    required: false
+    type: String
   },
   tags: {
     type: [String],
@@ -58,6 +64,26 @@ const newsletterSchema = new mongoose.Schema({
   publishedAt: Date,
   publishedBy: mongoose.Schema.Types.ObjectId
 
+});
+
+
+newsletterSchema.pre('save', function(next) {
+  console.log('[MONGOOSE] Saving newsletter:', {
+    id: this._id,
+    title: this.title,
+    status: this.status,
+    operation: this.isNew ? 'create' : 'update'
+  });
+  next();
+});
+
+// Add post-save hook for logging
+newsletterSchema.post('save', function(doc) {
+  console.log('[MONGOOSE] Newsletter saved:', {
+    id: doc._id,
+    title: doc.title,
+    status: doc.status
+  });
 });
 
 export default mongoose.models.Newsletter || mongoose.model('Newsletter', newsletterSchema);

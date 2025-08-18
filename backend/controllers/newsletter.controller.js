@@ -9,10 +9,10 @@ function convertToArray(data) {
       const parsed = JSON.parse(data);
       return Array.isArray(parsed) ? parsed : [parsed];
     } catch {
-      return data.split(',').map(item => item.trim()).filter(item => item);
+      return data.split(',').map(s => s.trim()).filter(Boolean);
     }
   }
-  return [data].filter(item => item !== undefined && item !== null);
+  return [data].filter(v => v !== undefined && v !== null);
 }
 
 // Normalize file paths
@@ -109,35 +109,59 @@ export const deleteNewsletter = async (req, res) => {
   }
 };
 
+// In newsletter.controller.js
 export const updateNewsletter = async (req, res) => {
+  console.log('[BACKEND] Received newsletter update request');
   try {
-    const updateData = {
-      title: req.body.title,
-      tags: convertToArray(req.body.tags),
-      sendTo: convertToArray(req.body.sendTo),
-      audience: convertToArray(req.body.audience),
-      content: convertToArray(req.body.content),
-      category: req.body.category,
-      status: req.body.status || 'published',
-...(req.files?.newsletterFile?.[0] && {
-  newsletterFilePath: normalizePath(req.files.newsletterFile[0])
-}),
-...(req.files?.thumbnail?.[0] && {
-  thumbnailPath: normalizePath(req.files.thumbnail[0])
-})
-    };
+    const { id } = req.params;
+    console.log(`[BACKEND] Updating newsletter ID: ${id}`);
 
-    const updated = await Newsletter.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({
-      error: "Update failed",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    // Build updates with proper normalization (only set when provided)
+    const updates = {};
+    if (req.body.title !== undefined) updates.title = req.body.title;
+    if (req.body.category !== undefined) updates.category = req.body.category;
+    if (req.body.status !== undefined) updates.status = req.body.status;
+    if (req.body.type !== undefined) updates.type = req.body.type;
+
+    if (req.body.tags !== undefined) updates.tags = convertToArray(req.body.tags);
+    if (req.body.sendTo !== undefined) updates.sendTo = convertToArray(req.body.sendTo);
+    if (req.body.audience !== undefined) updates.audience = convertToArray(req.body.audience);
+    if (req.body.content !== undefined) updates.content = convertToArray(req.body.content);
+
+    // files
+    if (req.files?.newsletterFile?.[0]) {
+      updates.newsletterFilePath = `uploads/${req.files.newsletterFile[0].filename}`;
+    }
+    if (req.files?.thumbnail?.[0]) {
+      updates.thumbnailPath = `uploads/${req.files.thumbnail[0].filename}`;
+    }
+
+    const existing = await Newsletter.findById(id);
+    if (!existing) {
+      console.error('[BACKEND] Newsletter not found');
+      return res.status(404).json({ error: 'Newsletter not found' });
+    }
+
+    // preserve existing file paths if no new files provided
+    if (updates.newsletterFilePath === undefined && existing.newsletterFilePath) {
+      updates.newsletterFilePath = existing.newsletterFilePath;
+    }
+    if (updates.thumbnailPath === undefined && existing.thumbnailPath) {
+      updates.thumbnailPath = existing.thumbnailPath;
+    }
+
+    console.log('[BACKEND] Final updates:', updates);
+
+    const newsletter = await Newsletter.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
     });
+
+    console.log('[BACKEND] Update successful:', { id: newsletter._id, title: newsletter.title, status: newsletter.status });
+    res.json(newsletter);
+  } catch (error) {
+    console.error('[BACKEND] Update error:', { message: error.message, stack: error.stack, validationErrors: error.errors });
+    res.status(400).json({ error: error.message });
   }
 };
 

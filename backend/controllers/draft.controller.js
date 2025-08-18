@@ -256,13 +256,21 @@ export const getDraftById = async (req, res) => {
     if (!draft) {
       return res.status(404).json({ success: false, message: 'Draft not found' });
     }
-    // Optional: add a friendly download URL like newsletters do
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+
+    // Clean path helper
+    const asPublic = (p) => p ? p.replace(/\\/g, '/').replace(/^\/+/, '') : null;
+
+    // ✅ Build absolute URLs from the incoming request origin (works in dev & prod)
+    const origin = `${req.protocol}://${req.get('host')}`;
+
     if (draft.newsletterFilePath) {
-      draft.downloadUrl = `${baseUrl}/${draft.newsletterFilePath.replace(/\\/g, '/')}`;
+      const clean = asPublic(draft.newsletterFilePath);
+      draft.downloadUrl = `${origin}/${clean}`;
     }
+
     if (draft.thumbnailPath) {
-      draft.thumbnailUrl = `${baseUrl}/${draft.thumbnailPath.replace(/\\/g, '/')}`;
+      const clean = asPublic(draft.thumbnailPath);
+      draft.thumbnailUrl = `${origin}/${clean}`;
     }
 
     return res.json({ success: true, data: draft });

@@ -51,16 +51,16 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
   };
 
 
-const [form, setForm] = useState({
-  title: "",
-  tags: "",
-  sendTo: ["Email"], // Default to Email selected
-  audience: [],
-  category: "Financial Planning",
-  content: "",
-  newsletterFile: null,
-  thumbnail: null,
-});
+  const [form, setForm] = useState({
+    title: "",
+    tags: "",
+    sendTo: ["Email"], // Default to Email selected
+    audience: [],
+    category: "Financial Planning",
+    content: "",
+    newsletterFile: null,
+    thumbnail: null,
+  });
 
   const [existingFile, setExistingFile] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
@@ -114,13 +114,15 @@ const [form, setForm] = useState({
         const getFileUrl = (p) => {
           if (!p) return null;
           if (p.startsWith('http')) return p;
-          const cleaned = p.replace(/^[\\/]+/, '').replace(/\\/g, '/');
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-          return `${baseUrl}/${cleaned}`;
+
+          // Normalize slashes so browser can resolve correctly
+          return '/' + p.replace(/^\/+/, '').replace(/\\/g, '/');
         };
 
-        const newsletterFileUrl = getFileUrl(data.newsletterFilePath);
-        const thumbnailUrl = getFileUrl(data.thumbnailPath);
+
+        const newsletterFileUrl = getFileUrl(data.downloadUrl || data.newsletterFilePath);
+        const thumbnailUrl = getFileUrl(data.thumbnailUrl || data.thumbnailPath);
+
 
         // Normalize all fields for the form
         const toCSV = (arrOrStr) => {
@@ -234,29 +236,29 @@ const [form, setForm] = useState({
   };
 
   const validateForm = () => {
-  const newErrors = {};
+    const newErrors = {};
 
-  if (!form.title.trim()) {
-    newErrors.title = "Title is required";
-  } else if (form.title.length > 100) {
-    newErrors.title = "Title cannot exceed 100 characters";
-  }
+    if (!form.title.trim()) {
+      newErrors.title = "Title is required";
+    } else if (form.title.length > 100) {
+      newErrors.title = "Title cannot exceed 100 characters";
+    }
 
-  if (!form.tags.trim()) {
-    newErrors.tags = "Tags are required";
-  }
+    if (!form.tags.trim()) {
+      newErrors.tags = "Tags are required";
+    }
 
-  if (form.audience.length === 0) {
-    newErrors.audience = "Please select at least one audience segment";
-  }
+    if (form.audience.length === 0) {
+      newErrors.audience = "Please select at least one audience segment";
+    }
 
-  if (!editMode && !form.newsletterFile) {
-    newErrors.newsletterFile = "Newsletter file is required";
-  }
+    if (!editMode && !form.newsletterFile) {
+      newErrors.newsletterFile = "Newsletter file is required";
+    }
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
 
 
@@ -291,11 +293,14 @@ const [form, setForm] = useState({
     resetForm();
   };
 
-  // add near top: a ref to track/revoke old object urls
+  // near top stays:
   const lastThumbUrlRef = useRef(null);
 
+  
+
+
   const handleCustomThumbnailChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -304,15 +309,18 @@ const [form, setForm] = useState({
       return;
     }
 
-    const url = URL.createObjectURL(file);
+    const newUrl = URL.createObjectURL(file);
 
-    // revoke previous object URL to avoid leaks
-    if (lastThumbUrlRef.current) URL.revokeObjectURL(lastThumbUrlRef.current);
-    lastThumbUrlRef.current = url;
+    // don't kill the URL the <img> is currently using; swap first, revoke later
+    const oldUrl = lastThumbUrlRef.current;
+    lastThumbUrlRef.current = newUrl;
 
-    setThumbnailPreview(url);
-    setForm((prev) => ({ ...prev, thumbnail: file }));
-    setErrors((prev) => ({ ...prev, thumbnail: null }));
+    setThumbnailPreview(newUrl);
+    setForm(prev => ({ ...prev, thumbnail: file }));
+    setErrors(prev => ({ ...prev, thumbnail: null }));
+
+    // revoke the *previous* blob after the browser has swapped to the new one
+    if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 0);
   };
 
 
@@ -343,8 +351,8 @@ const [form, setForm] = useState({
       await useDraftStore.getState().fetchDrafts();
       toast.success("Draft updated successfully!");
 
-       // ✅ close popup & go back to Drafts page
-       onSuccess?.();
+      // ✅ close popup & go back to Drafts page
+      onSuccess?.();
     } catch (err) {
       console.error("Draft save error:", err);
       toast.error(err.response?.data?.message || "Failed to save draft");
@@ -392,13 +400,18 @@ const [form, setForm] = useState({
 
 
   const handlePublish = async () => {
+  console.log('[FRONTEND] Starting publish process...');
   setShowOverlay(true);
+  
   if (!validateForm()) {
+    console.error('[FRONTEND] Validation failed', errors);
     toast.error("Please fix validation errors before publishing");
     setShowOverlay(false);
     return;
   }
+
   try {
+    console.log('[FRONTEND] Creating FormData...');
     const formData = new FormData();
     formData.append("title", form.title);
     formData.append("category", form.category);
@@ -408,23 +421,47 @@ const [form, setForm] = useState({
     formData.append("sendTo", JSON.stringify(form.sendTo));
     formData.append("audience", JSON.stringify(form.audience));
     formData.append("content", JSON.stringify([form.content]));
-    if (form.newsletterFile) formData.append("newsletterFile", form.newsletterFile);
-    if (form.thumbnail) formData.append("thumbnail", form.thumbnail);
+
+    // Log files being attached
+    if (form.newsletterFile) {
+      console.log('[FRONTEND] Attaching newsletter file:', form.newsletterFile.name);
+      formData.append("newsletterFile", form.newsletterFile);
+    } else {
+      console.log('[FRONTEND] No new newsletter file attached, keeping existing');
+    }
+
+    if (form.thumbnail) {
+      console.log('[FRONTEND] Attaching thumbnail:', form.thumbnail.name);
+      formData.append("thumbnail", form.thumbnail);
+    } else {
+      console.log('[FRONTEND] No new thumbnail attached, keeping existing');
+    }
+
+    // Log FormData contents for debugging
+    for (let [key, value] of formData.entries()) {
+      console.log(`[FRONTEND] FormData - ${key}:`, value);
+    }
 
     let response;
     if (editMode && !isDraft) {
-      // Use the store method for newsletter updates
+      console.log('[FRONTEND] Updating existing newsletter...');
       response = await updateNewsletter(newsletterId, formData);
+      console.log('[FRONTEND] Update response:', response);
     } else if (isDraft && editMode) {
-      // Handle draft promotion to newsletter
-      response = await axios.post(`/drafts/${newsletterId}/publish`, formData);
+      console.log('[FRONTEND] Publishing draft to newsletter...');
+      const publishResponse = await axios.post(`/drafts/${newsletterId}/publish`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      response = publishResponse.data;
+      console.log('[FRONTEND] Publish response:', response);
     } else {
-      // Create new newsletter
+      console.log('[FRONTEND] Creating new newsletter...');
       response = await createNewsletter(formData);
+      console.log('[FRONTEND] Create response:', response);
     }
 
     // Send email if needed
-    if (form.sendTo.includes("Email")) {
+    if (form.sendTo.includes("Email") && response._id) {
       setIsSending(true);
       try {
         await axios.post(`/newsletters/${response._id}/send`);
@@ -437,36 +474,35 @@ const [form, setForm] = useState({
       }
     }
 
+    // Refresh data
     await Promise.all([
       useNewsletterStore.getState().fetchNewsletters(),
       isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
     ]);
 
-    // Handle success navigation
-    if (isDraft) {
-      refreshCurrentView(`/edit-newsletter/${response._id}`);
-    } else if (editMode) {
-      refreshCurrentView();
-    } else {
-      resetForm();
-      refreshCurrentView();
-    }
-
+    // Show success message
     toast.success(
       isDraft ? "Published successfully!" :
-        editMode ? "Updated successfully!" : "Created successfully!"
+      editMode ? "Updated successfully!" : "Created successfully!"
     );
 
-    onSuccess?.();
+    // Handle navigation
+    if (onSuccess) {
+      onSuccess();
+    } else if (isDraft) {
+      navigate(`/edit-newsletter/${response._id}`);
+    } else {
+      resetForm();
+    }
 
   } catch (err) {
     console.error("Publish error:", err);
-    toast.error(
-      err.response?.data?.error ||
+    const errorMsg = err.response?.data?.error ||
       err.response?.data?.message ||
       err.message ||
-      "Failed to publish newsletter"
-    );
+      "Failed to publish newsletter";
+    
+    toast.error(errorMsg);
   } finally {
     setShowOverlay(false);
   }
@@ -673,6 +709,7 @@ const [form, setForm] = useState({
 
                 <label
                   className="block"
+                  htmlFor="thumbnail-upload"
                   title={(thumbnailPreview || existingThumbnail) ? "Change thumbnail" : "Upload thumbnail"}
                 >
                   {/* 👇 EXACT same shell as newsletter: dashed, rounded, padded */}
@@ -696,9 +733,16 @@ const [form, setForm] = useState({
                         {/* Inner clip so the image doesn't cover the dashed border */}
                         <div className="absolute inset-1 rounded-lg overflow-hidden">
                           <img
-                            src={thumbnailPreview || existingThumbnail}
+                            src={thumbnailPreview ?? existingThumbnail}
                             alt="Thumbnail"
                             className="w-full h-full object-cover pointer-events-none"
+                            onError={(e) => {
+                              // if a blob url failed, fall back to the saved server image
+                              if (thumbnailPreview && existingThumbnail) {
+                                setThumbnailPreview(null);
+                                e.currentTarget.src = existingThumbnail;
+                              }
+                            }}
                           />
                         </div>
 
@@ -706,17 +750,20 @@ const [form, setForm] = useState({
                           type="button"
                           onClick={(ev) => {
                             ev.preventDefault();
-                            if (lastThumbUrlRef.current) URL.revokeObjectURL(lastThumbUrlRef.current);
+                            const url = lastThumbUrlRef.current;
                             lastThumbUrlRef.current = null;
+                            if (url) URL.revokeObjectURL(url);
                             setThumbnailPreview(null);
                             setForm(prev => ({ ...prev, thumbnail: null }));
                             if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+                            // NOTE: do NOT touch setExistingThumbnail(...) here
                           }}
                           className="absolute top-2 right-2 bg-white/85 hover:bg-white p-1 rounded-full shadow"
                           title="Remove thumbnail"
                         >
                           <X className="w-4 h-4 text-gray-700" />
                         </button>
+
                       </>
                     ) : (
                       <div className="text-center text-gray-500 hover:text-indigo-600 select-none">
@@ -749,15 +796,20 @@ const [form, setForm] = useState({
                           </p>
                           <button
                             type="button"
-                            onClick={() => {
-                              setUploadedFileName("");
-                              setForm(prev => ({ ...prev, newsletterFile: null }));
-                              if (fileInputRef.current) fileInputRef.current.value = "";
-                            }}
+                            onClick={() => fileInputRef.current?.click()}   // <-- open picker directly
                             className="mt-2 text-sm text-indigo-600 hover:text-indigo-500"
                           >
                             Change file
                           </button>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            accept=".pdf,.doc,.docx,.pdf"                   // allow .doc too if you want
+                            onChange={(e) => handleFileChange(e, 'newsletterFile')}
+                            className="sr-only"
+                            ref={fileInputRef}
+                          />
+
                         </div>
                       ) : (
                         <>

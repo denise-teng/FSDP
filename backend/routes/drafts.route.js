@@ -104,30 +104,38 @@ router.put('/:id',
 // DELETE route for deleting a draft by ID
 router.delete('/:id', deleteDraft);
 
+// In draft.routes.js
 router.post('/:id/publish', upload.fields([
   { name: 'newsletterFile', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
+  console.log('[BACKEND] Received draft publish request');
   try {
-    const draft = await Draft.findById(req.params.id);
-    if (!draft) return res.status(404).json({ error: 'Draft not found' });
+    const draftId = req.params.id;
+    console.log(`[BACKEND] Publishing draft ID: ${draftId}`);
 
-    // ✅ require a file (either newly uploaded or already on the draft)
-    const finalFilePath = req.files?.newsletterFile?.[0]
-      ? `uploads/${req.files.newsletterFile[0].filename}`
-      : draft.newsletterFilePath;
+    const draft = await Draft.findById(draftId);
+    if (!draft) {
+      console.error('[BACKEND] Draft not found');
+      return res.status(404).json({ error: 'Draft not found' });
+    }
 
-    if (!finalFilePath) {
+    console.log('[BACKEND] Draft found:', {
+      title: draft.title,
+      status: draft.status,
+      newsletterFilePath: draft.newsletterFilePath
+    });
+
+    // Validate required fields
+    if (!draft.newsletterFilePath && !req.files?.newsletterFile) {
+      console.error('[BACKEND] Newsletter file required but not provided');
       return res.status(400).json({ 
-        error: 'Newsletter file is required to publish this draft. Please upload a PDF/DOCX.' 
+        error: 'Newsletter file is required to publish this draft' 
       });
     }
 
-    const finalThumbPath = req.files?.thumbnail?.[0]
-      ? `uploads/${req.files.thumbnail[0].filename}`
-      : draft.thumbnailPath;
-
-    const newsletter = await Newsletter.create({
+    // Create newsletter data
+    const newsletterData = {
       title: draft.title,
       content: draft.content,
       tags: draft.tags,
@@ -135,15 +143,37 @@ router.post('/:id/publish', upload.fields([
       audience: draft.audience,
       category: draft.category,
       status: 'published',
-      newsletterFilePath: finalFilePath,
-      thumbnailPath: finalThumbPath,
+      newsletterFilePath: req.files?.newsletterFile?.[0]?.filename 
+        ? `uploads/${req.files.newsletterFile[0].filename}`
+        : draft.newsletterFilePath,
+      thumbnailPath: req.files?.thumbnail?.[0]?.filename
+        ? `uploads/${req.files.thumbnail[0].filename}`
+        : draft.thumbnailPath
+    };
+
+    console.log('[BACKEND] Newsletter data to create:', newsletterData);
+
+    const newsletter = await Newsletter.create(newsletterData);
+    console.log('[BACKEND] Newsletter created:', {
+      id: newsletter._id,
+      title: newsletter.title
     });
 
-    await Draft.findByIdAndDelete(req.params.id);
-    return res.status(201).json(newsletter);
-  } catch (err) {
-    console.error('Publish error:', err);
-    return res.status(500).json({ error: 'Failed to publish draft' });
+    await Draft.findByIdAndDelete(draftId);
+    console.log('[BACKEND] Draft deleted');
+
+    res.status(201).json(newsletter);
+  } catch (error) {
+    console.error('[BACKEND] Publish error:', {
+      message: error.message,
+      stack: error.stack,
+      requestFiles: req.files,
+      requestBody: req.body
+    });
+    res.status(500).json({ 
+      error: 'Failed to publish draft',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
