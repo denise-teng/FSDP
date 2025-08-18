@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -16,22 +16,37 @@ const LocationPicker = ({ onLocationSelect }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  const handleSearch = async (value) => {
-    setSearch(value);
-    if (!value) return setSuggestions([]);
-
-    try {
-      const res = await fetch(
-  `https://nominatim.openstreetmap.org/search?format=json&countrycodes=sg&q=${encodeURIComponent(value)}`,
-  { credentials: "omit" }
-);
-
-      const data = await res.json();
-      setSuggestions(data.slice(0, 5));
-    } catch (err) {
-      console.error("Search error:", err);
+  // 🔹 debounce effect
+  useEffect(() => {
+    if (!search) {
+      setSuggestions([]);
+      return;
     }
-  };
+
+    const controller = new AbortController();
+    const delay = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&countrycodes=sg&limit=5&q=${encodeURIComponent(search)}`,
+          {
+            credentials: "omit",
+            headers: { "Accept-Language": "en" }, // ✅ force English names
+            signal: controller.signal,
+          }
+        );
+
+        const data = await res.json();
+        setSuggestions(data);
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Search error:", err);
+      }
+    }, 500); // wait 0.5s before querying
+
+    return () => {
+      clearTimeout(delay);
+      controller.abort();
+    };
+  }, [search]);
 
   const handleSelect = (place) => {
     const coords = [parseFloat(place.lat), parseFloat(place.lon)];
@@ -46,8 +61,8 @@ const LocationPicker = ({ onLocationSelect }) => {
       <input
         type="text"
         value={search}
-        onChange={(e) => handleSearch(e.target.value)}
-        placeholder="Search location..."
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search Singapore location..."
         className="w-full px-4 py-2 border rounded-md"
       />
 
@@ -65,9 +80,8 @@ const LocationPicker = ({ onLocationSelect }) => {
         </ul>
       )}
 
-      {/* ✅ Use Map instead of MapContainer */}
-      <Map
-        center={selected || [1.3521, 103.8198]}
+      <MapContainer
+        center={selected || [1.3521, 103.8198]} // Default SG center
         zoom={13}
         style={{ height: "300px", width: "100%" }}
       >
@@ -77,7 +91,7 @@ const LocationPicker = ({ onLocationSelect }) => {
             <Popup>{search || "Selected Location"}</Popup>
           </Marker>
         )}
-      </Map>
+      </MapContainer>
     </div>
   );
 };

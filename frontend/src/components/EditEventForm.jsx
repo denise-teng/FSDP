@@ -27,7 +27,7 @@ const EditEventForm = ({ event, onClose }) => {
     try {
       await updateEvent(event._id, formData);
       await fetchAllEvents();
-      toast.success("Event updated successfully");
+
       onClose();
     } catch (err) {
       console.error("Error updating event:", err);

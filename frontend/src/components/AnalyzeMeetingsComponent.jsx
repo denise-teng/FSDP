@@ -83,15 +83,12 @@ const [eventDefaults, setEventDefaults] = useState({}); // { title, date }
       .filter(c => c.length > 0);
   };
 
-  // ===== Fetch WhatsApp contacts + fallback form contacts (for suggestions) =====
+  // ===== Fetch WhatsApp contacts for suggestions =====
   useEffect(() => {
     const fetchAllNames = async () => {
       try {
-        const [waRes, formRes] = await Promise.allSettled([
-          axios.get('/api/whatsapp-contacts'),
-          axios.get('/api/contacts'),
-        ]);
-
+        const response = await axios.get('/api/whatsapp-contacts');
+        
         const names = new Set();
         const phoneMap = new Map(); // temp Map<string, Set<string>>
 
@@ -105,11 +102,8 @@ const [eventDefaults, setEventDefaults] = useState({}); // { title, date }
           }
         };
 
-        if (waRes.status === 'fulfilled' && Array.isArray(waRes.value.data)) {
-          waRes.value.data.forEach(c => addNamePhone(c.firstName, c.lastName, c.phone));
-        }
-        if (formRes.status === 'fulfilled' && Array.isArray(formRes.value.data)) {
-          formRes.value.data.forEach(c => addNamePhone(c.firstName, c.lastName, c.phone || c.phoneNo));
+        if (Array.isArray(response.data)) {
+          response.data.forEach(c => addNamePhone(c.firstName, c.lastName, c.phone));
         }
 
         setAllContactNames([...names].sort((a, b) => a.localeCompare(b)));
@@ -276,11 +270,13 @@ const sendReply = async () => {
   const insertSuggestion = (name) => {
     const lastComma = inputContacts.lastIndexOf(',');
     const prefix = lastComma === -1 ? '' : inputContacts.slice(0, lastComma + 1);
-    const newValue = `${prefix}${prefix && !prefix.endsWith(' ') ? ' ' : ''}${name}`;
+    const newValue = `${prefix}${prefix && !prefix.endsWith(' ') ? ' ' : ''}${name}, `;
     setInputContacts(newValue);
     setShowSuggest(false);
     setHighlightIndex(-1);
     inputRef.current?.focus();
+    // Add a small delay before showing suggestions again for the next name
+    setTimeout(() => setShowSuggest(true), 100);
   };
 
   useEffect(() => {
@@ -336,8 +332,12 @@ const sendReply = async () => {
               <input
                 ref={inputRef}
                 value={inputContacts}
-                onChange={(e) => setInputContacts(e.target.value)}
-                placeholder="Type a name and pick from suggestions…"
+                onChange={(e) => {
+                  setInputContacts(e.target.value);
+                  setShowSuggest(true);
+                }}
+                onFocus={() => setShowSuggest(true)}
+                placeholder="Type a name from your WhatsApp contacts..."
                 className="w-full rounded-2xl border border-violet-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-violet-100"
               />
               {showSuggest && tokenSuggestions.length > 0 && (
@@ -411,8 +411,20 @@ const sendReply = async () => {
                         <button
                           className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
                           onClick={() => {
-                            const title = `Meeting with ${contact}`;
-                            const startTime = toHHMM(recommendedTimes[contact]);
+                            const title = `Consultation with ${contact}`;
+                            // Get the raw time like "3:00 PM" from recommendedTimes
+                            const rawTime = recommendedTimes[contact];
+                            // Convert it to 24-hour format for the time input (HH:mm)
+                            const timeMatch = rawTime?.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                            let formattedTime = '';
+                            if (timeMatch) {
+                              let [_, hours, minutes, ampm] = timeMatch;
+                              hours = parseInt(hours);
+                              if (ampm.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                              if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+                              formattedTime = `${String(hours).padStart(2, '0')}:${minutes}`;
+                            }
+                            
                             let date = new Date();
                             if (recommendedTimes[contact]) {
                               const parsed = new Date(
@@ -420,7 +432,12 @@ const sendReply = async () => {
                               );
                               if (!isNaN(parsed)) date = parsed;
                             }
-                            setEventDefaults({ title, date, startTime });
+                            setEventDefaults({ 
+                              title, 
+                              date, 
+                              startTime: formattedTime,
+                              type: 'Consultation'
+                            });
                             setEventOpen(true);
                           }}
                         >
@@ -566,7 +583,7 @@ const sendReply = async () => {
               selectedDate={eventDefaults.date}
               onClose={() => setEventOpen(false)}
               mode="admin"
-              defaults={{ eventDefaults }}
+              defaults={eventDefaults}
             />
           </div>
         </div>
