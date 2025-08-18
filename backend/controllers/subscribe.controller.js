@@ -16,7 +16,6 @@ export const subscribe = async (req, res) => {
 
   try {
     const existing = await Subscriber.findOne({ email }).lean();
-   
     if (existing) {
       return res.status(200).json({
         success: true,
@@ -38,7 +37,7 @@ export const subscribe = async (req, res) => {
       const msg = {
         to: email,
         from: {
-          email: 'densie.t2910@gmail.com', // CHANGE TO YOUR VERIFIED DOMAIN
+          email: 'densie.t2910@gmail.com',
           name: 'Yip Cheu Fong'
         },
         templateId: 'd-de474d9c07a347569e076cec7efe85fa',
@@ -47,16 +46,12 @@ export const subscribe = async (req, res) => {
           unsubscribeUrl: `${process.env.BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`
         }
       };
-
-      console.log('Attempting to send email with payload:', msg); // Debug log
       await sgMail.send(msg);
-      console.log('Welcome email sent successfully');
     } catch (emailError) {
-      console.error('Email send failed with details:', {
+      console.error('Email send failed:', {
         message: emailError.message,
         code: emailError.code,
-        responseErrors: emailError.response?.body?.errors,
-        stack: emailError.stack
+        responseErrors: emailError.response?.body?.errors
       });
     }
 
@@ -69,7 +64,6 @@ export const subscribe = async (req, res) => {
 
   } catch (error) {
     console.error('Subscription error:', error);
-   
     if (error.code === 11000) {
       return res.status(200).json({
         success: true,
@@ -77,12 +71,10 @@ export const subscribe = async (req, res) => {
         message: 'You were already subscribed'
       });
     }
-
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Subscription failed',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Subscription failed'
     });
   }
 };
@@ -91,7 +83,7 @@ export const getSubscribers = async (req, res) => {
   try {
     const subscribers = await Subscriber.find()
       .sort({ subscribedAt: -1 })
-      .select('email subscribedAt') // Only get these fields
+      .select('email firstName lastName source isActive subscribedAt') // IMPORTANT
       .lean();
 
     res.status(200).json({
@@ -108,39 +100,20 @@ export const getSubscribers = async (req, res) => {
   }
 };
 
-
 export const removeSubscriber = async (req, res) => {
   try {
     const { email } = req.params;
-    
-    // First check if subscriber exists
     const subscriber = await Subscriber.findOne({ email });
     if (!subscriber) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Subscriber not found'
-      });
+      return res.status(404).json({ success: false, message: 'Subscriber not found' });
     }
-
-    // Then delete
     const result = await Subscriber.deleteOne({ email });
-    
     if (result.deletedCount === 1) {
-      return res.status(200).json({ 
-        success: true,
-        message: 'Subscriber removed successfully'
-      });
-    } else {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Failed to remove subscriber'
-      });
+      return res.status(200).json({ success: true, message: 'Subscriber removed successfully' });
     }
+    return res.status(400).json({ success: false, message: 'Failed to remove subscriber' });
   } catch (error) {
     console.error('Error removing subscriber:', error);
-    return res.status(500).json({ 
-      success: false,
-      message: 'Internal server error'
-    });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
