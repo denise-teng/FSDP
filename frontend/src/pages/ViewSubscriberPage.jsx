@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SubscribersTable from '../components/SubscriberTable';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { FiRefreshCw, FiSearch, FiFilter, FiX } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch, FiFilter, FiX, FiUsers, FiMail } from 'react-icons/fi';
 
 const ViewSubscriberPage = () => {
   const [subscribers, setSubscribers] = useState([]);
@@ -70,10 +70,39 @@ const ViewSubscriberPage = () => {
     return fromOk && toOk;
   });
 
+  // small motion presets
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
+
   return (
-    <div className="space-y-4">{/* This sits inside the parent white card in ContentGenerationPage */}
-      {/* Controls row */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
+      {/* Subscriber Management header card */}
+      <motion.div
+        variants={itemVariants}
+        className="relative bg-white rounded-2xl shadow-lg border border-gray-100 p-6 overflow-hidden"
+      >
+        <div className="pointer-events-none absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full -translate-y-10 translate-x-10 opacity-60" />
+        <div className="pointer-events-none absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-purple-100 to-pink-100 rounded-full translate-y-8 -translate-x-8 opacity-40" />
+        <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold mb-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
+              ✨ Subscriber Management
+            </h2>
+            <p className="text-gray-600">View and manage your newsletter subscribers</p>
+          </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="relative">
+            <div className="h-14 w-14 bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-md rotate-3">
+              <FiUsers className="h-7 w-7 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full animate-pulse flex items-center justify-center">
+              <FiMail className="text-[10px] text-white" />
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Controls row (unchanged) */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="relative w-full md:w-96">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className="text-gray-400" />
@@ -114,11 +143,11 @@ const ViewSubscriberPage = () => {
             Refresh
           </motion.button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Filter chip */}
+      {/* Active filter chip */}
       {(fromDate || toDate) && (
-        <div className="flex items-center gap-2">
+        <motion.div variants={itemVariants} className="flex items-center gap-2">
           <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
             {fromDate ? `From: ${fromDate}` : 'From: —'} • {toDate ? `To: ${toDate}` : 'To: —'}
           </span>
@@ -128,21 +157,21 @@ const ViewSubscriberPage = () => {
           >
             <FiX className="mr-1" /> Clear
           </button>
-        </div>
+        </motion.div>
       )}
 
       {/* Filter Modal */}
       <AnimatePresence>
         {isFilterOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={() => setIsFilterOpen(false)}
-            />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6 z-10">
+              className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6 z-10"
+            >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold">Filter by Date</h3>
                 <button onClick={() => setIsFilterOpen(false)} className="p-1 rounded-full hover:bg-gray-100">
@@ -194,7 +223,7 @@ const ViewSubscriberPage = () => {
 
       {/* Error card */}
       {error && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-sm">
+        <motion.div variants={itemVariants} className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-sm">
           <div className="flex justify-between items-center">
             <div>
               <p className="font-bold text-red-800">Error</p>
@@ -208,19 +237,21 @@ const ViewSubscriberPage = () => {
               Retry
             </motion.button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Table */}
-      <SubscribersTable
-        subscribers={filteredSubscribers}
-        loading={loading}
-        error={error}
-        searchTerm={searchTerm}
-        onRetry={fetchSubscribers}
-        onRemoveSubscriber={handleRemoveSubscriber}
-      />
-    </div>
+      <motion.div variants={itemVariants}>
+        <SubscribersTable
+          subscribers={filteredSubscribers}
+          loading={loading}
+          error={error}
+          searchTerm={searchTerm}
+          onRetry={fetchSubscribers}
+          onRemoveSubscriber={handleRemoveSubscriber}
+        />
+      </motion.div>
+    </motion.div>
   );
 };
 

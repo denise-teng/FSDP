@@ -35,29 +35,31 @@ export const useDraftStore = create((set, get) => ({
 
 
   fetchDeletedDrafts: async () => {
-    const currentState = get();
-    // Skip if already loading or recently fetched
-    if (currentState.loading ||
+  const currentState = get();
+  if (currentState.loading ||
       (currentState.lastFetch && Date.now() - currentState.lastFetch < 5000)) {
-      return;
-    }
-
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get('/deleted_drafts');
-      set({
-        deletedDrafts: response.data,
-        loading: false,
-        lastFetch: Date.now() // Track when we last fetched
-      });
-    } catch (error) {
-      set({
-        error: error.response?.data?.error || 'Failed to fetch deleted drafts',
-        loading: false
-      });
-      throw error;
-    }
-  },
+    return;
+  }
+  set({ loading: true, error: null });
+  try {
+    const response = await axios.get('/deleted_drafts');
+    const payload = response.data;
+    const list = Array.isArray(payload)
+      ? payload
+      : payload?.data || payload?.drafts || []; // be flexible
+    set({
+      deletedDrafts: list,
+      loading: false,
+      lastFetch: Date.now()
+    });
+  } catch (error) {
+    set({
+      error: error.response?.data?.error || 'Failed to fetch deleted drafts',
+      loading: false
+    });
+    throw error;
+  }
+},
 
 
   // Add a new draft
@@ -104,69 +106,69 @@ export const useDraftStore = create((set, get) => ({
       throw error;
     }
   },
-  deleteDraft: async (id) => {
-    set({ isDeleting: true, error: null });
-    try {
-      const response = await axios.delete(`/drafts/${id}`);
 
-      if (response.data?.success) {
-        // Optimistically update the UI
-        set(state => ({
-          drafts: state.drafts.filter(draft => draft._id !== id),
-          deletedDrafts: [response.data.draft, ...state.deletedDrafts],
-          isDeleting: false
-        }));
-        toast.success("Draft moved to trash");
-        return true;
-      }
-      throw new Error(response.data?.message || 'Failed to delete draft');
-    } catch (error) {
-      set({ error: error.message, isDeleting: false });
-      toast.error(error.message);
-      return false;
-    }
-  },
+
+  deleteDraft: async (id) => {
+  set({ isDeleting: true, error: null });
+  try {
+    const response = await axios.delete(`/drafts/${id}`);
+    const ok = response.status === 200 || response.status === 204 || response.data?.success;
+    if (!ok) throw new Error(response.data?.message || 'Failed to delete draft');
+
+    const moved = response.data?.draft || null;
+    set(state => ({
+      drafts: state.drafts.filter(d => d._id !== id),
+      // If server returns the updated draft (with deletedAt), prepend it; otherwise refetch later
+      deletedDrafts: moved ? [moved, ...state.deletedDrafts] : state.deletedDrafts,
+      isDeleting: false
+    }));
+    toast.success("Draft moved to trash");
+    return true;
+  } catch (error) {
+    set({ error: error.message, isDeleting: false });
+    toast.error(error.message);
+    return false;
+  }
+},
 
 
   // In useDraftsStore.js
   permanentlyDeleteDraft: async (id) => {
-    set({ isDeleting: true, error: null });
-    try {
-      const response = await axios.delete(`/deleted_drafts/${id}`);
+  set({ isDeleting: true, error: null });
+  try {
+    const response = await axios.delete(`/deleted_drafts/${id}`);
+    const ok = response.status === 200 || response.status === 204 || response.data?.success;
+    if (!ok) throw new Error(response.data?.message || 'Deletion failed');
 
-      if (response.data?.success) {
-        set(state => ({
-          deletedDrafts: state.deletedDrafts.filter(draft => draft._id !== id),
-          isDeleting: false
-        }));
-        return true;
-      }
-      throw new Error(response.data?.message || 'Deletion failed');
-    } catch (error) {
-      set({ error: error.message, isDeleting: false });
-      throw error;
-    }
-  },
+    set(state => ({
+      deletedDrafts: state.deletedDrafts.filter(d => d._id !== id),
+      isDeleting: false
+    }));
+    return true;
+  } catch (error) {
+    set({ error: error.message, isDeleting: false });
+    throw error;
+  }
+},
 
   restoreDraft: async (id) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.put(`/deleted_drafts/${id}/restore`);
+  set({ loading: true, error: null });
+  try {
+    const response = await axios.put(`/deleted_drafts/${id}/restore`);
+    const restored = response.data?.draft || response.data?.data || null;
+    if (!restored) throw new Error(response.data?.message || 'Restoration failed');
 
-      if (response.data?.draft) {
-        set(state => ({
-          deletedDrafts: state.deletedDrafts.filter(draft => draft._id !== id),
-          drafts: [response.data.draft, ...state.drafts],
-          loading: false
-        }));
-        return true;
-      }
-      throw new Error(response.data?.message || 'Restoration failed');
-    } catch (error) {
-      set({ error: error.message, loading: false });
-      throw error;
-    }
-  },
+    set(state => ({
+      deletedDrafts: state.deletedDrafts.filter(d => d._id !== id),
+      drafts: [restored, ...state.drafts],
+      loading: false
+    }));
+    return true;
+  } catch (error) {
+    set({ error: error.message, loading: false });
+    throw error;
+  }
+},
 
   publishDraft: async (id) => {
     set({ loading: true });
@@ -190,8 +192,35 @@ export const useDraftStore = create((set, get) => ({
   getDraftById: (id) => {
     return get().drafts.find(draft => draft._id === id) ||
       get().deletedDrafts.find(draft => draft._id === id);
+  },
+
+  sendGeneratedNow: async (id) => {
+  // adjust base path to match where you mount the router, e.g. '/publish-generate'
+  // if your server mounts it as app.use('/api/publish-generate', router)
+  set({ loading: true, error: null });
+  try {
+    const res = await axios.post(`/publish-generate/${id}/send`);
+    // success => drop it from local list immediately
+    set(state => ({
+      drafts: state.drafts.filter(d => d._id !== id),
+      loading: false
+    }));
+    // (optional) also refresh from server to keep everything in sync
+    // await get().fetchDrafts();
+
+    // toast if you like
+    // toast.success(`Sent to ${res.data?.sent ?? 0}/${res.data?.total ?? 0} subscribers`);
+    return res.data;
+  } catch (error) {
+    set({ loading: false, error: error.response?.data?.message || 'Failed to send draft' });
+    // toast.error(error.response?.data?.message || 'Failed to send draft');
+    throw error;
   }
+}
+
 }));
+
+
 
 export const getDeletedDrafts = async (req, res) => {
   try {

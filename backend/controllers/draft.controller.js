@@ -193,17 +193,29 @@ export const restoreDraft = async (req, res) => {
 
 export const permanentlyDeleteDraft = async (req, res) => {
   try {
-    const draft = await Draft.findByIdAndDelete(req.params.id);
+    const result = await Draft.deleteOne({ _id: req.params.id, deletedAt: { $ne: null } });
 
-    if (!draft) {
-      return res.status(404).json({ message: 'Draft not found' });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Draft not found or not marked as deleted'
+      });
     }
 
-    res.json({ message: 'Draft permanently deleted' });
+    return res.status(200).json({
+      success: true,
+      message: 'Draft permanently deleted',
+      id: req.params.id
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete draft' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete draft',
+      details: error.message
+    });
   }
 };
+
 
 export const editDraft = async (req, res) => {
   try {

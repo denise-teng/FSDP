@@ -9,17 +9,17 @@ export const sendGeneratedParagraph = async (req, res) => {
     const { title, content, category } = req.body;
 
     if (!content || typeof content !== 'string' || !content.trim()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Content (string) is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Content (string) is required'
       });
     }
 
     const subscribers = await Subscriber.find({ isActive: true });
     if (!subscribers.length) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No active subscribers found' 
+      return res.status(400).json({
+        success: false,
+        message: 'No active subscribers found'
       });
     }
 
@@ -184,7 +184,7 @@ export const sendGeneratedParagraph = async (req, res) => {
           error: e.response?.body?.errors || [{ message: e.message }]
         });
       }
-      
+
       // Small delay between sends to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 200));
     }
@@ -198,10 +198,10 @@ export const sendGeneratedParagraph = async (req, res) => {
       });
     }
 
-    return res.json({ 
-      success: true, 
-      sent: sentCount, 
-      total: subscribers.length 
+    return res.json({
+      success: true,
+      sent: sentCount,
+      total: subscribers.length
     });
 
   } catch (err) {
@@ -218,30 +218,30 @@ export const sendGeneratedToSubscribers = async (req, res) => {
   try {
     const draft = await Draft.findById(req.params.id);
     if (!draft) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Draft not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Draft not found'
       });
     }
 
     if (draft.type !== 'generated') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Not a generated message draft' 
+      return res.status(400).json({
+        success: false,
+        message: 'Not a generated message draft'
       });
     }
 
     const subscribers = await Subscriber.find({ isActive: true });
     if (!subscribers.length) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No active subscribers found' 
+      return res.status(400).json({
+        success: false,
+        message: 'No active subscribers found'
       });
     }
 
     let sentCount = 0;
-    const content = Array.isArray(draft.content) 
-      ? draft.content.join('<br><br>') 
+    const content = Array.isArray(draft.content)
+      ? draft.content.join('<br><br>')
       : (draft.content || '');
 
     for (const subscriber of subscribers) {
@@ -277,15 +277,20 @@ export const sendGeneratedToSubscribers = async (req, res) => {
       } catch (e) {
         console.error(`Failed to send to ${subscriber.email}:`, e.response?.body?.errors || e.message);
       }
-      
+
       // Small delay between sends
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    return res.json({ 
-      success: true, 
-      sent: sentCount, 
-      total: subscribers.length 
+    await Draft.findByIdAndUpdate(req.params.id, {
+      $set: { status: 'published', publishedAt: new Date() }
+    });
+
+    return res.json({
+      success: true,
+      sent: sentCount,
+      total: subscribers.length,
+      draft: { _id: draft._id, status: 'published' }
     });
 
   } catch (error) {

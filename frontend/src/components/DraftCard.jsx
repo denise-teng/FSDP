@@ -36,8 +36,9 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess, onDeleteSuccess
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const { deleteDraft, publishDraft, loading } = useDraftStore();
+  const { deleteDraft, publishDraft, sendGeneratedNow, loading } = useDraftStore();
   const navigate = useNavigate();
+
 
   const isGenerated = draft.type === 'generated';
   const thumbnailUrl = getFileUrl(draft.thumbnailPath);
@@ -46,17 +47,7 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess, onDeleteSuccess
     setIsPublishing(true);
     try {
       if (isGenerated) {
-        // Always send via Email for generated messages
-        const resp = await axiosInstance.post(
-          `drafts/${draft._id}/send`,
-          {},
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
+        const resp = await sendGeneratedNow(draft._id);
 
         // Enhanced success message
         toast.success(
@@ -65,9 +56,9 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess, onDeleteSuccess
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             <span>
-              Sent to {resp.data.sent} subscribers via Email
-              {resp.data.sent < resp.data.total && (
-                <span className="text-yellow-600"> ({resp.data.total - resp.data.sent} failed)</span>
+              Sent to {resp.sent} subscribers via Email
+              {resp.sent < resp.total && (
+                <span className="text-yellow-600"> ({resp.total - resp.sent} failed)</span>
               )}
             </span>
           </div>,
@@ -252,7 +243,7 @@ const DraftCard = ({ draft, onPreview, onEdit, onPublishSuccess, onDeleteSuccess
           <div className="relative group">
             <button
               onClick={() => setShowPublishConfirm(true)}
-              disabled={loading}
+              disabled={isPublishing}
               className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors duration-300 disabled:opacity-50"
             >
               <Upload className="w-5 h-5" />

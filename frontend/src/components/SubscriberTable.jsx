@@ -1,3 +1,4 @@
+// frontend/components/SubscriberTable.jsx
 import { motion } from 'framer-motion';
 import { FiTrash2, FiUser, FiCalendar, FiAtSign } from 'react-icons/fi';
 
@@ -9,15 +10,10 @@ const SubscribersTable = ({
   onRetry,
   onRemoveSubscriber,
 }) => {
-  // Animation variants
+  // Animations
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05,
-      },
-    },
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } },
   };
 
   const rowVariants = {
@@ -31,6 +27,7 @@ const SubscribersTable = ({
     show: { opacity: 1, scale: 1 },
   };
 
+  // Loading
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -39,6 +36,7 @@ const SubscribersTable = ({
     );
   }
 
+  // Error
   if (error) {
     return (
       <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-6">
@@ -58,6 +56,7 @@ const SubscribersTable = ({
     );
   }
 
+  // Empty
   if (subscribers.length === 0) {
     return (
       <motion.div
@@ -82,43 +81,48 @@ const SubscribersTable = ({
     );
   }
 
+  // Table
   return (
     <motion.div
       initial="hidden"
       animate="show"
       variants={containerVariants}
-      className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
+      className="rounded-2xl overflow-hidden shadow"
     >
-      <div className="overflow-x-auto">
+
+
+      {/* This is the table's own card */}
+      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-100">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center">
                   <FiUser className="mr-2" />
                   Name
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center">
                   <FiAtSign className="mr-2" />
                   Email
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center">
                   <FiCalendar className="mr-2" />
                   Joined Date
                 </div>
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Source
               </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-gray-200">
             {subscribers.map((subscriber, index) => (
               <motion.tr
@@ -134,26 +138,31 @@ const SubscribersTable = ({
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {subscriber.firstName || 'Unknown'} {subscriber.lastName}
+                        {(subscriber.firstName || 'Unknown')}{' '}
+                        {subscriber.lastName || ''}
                       </div>
                     </div>
                   </div>
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{subscriber.email}</div>
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 font-medium">{subscriber.joinedDate}</div>
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 capitalize">
                     {subscriber.source}
                   </span>
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={() => onRemoveSubscriber(subscriber.email)}
-                    className="text-red-600 hover:text-red-900 flex items-center justify-end w-full"
+                    className="text-red-600 hover:text-red-900 inline-flex items-center"
                   >
                     <FiTrash2 className="mr-1" /> Remove
                   </button>
