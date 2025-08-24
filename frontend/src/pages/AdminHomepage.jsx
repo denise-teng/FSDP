@@ -312,77 +312,7 @@ const AdminHomePage = () => {
                 </div>
             </motion.div>
 
-            {/* Updates Carousel */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="max-w-7xl mx-auto mb-12 relative"
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
-            >
-                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-                    <div className="p-6 flex items-center justify-between border-b border-gray-100">
-                        <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                            <MessageSquare className="h-5 w-5 text-indigo-600 mr-2" />
-                            Recent Updates
-                        </h2>
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={prevUpdate}
-                                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition hover:scale-105"
-                                aria-label="Previous update"
-                            >
-                                <ChevronLeft className="h-4 w-4 text-gray-700" />
-                            </button>
-                            <button
-                                onClick={nextUpdate}
-                                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition hover:scale-105"
-                                aria-label="Next update"
-                            >
-                                <ChevronRight className="h-4 w-4 text-gray-700" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={currentUpdate}
-                            initial={{ opacity: 0, x: 50 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -50 }}
-                            transition={{ duration: 0.5, ease: "easeInOut" }}
-                            className="px-6 pb-6 pt-4"
-                        >
-                            <div className="flex items-start">
-                                <div className={`flex-shrink-0 h-12 w-12 rounded-full ${updates[currentUpdate].color} flex items-center justify-center mr-4`}>
-                                {updates[currentUpdate].icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-gray-900 truncate">{updates[currentUpdate].title}</h3>
-                                <p className="text-gray-600 mt-1">{updates[currentUpdate].description}</p>
-                                <p className="text-sm text-gray-500 mt-2 flex items-center">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {updates[currentUpdate].date}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                </AnimatePresence>
-
-                {/* Progress indicators */}
-                <div className="px-6 pb-4 flex justify-center space-x-2">
-                    {updates.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setCurrentUpdate(index)}
-                className={`h-1.5 w-1.5 rounded-full transition-all ${currentUpdate === index ? 'bg-indigo-600 w-6' : 'bg-gray-300'}`}
-                aria-label={`Go to update ${index + 1}`}
-            />
-            ))}
-                </div>
-        </div>
-      </motion.div >
+    
 
 
     {/* Dashboard Metrics */ }
