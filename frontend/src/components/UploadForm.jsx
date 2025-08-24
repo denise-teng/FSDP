@@ -110,19 +110,22 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
         const data = payload?.data ?? payload;
         if (!data) throw new Error('Invalid response shape');
 
-        // Helper to get absolute URL for stored files
-        const getFileUrl = (p) => {
-          if (!p) return null;
-          if (p.startsWith('http')) return p;
+        // Put near top of UploadForm.jsx (outside the effect so it's reused)
+        const API_BASE =
+          (import.meta?.env?.VITE_API_BASE_URL?.replace(/\/+$/, "")) || "http://localhost:5000";
 
-          // Normalize slashes so browser can resolve correctly
-          return '/' + p.replace(/^\/+/, '').replace(/\\/g, '/');
+        const buildFileUrl = (p) => {
+          if (!p) return null;
+          const s = String(p).replace(/\\/g, "/");                   // normalize backslashes
+          if (/^https?:\/\//i.test(s)) return s;                     // already absolute
+          if (s.startsWith("/api/")) return `${API_BASE}${s}`;        // e.g. /api/download/...
+          // assume it's an uploads path (with or without leading "uploads/")
+          const clean = s.replace(/^\/+/, "").replace(/^uploads\//, "");
+          return `${API_BASE}/uploads/${clean}`;
         };
 
-
-        const newsletterFileUrl = getFileUrl(data.downloadUrl || data.newsletterFilePath);
-        const thumbnailUrl = getFileUrl(data.thumbnailUrl || data.thumbnailPath);
-
+        const newsletterFileUrl = buildFileUrl(data.downloadUrl || data.newsletterFilePath);
+        const thumbnailUrl = buildFileUrl(data.thumbnailUrl || data.thumbnailPath);
 
         // Normalize all fields for the form
         const toCSV = (arrOrStr) => {
@@ -296,7 +299,7 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
   // near top stays:
   const lastThumbUrlRef = useRef(null);
 
-  
+
 
 
   const handleCustomThumbnailChange = (e) => {
@@ -400,113 +403,113 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
 
 
   const handlePublish = async () => {
-  console.log('[FRONTEND] Starting publish process...');
-  setShowOverlay(true);
-  
-  if (!validateForm()) {
-    console.error('[FRONTEND] Validation failed', errors);
-    toast.error("Please fix validation errors before publishing");
-    setShowOverlay(false);
-    return;
-  }
+    console.log('[FRONTEND] Starting publish process...');
+    setShowOverlay(true);
 
-  try {
-    console.log('[FRONTEND] Creating FormData...');
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("category", form.category);
-    formData.append("status", "published");
-    formData.append("type", "newsletter");
-    formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
-    formData.append("sendTo", JSON.stringify(form.sendTo));
-    formData.append("audience", JSON.stringify(form.audience));
-    formData.append("content", JSON.stringify([form.content]));
-
-    // Log files being attached
-    if (form.newsletterFile) {
-      console.log('[FRONTEND] Attaching newsletter file:', form.newsletterFile.name);
-      formData.append("newsletterFile", form.newsletterFile);
-    } else {
-      console.log('[FRONTEND] No new newsletter file attached, keeping existing');
+    if (!validateForm()) {
+      console.error('[FRONTEND] Validation failed', errors);
+      toast.error("Please fix validation errors before publishing");
+      setShowOverlay(false);
+      return;
     }
 
-    if (form.thumbnail) {
-      console.log('[FRONTEND] Attaching thumbnail:', form.thumbnail.name);
-      formData.append("thumbnail", form.thumbnail);
-    } else {
-      console.log('[FRONTEND] No new thumbnail attached, keeping existing');
-    }
+    try {
+      console.log('[FRONTEND] Creating FormData...');
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("category", form.category);
+      formData.append("status", "published");
+      formData.append("type", "newsletter");
+      formData.append("tags", JSON.stringify(form.tags.split(',').map(t => t.trim())));
+      formData.append("sendTo", JSON.stringify(form.sendTo));
+      formData.append("audience", JSON.stringify(form.audience));
+      formData.append("content", JSON.stringify([form.content]));
 
-    // Log FormData contents for debugging
-    for (let [key, value] of formData.entries()) {
-      console.log(`[FRONTEND] FormData - ${key}:`, value);
-    }
-
-    let response;
-    if (editMode && !isDraft) {
-      console.log('[FRONTEND] Updating existing newsletter...');
-      response = await updateNewsletter(newsletterId, formData);
-      console.log('[FRONTEND] Update response:', response);
-    } else if (isDraft && editMode) {
-      console.log('[FRONTEND] Publishing draft to newsletter...');
-      const publishResponse = await axios.post(`/drafts/${newsletterId}/publish`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      response = publishResponse.data;
-      console.log('[FRONTEND] Publish response:', response);
-    } else {
-      console.log('[FRONTEND] Creating new newsletter...');
-      response = await createNewsletter(formData);
-      console.log('[FRONTEND] Create response:', response);
-    }
-
-    // Send email if needed
-    if (form.sendTo.includes("Email") && response._id) {
-      setIsSending(true);
-      try {
-        await axios.post(`/newsletters/${response._id}/send`);
-        toast.success("Newsletter sent to subscribers!");
-      } catch (sendError) {
-        console.error("Sending failed but newsletter was published", sendError);
-        toast.error("Published but failed to send to subscribers");
-      } finally {
-        setIsSending(false);
+      // Log files being attached
+      if (form.newsletterFile) {
+        console.log('[FRONTEND] Attaching newsletter file:', form.newsletterFile.name);
+        formData.append("newsletterFile", form.newsletterFile);
+      } else {
+        console.log('[FRONTEND] No new newsletter file attached, keeping existing');
       }
+
+      if (form.thumbnail) {
+        console.log('[FRONTEND] Attaching thumbnail:', form.thumbnail.name);
+        formData.append("thumbnail", form.thumbnail);
+      } else {
+        console.log('[FRONTEND] No new thumbnail attached, keeping existing');
+      }
+
+      // Log FormData contents for debugging
+      for (let [key, value] of formData.entries()) {
+        console.log(`[FRONTEND] FormData - ${key}:`, value);
+      }
+
+      let response;
+      if (editMode && !isDraft) {
+        console.log('[FRONTEND] Updating existing newsletter...');
+        response = await updateNewsletter(newsletterId, formData);
+        console.log('[FRONTEND] Update response:', response);
+      } else if (isDraft && editMode) {
+        console.log('[FRONTEND] Publishing draft to newsletter...');
+        const publishResponse = await axios.post(`/drafts/${newsletterId}/publish`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        response = publishResponse.data;
+        console.log('[FRONTEND] Publish response:', response);
+      } else {
+        console.log('[FRONTEND] Creating new newsletter...');
+        response = await createNewsletter(formData);
+        console.log('[FRONTEND] Create response:', response);
+      }
+
+      // Send email if needed
+      if (form.sendTo.includes("Email") && response._id) {
+        setIsSending(true);
+        try {
+          await axios.post(`/newsletters/${response._id}/send`);
+          toast.success("Newsletter sent to subscribers!");
+        } catch (sendError) {
+          console.error("Sending failed but newsletter was published", sendError);
+          toast.error("Published but failed to send to subscribers");
+        } finally {
+          setIsSending(false);
+        }
+      }
+
+      // Refresh data
+      await Promise.all([
+        useNewsletterStore.getState().fetchNewsletters(),
+        isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
+      ]);
+
+      // Show success message
+      toast.success(
+        isDraft ? "Published successfully!" :
+          editMode ? "Updated successfully!" : "Created successfully!"
+      );
+
+      // Handle navigation
+      if (onSuccess) {
+        onSuccess();
+      } else if (isDraft) {
+        navigate(`/edit-newsletter/${response._id}`);
+      } else {
+        resetForm();
+      }
+
+    } catch (err) {
+      console.error("Publish error:", err);
+      const errorMsg = err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to publish newsletter";
+
+      toast.error(errorMsg);
+    } finally {
+      setShowOverlay(false);
     }
-
-    // Refresh data
-    await Promise.all([
-      useNewsletterStore.getState().fetchNewsletters(),
-      isDraft ? useDraftStore.getState().fetchDrafts() : Promise.resolve()
-    ]);
-
-    // Show success message
-    toast.success(
-      isDraft ? "Published successfully!" :
-      editMode ? "Updated successfully!" : "Created successfully!"
-    );
-
-    // Handle navigation
-    if (onSuccess) {
-      onSuccess();
-    } else if (isDraft) {
-      navigate(`/edit-newsletter/${response._id}`);
-    } else {
-      resetForm();
-    }
-
-  } catch (err) {
-    console.error("Publish error:", err);
-    const errorMsg = err.response?.data?.error ||
-      err.response?.data?.message ||
-      err.message ||
-      "Failed to publish newsletter";
-    
-    toast.error(errorMsg);
-  } finally {
-    setShowOverlay(false);
-  }
-};
+  };
 
 
   // Helper function to create FormData
