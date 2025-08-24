@@ -111,17 +111,18 @@ const UploadForm = ({ editMode = false, newsletterId = null, isDraft = false, on
         if (!data) throw new Error('Invalid response shape');
 
         // Helper to get absolute URL for stored files
-        const getFileUrl = (p) => {
+        const buildFileUrl = (p) => {
           if (!p) return null;
-          if (p.startsWith('http')) return p;
-
-          // Normalize slashes so browser can resolve correctly
-          return '/' + p.replace(/^\/+/, '').replace(/\\/g, '/');
+          const s = String(p).replace(/\\/g, "/");                   // normalize backslashes
+          if (/^https?:\/\//i.test(s)) return s;                     // already absolute
+          if (s.startsWith("/api/")) return `${API_BASE}${s}`;        // e.g. /api/download/...
+          // assume it's an uploads path (with or without leading "uploads/")
+          const clean = s.replace(/^\/+/, "").replace(/^uploads\//, "");
+          return `${API_BASE}/uploads/${clean}`;
         };
 
-
-        const newsletterFileUrl = getFileUrl(data.downloadUrl || data.newsletterFilePath);
-        const thumbnailUrl = getFileUrl(data.thumbnailUrl || data.thumbnailPath);
+        const newsletterFileUrl = buildFileUrl(data.downloadUrl || data.newsletterFilePath);
+        const thumbnailUrl = buildFileUrl(data.thumbnailUrl || data.thumbnailPath);
 
 
         // Normalize all fields for the form
